@@ -1,7 +1,8 @@
 # Where this stopped, and what is left
 
-Written at the end of the first build session. If you hand this project to an
-assistant again, give it this file and `README.md` first.
+Written at the end of the first build session and updated after the first live
+solo-polish pass. If you hand this project to an assistant again, give it this
+file and `README.md` first.
 
 ---
 
@@ -25,7 +26,7 @@ and the security rules are written, and they are a close port of the Fleet Dice
 2 code that already works. But the machine that built them had no route to
 Firebase, so not one of those code paths has ever spoken to Firestore.
 
-**This is the first thing to do.** Put the site online, deploy the rules, then:
+**This is the first thing to do.** The site is online; deploy the rules, then:
 
 1. On your phone, open the site and tap **Play a friend**. You should get four
    numbers.
@@ -42,10 +43,6 @@ along with which step it happened on.
 
 ## Known rough edges
 
-- **Desktop layout is untuned.** Everything was designed for a phone held
-  upright. On a wide screen the panels stay narrow and the board sits high.
-- **The home page icons are system emoji**, which look out of place next to the
-  rest of the art. They want to be proper shapes.
 - **Victory and defeat are quiet.** The result card appears and the losing
   flagship breaks, but it does not feel like the end of a battle yet.
 - **Sound has never been heard.** Every cue is generated in the browser and none
@@ -87,8 +84,8 @@ along with which step it happened on.
 
 ## The three things to do next, in order
 
-1. **Put it online and test two-player for real.** Nothing else matters until
-   that works. `README.md` has the five-minute version.
+1. **Test two-player for real.** The game is online, but the Firestore rules
+   still need the guarded deployment described in `FIREBASE.md` first.
 2. **Play four or five matches yourself and write down what felt off.** Not what
    looked wrong — what *felt* wrong. That list is worth more than any amount of
    polish chosen from a screenshot.

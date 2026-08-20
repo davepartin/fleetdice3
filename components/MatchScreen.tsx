@@ -388,10 +388,10 @@ export function MatchScreen({ controller, onExit, title, subtitle }: Props) {
         </div>
 
         {/* ---------------- middle: the board shows through ---------------- */}
-        <div className="min-h-0 flex-1" />
+        <div className="hud-pass-through min-h-0 flex-1" />
 
         {/* ---------------- bottom ---------------- */}
-        <div className="px-2 pb-2">
+        <div className="mx-auto w-full max-w-[44rem] px-2 pb-2">
           {error && (
             <Notice tone="warn" className="mb-2">
               {error}{" "}
@@ -647,7 +647,7 @@ function RollDock({
                 disabled={busy || !canAffordReroll}
               >
                 Reroll {selected.size}
-                {rerollCost ? ` · ${rerollCost}⚡` : rollsLeft > 0 ? ` · ${rollsLeft} free left` : ""}
+                {rerollCost ? ` · ${rerollCost}⚡` : rollsLeft > 0 ? " · free" : ""}
               </Button>
             </>
           ) : (

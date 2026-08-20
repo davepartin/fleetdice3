@@ -106,9 +106,7 @@ export function HomeScreen() {
             <div className="flex flex-col gap-2.5">
               <Link href="/solo/" className="block">
                 <Panel className="anim-rise flex items-center gap-4 p-4 transition hover:border-white/25">
-                  <span className="text-3xl" aria-hidden>
-                    🎲
-                  </span>
+                  <ModeIcon kind="solo" />
                   <span className="min-w-0 flex-1">
                     <span className="t-display block text-xl text-white">Play solo</span>
                     <span className="mt-0.5 block text-[0.84rem] leading-snug c-dim">
@@ -123,9 +121,7 @@ export function HomeScreen() {
 
               <Link href="/versus/" className="block">
                 <Panel className="anim-rise flex items-center gap-4 p-4 transition hover:border-white/25">
-                  <span className="text-3xl" aria-hidden>
-                    ⚔️
-                  </span>
+                  <ModeIcon kind="versus" />
                   <span className="min-w-0 flex-1">
                     <span className="t-display block text-xl text-white">Play a friend</span>
                     <span className="mt-0.5 block text-[0.84rem] leading-snug c-dim">
@@ -275,5 +271,34 @@ export function HomeScreen() {
         </div>
       )}
     </>
+  );
+}
+
+function ModeIcon({ kind }: { kind: "solo" | "versus" }) {
+  return (
+    <span
+      className={`grid h-11 w-11 shrink-0 place-items-center rounded-xl border ${
+        kind === "solo"
+          ? "border-[--color-energy]/30 bg-[--color-energy]/10 c-energy"
+          : "border-[--color-attack]/30 bg-[--color-attack]/10 c-attack"
+      }`}
+      aria-hidden
+    >
+      {kind === "solo" ? (
+        <svg viewBox="0 0 32 32" className="h-7 w-7" fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="M8 5h16l4 7-4 15H8L4 12 8 5Z" />
+          <circle cx="11" cy="11" r="1.3" fill="currentColor" stroke="none" />
+          <circle cx="21" cy="11" r="1.3" fill="currentColor" stroke="none" />
+          <circle cx="16" cy="16" r="1.3" fill="currentColor" stroke="none" />
+          <circle cx="11" cy="21" r="1.3" fill="currentColor" stroke="none" />
+          <circle cx="21" cy="21" r="1.3" fill="currentColor" stroke="none" />
+        </svg>
+      ) : (
+        <svg viewBox="0 0 32 32" className="h-7 w-7" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="m7 5 6 6-2.5 2.5L4.5 7.5 7 5Zm4 8 14 14m0-22-6 6 2.5 2.5 6-6L25 5Zm-4 8L7 27" />
+          <path d="m5 23 4 4m14-4 4 4" />
+        </svg>
+      )}
+    </span>
   );
 }

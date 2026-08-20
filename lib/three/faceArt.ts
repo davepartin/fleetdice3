@@ -92,6 +92,7 @@ function drawMark(
 function paintFace(
   ctx: CanvasRenderingContext2D,
   spec: FaceSpec,
+  sides: number,
   size: number,
   mode: "albedo" | "emissive",
   numberFont: string,
@@ -123,27 +124,33 @@ function paintFace(
     }
     ctx.restore();
 
-    // Inner bevel ring.
-    ctx.save();
-    ctx.globalAlpha = 0.42;
-    ctx.strokeStyle = "#ffffff";
-    ctx.lineWidth = size * 0.016;
-    ctx.beginPath();
-    ctx.roundRect(size * 0.09, size * 0.09, size * 0.82, size * 0.82, size * 0.16);
-    ctx.stroke();
-    ctx.restore();
+    // A square inset belongs on the square d6 faces only. Painting it into
+    // every atlas cell made the d4/d8 triangles and d10 kites look as though a
+    // rectangular sticker had been pasted across the hull.
+    if (sides === 6) {
+      ctx.save();
+      ctx.globalAlpha = 0.42;
+      ctx.strokeStyle = "#ffffff";
+      ctx.lineWidth = size * 0.016;
+      ctx.beginPath();
+      ctx.roundRect(size * 0.09, size * 0.09, size * 0.82, size * 0.82, size * 0.16);
+      ctx.stroke();
+      ctx.restore();
+    }
   } else {
     ctx.fillStyle = "#000000";
     ctx.fillRect(0, 0, size, size);
-    // The bevel ring glows faintly too.
-    ctx.save();
-    ctx.globalAlpha = 0.34;
-    ctx.strokeStyle = glow;
-    ctx.lineWidth = size * 0.014;
-    ctx.beginPath();
-    ctx.roundRect(size * 0.09, size * 0.09, size * 0.82, size * 0.82, size * 0.16);
-    ctx.stroke();
-    ctx.restore();
+    if (sides === 6) {
+      // The d6 bevel ring glows faintly too.
+      ctx.save();
+      ctx.globalAlpha = 0.34;
+      ctx.strokeStyle = glow;
+      ctx.lineWidth = size * 0.014;
+      ctx.beginPath();
+      ctx.roundRect(size * 0.09, size * 0.09, size * 0.82, size * 0.82, size * 0.16);
+      ctx.stroke();
+      ctx.restore();
+    }
   }
 
   const hasMarks = spec.marks.length > 0 || Boolean(spec.caption);
@@ -248,7 +255,7 @@ export function buildAtlas(
       ctx.beginPath();
       ctx.rect(0, 0, cell, cell);
       ctx.clip();
-      paintFace(ctx, spec, cell, mode, numberFont);
+      paintFace(ctx, spec, sides, cell, mode, numberFont);
       ctx.restore();
     });
     const texture = new THREE.CanvasTexture(canvas);

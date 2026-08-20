@@ -31,6 +31,24 @@ const FRAMES: Record<Focus, { pitch: number; fitWidth: number; fitDepth: number;
   wide: { pitch: 34, fitWidth: 20, fitDepth: 20, target: new THREE.Vector3(0, 1.4, 0) },
 };
 
+/**
+ * A wide monitor has far less vertical room than a phone once the action dock
+ * is present. Pull the camera back there instead of letting a giant board run
+ * under the controls and off both edges of the screen.
+ */
+const LANDSCAPE_DEPTH: Record<Focus, number> = {
+  fleet: 17.5,
+  both: 29,
+  enemy: 17.5,
+  wide: 26,
+};
+
+function frameFor(focus: Focus) {
+  const base = FRAMES[focus];
+  const landscape = window.innerWidth >= 900 && window.innerWidth > window.innerHeight;
+  return landscape ? { ...base, fitDepth: LANDSCAPE_DEPTH[focus] } : base;
+}
+
 export type ArenaOptions = {
   quality?: Quality;
   /** Called when a die on your own deck is tapped. */
@@ -296,6 +314,8 @@ export function createArena(canvas: HTMLCanvasElement, options: ArenaOptions = {
   }
 
   let lastFocus: Focus = "fleet";
+  const refreshFrame = () => stage.setFrame(frameFor(lastFocus), true);
+  window.addEventListener("resize", refreshFrame);
 
   const arena: Arena = {
     stage,
@@ -312,7 +332,7 @@ export function createArena(canvas: HTMLCanvasElement, options: ArenaOptions = {
     setFocus(focus, immediate) {
       if (focus === lastFocus && !immediate) return;
       lastFocus = focus;
-      stage.setFrame(FRAMES[focus], immediate);
+      stage.setFrame(frameFor(focus), immediate);
     },
     cellWorld(side, cell) {
       const local = cellCentre(cell);
@@ -327,6 +347,7 @@ export function createArena(canvas: HTMLCanvasElement, options: ArenaOptions = {
       return decks[side].board;
     },
     dispose() {
+      window.removeEventListener("resize", refreshFrame);
       canvas.removeEventListener("pointerdown", onPointerDown);
       canvas.removeEventListener("pointerup", onPointerUp);
       stopFrame();
