@@ -1,0 +1,62 @@
+name: Put Fleet Dice 3 online
+
+# Every push to main rebuilds the site and publishes it to GitHub Pages.
+# This does NOT touch the Firebase security rules — those are deployed
+# separately, by hand, and only when firestore.rules has actually changed.
+# See FIREBASE.md.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.9.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Check the rules still add up
+        run: node --test tests/*.test.mjs
+
+      - name: Build the site
+        run: pnpm build
+        env:
+          # The repo is called fleetdice3, so GitHub Pages serves it from
+          # /fleetdice3/. Every link in the game needs that prefix.
+          BASE_PATH: /fleetdice3
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: out
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

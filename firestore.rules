@@ -1,0 +1,512 @@
+rules_version = '2';
+
+// =====================================================================
+//  ONE PROJECT, THREE GAMES.
+//
+//  Deploying this file REPLACES the security rules for the whole
+//  `space-tribes` project — Fleet Dice 1, Fleet Dice 2 AND Fleet Dice 3.
+//  The Fleet Dice 1/2 section below is copied verbatim from
+//  spacetribe-dice/web/firestore.rules. If you delete it, or ship a file
+//  containing only the fd3 rules, the games the owner's family are
+//  playing today stop working — instantly, silently, and with no error
+//  anyone can act on.
+//
+//  Deploy with:
+//    npx -y firebase-tools@latest deploy --only firestore:rules --project space-tribes
+//
+//  Collections, and who they belong to:
+//    codes, matches, liveBattles, battleResults  -> Fleet Dice 1 and 2 (LIVE)
+//    fd3Codes, fd3Matches, fd3Live, fd3Results   -> Fleet Dice 3
+//
+//  Fleet Dice 3 never touches the older collections and the older games
+//  never touch fd3*, so the two can be changed independently.
+// =====================================================================
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===================================================================
+    // FLEET DICE 1 AND 2 — LIVE. COPIED VERBATIM. DO NOT EDIT.
+    // Everything from here to the "end of Fleet Dice 1 and 2" marker is a
+    // byte-for-byte copy of spacetribe-dice/web/firestore.rules. If you
+    // change the older games, re-copy that file into this section rather
+    // than hand-editing here.
+    // ===================================================================
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    // Four-digit Jackbox-style room codes. Anyone signed in can look one up.
+    // Seating fields let the client say "room full" or "re-enter" without
+    // needing to read the private match document first.
+    match /codes/{code} {
+      function claimingCodeSeat() {
+        return signedIn()
+          && resource.data.guestUid == null
+          && (
+            !resource.data.keys().hasAny(["status"])
+            || resource.data.status == "waiting"
+          )
+          && request.resource.data.matchId == resource.data.matchId
+          && request.resource.data.hostUid == resource.data.hostUid
+          && request.resource.data.guestUid == request.auth.uid
+          && request.resource.data.status == "active"
+          && request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(["guestUid", "status", "updatedAt"]);
+      }
+
+      // Either commander may close the public room code after the match ends.
+      // Guests can only make this exact active -> finished transition; they
+      // cannot change the room identity or seating fields.
+      function finishingActiveCode() {
+        return signedIn()
+          && resource.data.status == "active"
+          && (
+            resource.data.hostUid == request.auth.uid
+            || resource.data.guestUid == request.auth.uid
+          )
+          && request.resource.data.matchId == resource.data.matchId
+          && request.resource.data.hostUid == resource.data.hostUid
+          && request.resource.data.guestUid == resource.data.guestUid
+          && request.resource.data.status == "finished"
+          && request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(["status", "updatedAt"]);
+      }
+
+      allow get: if signedIn();
+      allow list: if false;
+      allow create: if signedIn()
+        && request.resource.data.hostUid == request.auth.uid
+        && request.resource.data.guestUid == null
+        && request.resource.data.status == "waiting";
+      allow update: if signedIn()
+        && (
+          resource.data.hostUid == request.auth.uid
+          || claimingCodeSeat()
+          || finishingActiveCode()
+        );
+      allow delete: if signedIn()
+        && resource.data.hostUid == request.auth.uid;
+    }
+
+    match /matches/{matchId} {
+      function participant() {
+        return signedIn()
+          && (resource.data.hostUid == request.auth.uid
+            || resource.data.guestUid == request.auth.uid);
+      }
+
+      // Guest claims the open seat. The host player map MAY change (phase
+      // waiting → ready) — only the host identity must stay put.
+      function joiningOpenSeat() {
+        return signedIn()
+          && resource.data.status == "waiting"
+          && resource.data.guestUid == null
+          && request.resource.data.hostUid == resource.data.hostUid
+          && request.resource.data.guestUid == request.auth.uid
+          && request.resource.data.status == "active"
+          && request.resource.data.code == resource.data.code
+          && request.resource.data.state.players.host.email
+            == resource.data.state.players.host.email
+          && request.resource.data.state.players.guest.email == request.auth.uid
+          && request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(["guestUid", "status", "state", "version", "updatedAt"]);
+      }
+
+      allow create: if signedIn()
+        && request.resource.data.hostUid == request.auth.uid
+        && request.resource.data.guestUid == null
+        && request.resource.data.state.players.host.email == request.auth.uid;
+
+      // Waiting rooms are open to anyone with the link/code. Active rooms are
+      // only for the two commanders — use the codes doc to explain "full".
+      allow get: if participant()
+        || (signedIn() && resource.data.status == "waiting")
+        || (signedIn() && resource.data.status == "finished");
+      allow list: if false;
+
+      allow update: if joiningOpenSeat()
+        || (participant()
+          && request.resource.data.hostUid == resource.data.hostUid
+          && request.resource.data.guestUid == resource.data.guestUid);
+
+      allow delete: if signedIn()
+        && resource.data.hostUid == request.auth.uid;
+    }
+
+    // Public scoreboard for the home page — names and status only.
+    match /liveBattles/{matchId} {
+      function boardParticipant() {
+        return signedIn()
+          && (resource.data.hostUid == request.auth.uid
+            || resource.data.guestUid == request.auth.uid);
+      }
+
+      function claimingOpenBoardSeat() {
+        return signedIn()
+          && resource.data.status == "waiting"
+          && resource.data.guestUid == null
+          && request.resource.data.hostUid == resource.data.hostUid
+          && request.resource.data.guestUid == request.auth.uid
+          && request.resource.data.status == "active"
+          && request.resource.data.hostName == resource.data.hostName
+          && request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(["guestUid", "guestName", "status", "round", "updatedAt"]);
+      }
+
+      allow read: if true;
+
+      allow create: if signedIn()
+        && (
+          (
+            request.resource.data.hostUid == request.auth.uid
+            && request.resource.data.guestUid == null
+            && request.resource.data.guestName == null
+            && request.resource.data.status == "waiting"
+          )
+          || (
+            request.resource.data.guestUid == request.auth.uid
+            && request.resource.data.status == "active"
+            && request.resource.data.guestName is string
+            && request.resource.data.hostName is string
+          )
+        );
+
+      allow update: if claimingOpenBoardSeat()
+        || (boardParticipant()
+          && request.resource.data.hostUid == resource.data.hostUid
+          && request.resource.data.guestUid == resource.data.guestUid
+          && request.resource.data.hostName == resource.data.hostName
+          && request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(["guestName", "status", "round", "updatedAt"]));
+
+      allow delete: if boardParticipant();
+    }
+
+    // Public, name-only history for the expandable home-page results list.
+    // The names must agree with a match that becomes finished in the same
+    // atomic write, and only one of that match's commanders may create it.
+    match /battleResults/{matchId} {
+      function finishedMatch() {
+        return getAfter(/databases/$(database)/documents/matches/$(matchId)).data;
+      }
+
+      function resultParticipant() {
+        let matchData = finishedMatch();
+        return signedIn()
+          && (
+            matchData.hostUid == request.auth.uid
+            || matchData.guestUid == request.auth.uid
+          );
+      }
+
+      function validResultNames() {
+        let state = finishedMatch().state;
+        return (
+            state.winner == "host"
+            && request.resource.data.winnerName == state.players.host.name
+            && request.resource.data.loserName == state.players.guest.name
+          )
+          || (
+            state.winner == "guest"
+            && request.resource.data.winnerName == state.players.guest.name
+            && request.resource.data.loserName == state.players.host.name
+          );
+      }
+
+      allow read: if true;
+      allow create: if resultParticipant()
+        && finishedMatch().status == "finished"
+        && request.resource.data.keys()
+          .hasAll(["winnerName", "loserName", "finishedAt"])
+        && request.resource.data.keys()
+          .hasOnly(["winnerName", "loserName", "finishedAt"])
+        && request.resource.data.winnerName is string
+        && request.resource.data.winnerName.size() > 0
+        && request.resource.data.winnerName.size() <= 40
+        && request.resource.data.loserName is string
+        && request.resource.data.loserName.size() > 0
+        && request.resource.data.loserName.size() <= 40
+        && request.resource.data.finishedAt == request.time
+        && validResultNames();
+      allow update, delete: if false;
+    }
+
+    // ===================================================================
+    // end of Fleet Dice 1 and 2 — verbatim section ends here
+    // ===================================================================
+
+
+    // ===================================================================
+    // FLEET DICE 3
+    //
+    // Same shape as the older games, its own collections, and one change
+    // that matters: the Fleet Dice 3 engine stores a player's identity in
+    // `state.players.<side>.uid`, where the older engine used `.email`.
+    //
+    // `signedIn()` is defined once at the top of the verbatim section and
+    // is shared by both games.
+    //
+    // The shape of the whole thing, in one sentence: anyone signed in may
+    // look up a room code, exactly two people may ever hold seats in a
+    // match, and the public boards carry names only.
+    //
+    // Before loosening anything here, read this: a "Missing or
+    // insufficient permissions" report from a player has almost never
+    // meant the rules were too tight. It has meant a host opened their own
+    // invite link in a second tab, arrived as a third anonymous identity,
+    // and was correctly refused a seat. Fix the wording in the app before
+    // you widen a rule.
+    // ===================================================================
+
+    // Four-digit Jackbox-style room codes: fd3Codes/0525 -> { matchId, ... }.
+    //
+    // This tiny collection exists so that a client can be told "that room
+    // is full" WITHOUT reading the private match document. Seating
+    // (hostUid, guestUid, status) is denormalised onto it for exactly that
+    // reason. Without it the only honest answer we could give a third
+    // person is a permissions error, which is what made the earlier
+    // versions confusing.
+    //
+    // What it deliberately does NOT contain: dice, health, names, or
+    // anything else about the game in progress.
+    match /fd3Codes/{code} {
+      // A guest taking the free seat. They may set themselves as the guest
+      // and flip waiting -> active, and nothing else: not the room they
+      // point at, not who the host is.
+      function claimingCodeSeat() {
+        return signedIn()
+          && resource.data.guestUid == null
+          && (
+            !resource.data.keys().hasAny(["status"])
+            || resource.data.status == "waiting"
+          )
+          && request.resource.data.matchId == resource.data.matchId
+          && request.resource.data.hostUid == resource.data.hostUid
+          && request.resource.data.guestUid == request.auth.uid
+          && request.resource.data.status == "active"
+          && request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(["guestUid", "status", "updatedAt"]);
+      }
+
+      // Either commander may retire the code when the match ends. A guest
+      // can only make this one active -> finished move; the host gets to
+      // delete the document outright and free the four digits for reuse.
+      function finishingActiveCode() {
+        return signedIn()
+          && resource.data.status == "active"
+          && (
+            resource.data.hostUid == request.auth.uid
+            || resource.data.guestUid == request.auth.uid
+          )
+          && request.resource.data.matchId == resource.data.matchId
+          && request.resource.data.hostUid == resource.data.hostUid
+          && request.resource.data.guestUid == resource.data.guestUid
+          && request.resource.data.status == "finished"
+          && request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(["status", "updatedAt"]);
+      }
+
+      // `get` is open to anyone signed in: you have to be able to look up
+      // a code you were told out loud. `list` stays shut so nobody can
+      // walk all 10,000 codes and hijack strangers' games.
+      allow get: if signedIn();
+      allow list: if false;
+
+      allow create: if signedIn()
+        && request.resource.data.matchId is string
+        && request.resource.data.hostUid == request.auth.uid
+        && request.resource.data.guestUid == null
+        && request.resource.data.status == "waiting";
+      allow update: if signedIn()
+        && (
+          resource.data.hostUid == request.auth.uid
+          || claimingCodeSeat()
+          || finishingActiveCode()
+        );
+      allow delete: if signedIn()
+        && resource.data.hostUid == request.auth.uid;
+    }
+
+    // The match itself: one document holding the entire MatchState from
+    // lib/engine.ts. Every move is a transaction that reads this, runs
+    // `applyAction`, and writes it back.
+    match /fd3Matches/{matchId} {
+      function participant() {
+        return signedIn()
+          && (resource.data.hostUid == request.auth.uid
+            || resource.data.guestUid == request.auth.uid);
+      }
+
+      // The guest claims the open seat. The host's player object MAY change
+      // in the same write (the engine moves the host from phase "waiting"
+      // to "ready" when the second commander arrives) — only the host's
+      // IDENTITY has to stay put.
+      function joiningOpenSeat() {
+        return signedIn()
+          && resource.data.status == "waiting"
+          && resource.data.guestUid == null
+          && request.resource.data.hostUid == resource.data.hostUid
+          && request.resource.data.guestUid == request.auth.uid
+          && request.resource.data.status == "active"
+          && request.resource.data.code == resource.data.code
+          && request.resource.data.state.players.host.uid
+            == resource.data.state.players.host.uid
+          && request.resource.data.state.players.guest.uid == request.auth.uid
+          && request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(["guestUid", "status", "state", "version", "updatedAt"]);
+      }
+
+      // A new room must be empty and must belong to whoever made it. The
+      // "status must be waiting" clause is load-bearing: it stops anyone
+      // conjuring an already-finished match with invented names, which the
+      // fd3Results rules below would otherwise be willing to believe.
+      allow create: if signedIn()
+        && request.resource.data.hostUid == request.auth.uid
+        && request.resource.data.guestUid == null
+        && request.resource.data.status == "waiting"
+        && request.resource.data.state.players.host.uid == request.auth.uid;
+
+      // A waiting room is open to anyone holding the link or the code —
+      // there are no dice in it yet, only the host's name. An ACTIVE room
+      // is for its two commanders alone; a third reader is sent to the
+      // fd3Codes document instead, which can say "full" in plain words. A
+      // finished room stays readable so both players can reread the result.
+      allow get: if participant()
+        || (signedIn() && resource.data.status == "waiting")
+        || (signedIn() && resource.data.status == "finished");
+      allow list: if false;
+
+      // Seating is immutable once taken. Within that, the two commanders
+      // may write whatever state the engine produces — the engine runs on
+      // their phones, so these rules protect the ROOM, not the dice.
+      allow update: if joiningOpenSeat()
+        || (participant()
+          && request.resource.data.hostUid == resource.data.hostUid
+          && request.resource.data.guestUid == resource.data.guestUid);
+
+      // Only the host can destroy a room outright. Everyone else closes a
+      // game by writing status "finished" through the update rule above.
+      allow delete: if signedIn()
+        && resource.data.hostUid == request.auth.uid;
+    }
+
+    // The public "now on the field" board. Names, status and round number
+    // only — never dice, never health, never energy. It is world-readable
+    // because the home page shows it before anyone signs in.
+    //
+    // `updatedAt` is the heartbeat. The client hides waiting rooms that
+    // have not been touched for 45 minutes, so an abandoned room quietly
+    // disappears instead of luring someone into an empty lobby.
+    match /fd3Live/{matchId} {
+      function boardParticipant() {
+        return signedIn()
+          && (resource.data.hostUid == request.auth.uid
+            || resource.data.guestUid == request.auth.uid);
+      }
+
+      function claimingOpenBoardSeat() {
+        return signedIn()
+          && resource.data.status == "waiting"
+          && resource.data.guestUid == null
+          && request.resource.data.hostUid == resource.data.hostUid
+          && request.resource.data.guestUid == request.auth.uid
+          && request.resource.data.status == "active"
+          && request.resource.data.hostName == resource.data.hostName
+          && request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(["guestUid", "guestName", "status", "round", "updatedAt"]);
+      }
+
+      allow read: if true;
+
+      // Two legitimate creators: a host opening a room, or a guest whose
+      // join arrived before the board row existed.
+      allow create: if signedIn()
+        && (
+          (
+            request.resource.data.hostUid == request.auth.uid
+            && request.resource.data.guestUid == null
+            && request.resource.data.guestName == null
+            && request.resource.data.status == "waiting"
+          )
+          || (
+            request.resource.data.guestUid == request.auth.uid
+            && request.resource.data.status == "active"
+            && request.resource.data.guestName is string
+            && request.resource.data.hostName is string
+          )
+        );
+
+      // The heartbeat is an update that touches only `updatedAt`, so it
+      // passes through this same rule. Nobody can rename the host or move
+      // a room they are not sitting in.
+      allow update: if claimingOpenBoardSeat()
+        || (boardParticipant()
+          && request.resource.data.hostUid == resource.data.hostUid
+          && request.resource.data.guestUid == resource.data.guestUid
+          && request.resource.data.hostName == resource.data.hostName
+          && request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(["guestName", "status", "round", "updatedAt"]));
+
+      allow delete: if boardParticipant();
+    }
+
+    // Public, name-only history for the home page results list.
+    //
+    // The trick here is `getAfter`: it reads the match document AS IT WILL
+    // BE once this transaction commits. So a result can only be written in
+    // the same atomic write that finishes the match, by one of that
+    // match's two commanders, and the two names must match the winner and
+    // loser the engine actually recorded. Nothing else about the match is
+    // copied out.
+    //
+    // Immutable once written — no update, no delete, by anyone.
+    match /fd3Results/{matchId} {
+      function finishedMatch() {
+        return getAfter(/databases/$(database)/documents/fd3Matches/$(matchId)).data;
+      }
+
+      function resultParticipant() {
+        let matchData = finishedMatch();
+        return signedIn()
+          && matchData.guestUid != null
+          && (
+            matchData.hostUid == request.auth.uid
+            || matchData.guestUid == request.auth.uid
+          );
+      }
+
+      function validResultNames() {
+        let state = finishedMatch().state;
+        return (
+            state.winner == "host"
+            && request.resource.data.winnerName == state.players.host.name
+            && request.resource.data.loserName == state.players.guest.name
+          )
+          || (
+            state.winner == "guest"
+            && request.resource.data.winnerName == state.players.guest.name
+            && request.resource.data.loserName == state.players.host.name
+          );
+      }
+
+      allow read: if true;
+      allow create: if resultParticipant()
+        && finishedMatch().status == "finished"
+        && request.resource.data.keys()
+          .hasAll(["winnerName", "loserName", "finishedAt"])
+        && request.resource.data.keys()
+          .hasOnly(["winnerName", "loserName", "finishedAt"])
+        && request.resource.data.winnerName is string
+        && request.resource.data.winnerName.size() > 0
+        && request.resource.data.winnerName.size() <= 40
+        && request.resource.data.loserName is string
+        && request.resource.data.loserName.size() > 0
+        && request.resource.data.loserName.size() <= 40
+        && request.resource.data.finishedAt == request.time
+        && validResultNames();
+      allow update, delete: if false;
+    }
+  }
+}

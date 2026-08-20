@@ -1,0 +1,13 @@
+node_modules/
+.next/
+out/
+.DS_Store
+*.log
+.env*.local
+firebase-debug.log
+.firebase/
+next-env.d.ts
+tsconfig.tsbuildinfo
+/shots/
+_to_delete/
+.simbuild/
