@@ -13,7 +13,6 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Button, Notice, Panel, RoomCode, Spinner } from "@/components/ui";
 import { commanderName, rememberCommanderName } from "@/lib/firebase";
 import { joinRoomByCode, joinRoomById } from "@/lib/rooms";
-import { basePath } from "@/lib/paths";
 
 export default function JoinPage() {
   return (
@@ -51,7 +50,7 @@ function JoinInner() {
     try {
       rememberCommanderName(name);
       const room = id ? await joinRoomById(id, name) : await joinRoomByCode(code, name);
-      router.push(`${basePath}/match/?id=${room.id}`);
+      router.push(`/match/?id=${room.id}`);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : String(reason));
       setBusy(false);
@@ -66,7 +65,7 @@ function JoinInner() {
             That link is missing its room. Go back to the home page and type the four numbers on
             your friend&apos;s screen.
           </Notice>
-          <Button tone="primary" full onClick={() => router.push(`${basePath}/`)}>
+          <Button tone="primary" full onClick={() => router.push("/")}>
             Home
           </Button>
         </div>
@@ -78,7 +77,7 @@ function JoinInner() {
     <div className="hud">
       <div className="scroll-y flex-1">
         <div className="mx-auto flex w-full max-w-[30rem] flex-col gap-4 px-4 pb-10 pt-6">
-          <Button tone="ghost" size="sm" onClick={() => router.push(`${basePath}/`)} className="self-start">
+          <Button tone="ghost" size="sm" onClick={() => router.push("/")} className="self-start">
             ‹ Home
           </Button>
 

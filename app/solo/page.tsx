@@ -15,7 +15,6 @@ import { Button, Panel } from "@/components/ui";
 import { HowToPlaySheet } from "@/components/HowToPlay";
 import { useSoloMatch } from "@/lib/useMatch";
 import { DIFFICULTY, PLAN_BLURB, PLAN_LABEL, PLANS, type Difficulty, type Plan } from "@/lib/ai";
-import { basePath } from "@/lib/paths";
 
 export default function SoloPage() {
   const router = useRouter();
@@ -30,7 +29,7 @@ export default function SoloPage() {
         onPlan={setPlan}
         onStart={setDifficulty}
         onHelp={() => setHelpOpen(true)}
-        onBack={() => router.push(`${basePath}/`)}
+        onBack={() => router.push("/")}
         helpOpen={helpOpen}
         onCloseHelp={() => setHelpOpen(false)}
       />
@@ -41,7 +40,7 @@ export default function SoloPage() {
     <SoloMatch
       difficulty={difficulty}
       plan={plan === "surprise" ? undefined : plan}
-      onExit={() => router.push(`${basePath}/`)}
+      onExit={() => router.push("/")}
     />
   );
 }

@@ -104,7 +104,7 @@ export function HomeScreen() {
 
             {/* The two ways to play */}
             <div className="flex flex-col gap-2.5">
-              <Link href={`${basePath}/solo/`} className="block">
+              <Link href="/solo/" className="block">
                 <Panel className="anim-rise flex items-center gap-4 p-4 transition hover:border-white/25">
                   <span className="text-3xl" aria-hidden>
                     🎲
@@ -121,7 +121,7 @@ export function HomeScreen() {
                 </Panel>
               </Link>
 
-              <Link href={`${basePath}/versus/`} className="block">
+              <Link href="/versus/" className="block">
                 <Panel className="anim-rise flex items-center gap-4 p-4 transition hover:border-white/25">
                   <span className="text-3xl" aria-hidden>
                     ⚔️
@@ -174,7 +174,7 @@ export function HomeScreen() {
                 <p className="t-eyebrow mb-2">Your games</p>
                 <div className="flex flex-col gap-2">
                   {cards.map((card) => (
-                    <Link key={card.id} href={`${basePath}/match/?id=${card.id}`} className="block">
+                    <Link key={card.id} href={`/match/?id=${card.id}`} className="block">
                       <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2.5 transition hover:bg-white/[0.07]">
                         <span className="t-num rounded-lg bg-white/8 px-2 py-1 text-sm">{card.code}</span>
                         <span className="min-w-0 flex-1 text-[0.86rem]">
