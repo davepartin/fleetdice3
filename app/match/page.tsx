@@ -7,7 +7,6 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { MatchScreen } from "@/components/MatchScreen";
 import { Button, Notice, Spinner } from "@/components/ui";
 import { useRoomMatch } from "@/lib/useMatch";
-import { basePath } from "@/lib/paths";
 
 export default function MatchPage() {
   return (
@@ -28,7 +27,7 @@ function MatchInner() {
   const params = useSearchParams();
   const id = params.get("id");
   const controller = useRoomMatch(id);
-  const home = () => router.push(`${basePath}/`);
+  const home = () => router.push("/");
 
   if (controller.status === "error") {
     return (

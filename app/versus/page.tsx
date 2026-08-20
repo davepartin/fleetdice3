@@ -21,7 +21,6 @@ import {
   watchRoom,
   type CreatedRoom,
 } from "@/lib/rooms";
-import { basePath } from "@/lib/paths";
 
 export default function VersusPage() {
   const router = useRouter();
@@ -47,7 +46,7 @@ export default function VersusPage() {
         (next) => {
           if (cancelled) return;
           if (next.state.players.guest) {
-            router.push(`${basePath}/match/?id=${room.match.id}`);
+            router.push(`/match/?id=${room.match.id}`);
           }
         },
         (reason) => !cancelled && setError(reason.message),
@@ -102,7 +101,7 @@ export default function VersusPage() {
     } catch {
       // Already gone. Either way we are leaving.
     }
-    router.push(`${basePath}/`);
+    router.push("/");
   }, [room, router]);
 
   return (
@@ -113,7 +112,7 @@ export default function VersusPage() {
             <Button
               tone="ghost"
               size="sm"
-              onClick={() => (room ? abandon() : router.push(`${basePath}/`))}
+              onClick={() => (room ? abandon() : router.push("/"))}
             >
               ‹ {room ? "Close this room" : "Home"}
             </Button>
