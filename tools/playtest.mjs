@@ -135,14 +135,30 @@ async function run(browser, viewport, label, errors) {
     await settle(page, 3200);
     await shot(page, `${pad(round)}b-rolled`, label);
 
-    // Send a couple of dice back so the reroll path is exercised.
-    await page.mouse.click(viewport.width * 0.3, viewport.height * 0.52);
-    await page.waitForTimeout(320);
-    if (await visible(page, "Reroll", 900)) {
-      await shot(page, `${pad(round)}c-selected`, label);
-      await tap(page, "Reroll");
-      await settle(page, 2000);
+    // Send one die back so the reroll path is genuinely exercised. The old
+    // probe clicked an empty lower-left cell and silently skipped this entire
+    // branch while still reporting a clean playthrough.
+    const diePoints =
+      label === "phone"
+        ? [[0.25, 0.42], [0.5, 0.34], [0.75, 0.42], [0.5, 0.51]]
+        : [[0.275, 0.25], [0.5, 0.18], [0.725, 0.25], [0.5, 0.43]];
+    let picked = false;
+    for (const [x, y] of diePoints) {
+      await page.mouse.click(viewport.width * x, viewport.height * y);
+      await page.waitForTimeout(320);
+      if (await visible(page, "Reroll", 500)) {
+        picked = true;
+        break;
+      }
     }
+    if (!picked) {
+      errors.push(`[${label}] round ${round}: could not select a die for reroll`);
+      await shot(page, `${pad(round)}x-no-reroll`, label);
+      break;
+    }
+    await shot(page, `${pad(round)}c-selected`, label);
+    await tap(page, "Reroll");
+    await settle(page, 2000);
 
     if (!(await visible(page, "Lock in", 4000))) {
       errors.push(`[${label}] round ${round}: no Lock in button`);

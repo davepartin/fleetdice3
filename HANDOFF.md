@@ -22,7 +22,7 @@ he can open on a phone over inventing architecture.
 | 7 | Solo mode and versus rooms | **Solo done and tested. Versus never ran against a live server** |
 | 8 | One-button How to Play | **Done** — generated from the engine, cannot go stale |
 | 9 | Harsh-critic screenshot loop | **Partly** — see the honest note below |
-| 10 | Playtest and verify end to end | **Solo yes. Versus no. Desktop no** |
+| 10 | Playtest and verify end to end | **Solo yes on phone and desktop. Versus no** |
 
 ### Item 5, honestly
 
@@ -34,9 +34,9 @@ shadow-receiving slab with a painted texture. Post chain is bloom, vignette,
 grain and a little chromatic aberration, with three quality tiers and a
 frame-time watchdog that drops a tier rather than stuttering.
 
-What it is **not**: a finished art pass. Camera framing was tuned on a phone in
-portrait and nowhere else. Victory and defeat are quiet. The home page still
-uses system emoji for its two big buttons.
+What it is **not**: a finished art pass. Camera framing has now been tuned on a
+phone and a wide desktop, and the home-page emoji have been replaced with game
+icons. Victory and defeat are still quiet.
 
 ### Item 9, honestly
 
@@ -109,12 +109,11 @@ confused is the easiest bug to write in this codebase.
 
 ## Do these in this order
 
-1. **Get it on GitHub and turn on Pages.** `README.md` has the exact commands.
-   Nobody has pushed this anywhere yet.
-2. **Deploy the Firestore rules**, then test two-player on two real devices.
+1. **Deploy the Firestore rules**, then test two-player on two real devices.
    Every versus code path is unexercised. This is the largest unknown in the
-   project by a wide margin.
-3. **Let him play four or five solo matches and write down what felt off.**
+   project by a wide margin. The game and its GitHub Pages site are already
+   online.
+2. **Let him play four or five solo matches and write down what felt off.**
    Then polish against that list, not against a screenshot.
 
 Everything else worth knowing — known rough edges, open balance questions, and

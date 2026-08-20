@@ -455,6 +455,11 @@ button {
 .hud > * {
   pointer-events: auto;
 }
+/* The empty middle of a match HUD exists only to hold the top and bottom
+   controls apart. It must let taps fall through to the WebGL dice beneath. */
+.hud > .hud-pass-through {
+  pointer-events: none;
+}
 
 .scroll-y {
   overflow-y: auto;
