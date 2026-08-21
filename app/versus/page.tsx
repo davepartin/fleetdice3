@@ -13,7 +13,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button, Notice, Panel, RoomCode, Spinner } from "@/components/ui";
-import { commanderName, rememberCommanderName } from "@/lib/firebase";
+import { HowToPlaySheet } from "@/components/HowToPlay";
+import { commanderName, ensurePlayerIdentity, rememberCommanderName } from "@/lib/firebase";
 import {
   cancelRoom,
   createRoom,
@@ -29,11 +30,13 @@ export default function VersusPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
   const stopRef = useRef<(() => void) | null>(null);
   const beatRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     setName(commanderName());
+    ensurePlayerIdentity().catch(() => undefined);
   }, []);
 
   // Once someone takes the second seat, go straight into the battle.
@@ -116,6 +119,10 @@ export default function VersusPage() {
             >
               ‹ {room ? "Close this room" : "Home"}
             </Button>
+            <span className="flex-1" />
+            <Button tone="ghost" size="sm" onClick={() => setHelpOpen(true)}>
+              How to play
+            </Button>
           </div>
 
           {!room ? (
@@ -183,6 +190,7 @@ export default function VersusPage() {
           )}
         </div>
       </div>
+      <HowToPlaySheet open={helpOpen} onClose={() => setHelpOpen(false)} />
     </div>
   );
 }

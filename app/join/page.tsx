@@ -11,7 +11,8 @@
 import { Suspense, useCallback, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button, Notice, Panel, RoomCode, Spinner } from "@/components/ui";
-import { commanderName, rememberCommanderName } from "@/lib/firebase";
+import { HowToPlaySheet } from "@/components/HowToPlay";
+import { commanderName, ensurePlayerIdentity, rememberCommanderName } from "@/lib/firebase";
 import { joinRoomByCode, joinRoomById } from "@/lib/rooms";
 
 export default function JoinPage() {
@@ -39,9 +40,11 @@ function JoinInner() {
   const [name, setName] = useState("Commander");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [helpOpen, setHelpOpen] = useState(false);
 
   useEffect(() => {
     setName(commanderName());
+    ensurePlayerIdentity().catch(() => undefined);
   }, []);
 
   const join = useCallback(async () => {
@@ -77,9 +80,15 @@ function JoinInner() {
     <div className="hud">
       <div className="scroll-y flex-1">
         <div className="mx-auto flex w-full max-w-[30rem] flex-col gap-4 px-4 pb-10 pt-6">
-          <Button tone="ghost" size="sm" onClick={() => router.push("/")} className="self-start">
-            ‹ Home
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button tone="ghost" size="sm" onClick={() => router.push("/")}>
+              ‹ Home
+            </Button>
+            <span className="flex-1" />
+            <Button tone="ghost" size="sm" onClick={() => setHelpOpen(true)}>
+              How to play
+            </Button>
+          </div>
 
           <header className="text-center">
             <p className="t-eyebrow">You have been challenged</p>
@@ -112,6 +121,7 @@ function JoinInner() {
           </Button>
         </div>
       </div>
+      <HowToPlaySheet open={helpOpen} onClose={() => setHelpOpen(false)} />
     </div>
   );
 }

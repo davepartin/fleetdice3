@@ -12,7 +12,7 @@ import Link from "next/link";
 import { HeroStage } from "./HeroStage";
 import { Button, Chip, Notice, Panel, Rule, Spinner } from "./ui";
 import { HowToPlaySheet } from "./HowToPlay";
-import { commanderName, firebaseConfigured, rememberCommanderName } from "@/lib/firebase";
+import { commanderName, ensurePlayerIdentity, firebaseConfigured, rememberCommanderName } from "@/lib/firebase";
 import {
   loadRememberedRoomCards,
   watchLiveBattles,
@@ -36,6 +36,7 @@ export function HomeScreen() {
 
   useEffect(() => {
     setName(commanderName());
+    if (firebaseConfigured) ensurePlayerIdentity().catch(() => undefined);
   }, []);
 
   useEffect(() => {

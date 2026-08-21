@@ -32,6 +32,7 @@ const {
   newMatch,
   newPlayer,
   nextActions,
+  publicMatchView,
   repairOf,
   setRng,
   slotForCell,
@@ -380,4 +381,29 @@ test("the war escalates on schedule and not before", () => {
   assert.equal(escalationFor(TUNING.escalateAfterRound), 0);
   assert.equal(escalationFor(TUNING.escalateAfterRound + 1), TUNING.escalateStep);
   assert.equal(escalationFor(TUNING.escalateAfterRound + 3), TUNING.escalateStep * 3);
+});
+
+test("a commander cannot see the other fleet's dice until the volley starts", () => {
+  const state = freshMatch(3);
+  applyAction(state, "host", { type: "roll", dice: [] });
+  applyAction(state, "guest", { type: "roll", dice: [] });
+  const hostView = publicMatchView(state, "host");
+  assert.equal(hostView.players.guest.dice.length, 0, "host must not see guest dice while rolling");
+  assert.equal(hostView.players.host.dice.length > 0, true, "host still sees their own dice");
+
+  applyAction(state, "host", { type: "submit" });
+  state.players.host.phase = "shop";
+  state.players.host.round = 2;
+  const shopView = publicMatchView(state, "host");
+  assert.equal(
+    shopView.players.guest.dice.length,
+    0,
+    "shopping while the other commander still has a live roll must not leak it",
+  );
+
+  const resolved = freshMatch(4);
+  resolved.players.host.phase = "report";
+  resolved.players.guest.dice = [{ id: "flag", sides: 6, value: 6, flag: true }];
+  const reportView = publicMatchView(resolved, "host");
+  assert.equal(reportView.players.guest.dice.length, 1, "the report is allowed to show what hit you");
 });

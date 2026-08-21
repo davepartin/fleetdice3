@@ -538,6 +538,7 @@ export function MatchScreen({ controller, onExit, title, subtitle }: Props) {
               rollsLeft={rollsLeft}
               rerollCost={rerollCost}
               waiting={waitingOnEnemy}
+              waitingName={enemyName}
               busy={busy}
               onRollAll={rollAll}
               onReroll={rerollSelected}
@@ -663,6 +664,7 @@ function RollDock({
   rollsLeft,
   rerollCost,
   waiting,
+  waitingName,
   busy,
   onRollAll,
   onReroll,
@@ -678,6 +680,7 @@ function RollDock({
   rollsLeft: number;
   rerollCost: number;
   waiting: boolean;
+  waitingName?: string;
   busy: boolean;
   onRollAll(): void;
   onReroll(): void;
@@ -783,7 +786,9 @@ function RollDock({
       {waiting ? (
         <div className="flex items-center justify-center gap-3 py-2">
           <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-white/20 border-t-white/80" />
-          <span className="text-sm c-dim">Locked in. Waiting for the enemy…</span>
+          <span className="text-sm c-dim">
+            Locked in. Waiting for {waitingName ?? "the enemy"}…
+          </span>
         </div>
       ) : notRolled ? (
         <Button tone="primary" size="lg" full onClick={onRollAll} disabled={busy}>

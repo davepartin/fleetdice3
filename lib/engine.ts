@@ -992,12 +992,9 @@ export function publicMatchView(state: MatchState, viewer: SideId): MatchState {
   const copy = structuredClone(state);
   const you = copy.players[viewer];
   const them = copy.players[opponentOf(viewer)];
-  if (
-    them &&
-    you &&
-    state.status === "active" &&
-    ["waiting", "ready", "rolling", "submitted"].includes(you.phase)
-  ) {
+  const revealed =
+    you?.phase === "brace" || you?.phase === "report" || you?.phase === "over";
+  if (them && you && state.status === "active" && !revealed) {
     them.dice = [];
     them.tally = null;
   }

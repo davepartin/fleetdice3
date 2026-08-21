@@ -173,7 +173,7 @@ export type ThrowOptions = {
  * off the deck.
  */
 const FACE_LEAN = 0.66;
-// Match the solo command camera's near-overhead pitch. When the resolved face is
+// Match the phone command camera's near-overhead pitch. When the resolved face is
 // square to the lens, neighbouring facets do not leak into the information
 // face and the number/marks receive the maximum possible phone pixels.
 const PHONE_FACE_LEAN = 1.535;
@@ -181,7 +181,7 @@ const PHONE_FACE_LEAN = 1.535;
 export function createDie(kind: DieKind, font: string, scale = 1, cellSize = 0): Die {
   const shared = sharedFor(kind, font);
   const sides = kind === "flag" ? 6 : kind;
-  // Solo phone dice are deliberately oversized and viewed from a near-overhead
+  // Phone dice are deliberately oversized and viewed from a near-overhead
   // command camera. Aim their resolved face upward as well so the number and
   // payoff marks stay square to the player's eye.
   const faceLean = scale >= 1.45 ? PHONE_FACE_LEAN : FACE_LEAN;

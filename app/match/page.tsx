@@ -5,7 +5,7 @@
 import { Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { MatchScreen } from "@/components/MatchScreen";
-import { Button, Notice, Spinner } from "@/components/ui";
+import { Button, Notice, RoomCode, Spinner } from "@/components/ui";
 import { useRoomMatch } from "@/lib/useMatch";
 
 export default function MatchPage() {
@@ -53,17 +53,24 @@ function MatchInner() {
   if (controller.state.status === "waiting") {
     return (
       <div className="hud">
-        <div className="mx-auto flex w-full max-w-[30rem] flex-col gap-4 px-4 pt-8 text-center">
-          <p className="t-eyebrow">Room {controller.state.code}</p>
-          <h1 className="t-display text-3xl">Still waiting for a friend</h1>
-          <p className="text-[0.92rem] c-dim">
-            Give them the four numbers above, or send the link again. This page starts on its own
-            the moment they sit down.
-          </p>
-          <Spinner label="Listening…" />
-          <Button tone="ghost" full onClick={home}>
-            Home
-          </Button>
+        <div className="scroll-y fade-edges flex-1">
+          <div className="mx-auto flex w-full max-w-[30rem] flex-col gap-4 px-4 pb-10 pt-6">
+            <Button tone="ghost" size="sm" onClick={home} className="self-start">
+              ‹ Home
+            </Button>
+            <header className="text-center">
+              <p className="t-eyebrow">Your room is open</p>
+              <h1 className="t-display text-3xl">Still waiting for a friend</h1>
+            </header>
+            <div className="flex justify-center py-2">
+              <RoomCode code={controller.state.code} />
+            </div>
+            <p className="text-center text-[0.92rem] leading-relaxed c-dim">
+              Give them these four numbers, or send the link again. This screen turns into the
+              battle the moment they sit down — the same board you already know from solo.
+            </p>
+            <Spinner label="Listening…" />
+          </div>
         </div>
       </div>
     );

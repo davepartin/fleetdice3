@@ -273,7 +273,11 @@ export function Chip({
 /** The four-digit room code, big enough to read across a room. */
 export function RoomCode({ code }: { code: string }) {
   return (
-    <div className="flex gap-2" aria-label={`Room code ${code.split("").join(" ")}`}>
+    <div
+      className="flex gap-2"
+      aria-label={`Room code ${code.split("").join(" ")}`}
+      data-room-code={code}
+    >
       {code.split("").map((digit, index) => (
         <span
           key={index}

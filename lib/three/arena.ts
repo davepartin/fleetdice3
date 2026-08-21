@@ -49,15 +49,15 @@ const LANDSCAPE_DEPTH: Record<Focus, number> = {
   wide: 26,
 };
 
-function frameFor(focus: Focus, soloPhone = false) {
+function frameFor(focus: Focus, phone = false) {
   const base = FRAMES[focus];
-  if (soloPhone && focus === "fleet") {
+  if (phone && focus === "fleet") {
     return {
       ...base,
       // A nearly overhead command view is the only honest phone composition:
       // every cell stays separated, the flagship cannot hide the rear ship,
       // and the deck uses the tall safe rectangle instead of leaving a band
-      // of empty sky above it.
+      // of empty sky above it. Solo proved this; versus uses the same frame.
       pitch: 88,
       // On tall browser states we intentionally crop a sliver of decorative
       // deck edge. The dice, not the metal frame, deserve those pixels.
@@ -67,11 +67,11 @@ function frameFor(focus: Focus, soloPhone = false) {
       parallax: 0,
     };
   }
-  if (soloPhone && focus === "both") {
+  if (phone && focus === "both") {
     return {
       ...base,
-      // Brace and report still show both fleets. The same overhead language
-      // keeps damage choices and their markers unambiguous there too.
+      // Brace, report, and waiting for the other commander all show both
+      // fleets. The same overhead language keeps dice and markers readable.
       pitch: 84,
       fitWidth: 13,
       fitDepth: 23.2,
@@ -136,7 +136,7 @@ export function createArena(canvas: HTMLCanvasElement, options: ArenaOptions = {
     you: makeDeck("you", YOUR_DECK, font, stage),
     enemy: makeDeck("enemy", ENEMY_DECK, font, stage),
   };
-  const isSoloPhone = () => options.mode === "solo" && window.innerWidth <= 640;
+  const isPhone = () => window.innerWidth <= 640;
 
   /* Tapping ---------------------------------------------------------- */
 
@@ -197,7 +197,7 @@ export function createArena(canvas: HTMLCanvasElement, options: ArenaOptions = {
   // Apply the responsive frame on first paint too. Calling setFocus("fleet")
   // immediately afterward is intentionally a no-op, so using the raw phone
   // frame here meant desktop never received its safe framing until a resize.
-  stage.setFrame(frameFor("fleet", isSoloPhone()), true);
+  stage.setFrame(frameFor("fleet", isPhone()), true);
   stage.start();
 
   /* Reconciling ------------------------------------------------------ */
@@ -255,7 +255,7 @@ export function createArena(canvas: HTMLCanvasElement, options: ArenaOptions = {
         // On a phone the face, not the board decoration, is the product. The
         // larger hulls fill their cells while the atlas keeps their values and
         // payoff marks clean at the steeper command angle.
-        die = createDie(spec.kind, font, isSoloPhone() ? 1.66 : 1.14, CELL);
+        die = createDie(spec.kind, font, isPhone() ? 1.66 : 1.14, CELL);
         die.object.userData.shipId = id;
         die.object.traverse((node) => {
           node.userData.shipId = id;
@@ -379,7 +379,13 @@ export function createArena(canvas: HTMLCanvasElement, options: ArenaOptions = {
   }
 
   let lastFocus: Focus = "fleet";
-  const refreshFrame = () => stage.setFrame(frameFor(lastFocus, isSoloPhone()), true);
+  let lastReveal = false;
+
+  function refreshEnemyVisibility() {
+    decks.enemy.root.visible = lastReveal || !isPhone() || lastFocus !== "fleet";
+  }
+
+  const refreshFrame = () => stage.setFrame(frameFor(lastFocus, isPhone()), true);
   window.addEventListener("resize", refreshFrame);
 
   const arena: Arena = {
@@ -391,14 +397,16 @@ export function createArena(canvas: HTMLCanvasElement, options: ArenaOptions = {
       if (you) syncDeck("you", you, true, opts);
       if (them) {
         const reveal = opts.revealEnemy ?? them.dice.length > 0;
+        lastReveal = reveal;
         syncDeck("enemy", them, reveal, opts);
-        decks.enemy.root.visible = reveal || !isSoloPhone();
+        refreshEnemyVisibility();
       }
     },
     setFocus(focus, immediate) {
       if (focus === lastFocus && !immediate) return;
       lastFocus = focus;
-      stage.setFrame(frameFor(focus, isSoloPhone()), immediate);
+      stage.setFrame(frameFor(focus, isPhone()), immediate);
+      refreshEnemyVisibility();
     },
     cellWorld(side, cell) {
       const local = cellCentre(cell);
