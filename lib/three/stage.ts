@@ -15,6 +15,13 @@ import { OutputPass } from "three/examples/jsm/postprocessing/OutputPass.js";
 
 export type Quality = "low" | "medium" | "high";
 
+export type ViewportInsets = {
+  top: number;
+  right: number;
+  bottom: number;
+  left: number;
+};
+
 export type Stage = {
   scene: THREE.Scene;
   camera: THREE.PerspectiveCamera;
@@ -31,6 +38,8 @@ export type Stage = {
   lookAt(target: THREE.Vector3, immediate?: boolean): void;
   /** Move the resting camera. Everything eases toward it. */
   setFrame(frame: Partial<CameraFrame>, immediate?: boolean): void;
+  /** Reserve screen-space for HUD chrome so the board never hides behind it. */
+  setViewportInsets(insets: Partial<ViewportInsets>): void;
   onFrame(callback: (dt: number, time: number) => void): () => void;
   resize(): void;
   start(): void;
@@ -353,15 +362,24 @@ const DEFAULT_FRAME: CameraFrame = {
 };
 
 /** The distance that keeps `fitWidth × fitDepth` inside the frame. */
-function distanceFor(camera: THREE.PerspectiveCamera, frame: CameraFrame): number {
+function distanceFor(
+  camera: THREE.PerspectiveCamera,
+  frame: CameraFrame,
+  width: number,
+  height: number,
+  insets: ViewportInsets,
+): number {
   const halfFov = (camera.fov * Math.PI) / 360;
   const tan = Math.tan(halfFov);
-  // Horizontal: the vertical fov widened by the aspect ratio.
-  const forWidth = frame.fitWidth / (2 * tan * camera.aspect);
+  const safeWidth = Math.max(1, width - insets.left - insets.right);
+  const safeHeight = Math.max(1, height - insets.top - insets.bottom);
+  // The projection still covers the full canvas, so scale the requested world
+  // bounds by the fraction of pixels the HUD leaves unobstructed.
+  const forWidth = (frame.fitWidth * height) / (2 * tan * safeWidth);
   // Vertical: a board tilted away from the camera takes up less height than
   // its depth, by roughly the sine of the pitch.
   const lean = Math.max(0.3, Math.sin((frame.pitch * Math.PI) / 180));
-  const forDepth = (frame.fitDepth * lean) / (2 * tan);
+  const forDepth = (frame.fitDepth * lean * height) / (2 * tan * safeHeight);
   return Math.max(forWidth, forDepth) * 1.04;
 }
 
@@ -452,6 +470,7 @@ export function createStage(canvas: HTMLCanvasElement, initial?: Quality): Stage
   let flashAmount = 0;
   let zoom = 1;
   let zoomTarget = 1;
+  const viewportInsets: ViewportInsets = { top: 0, right: 0, bottom: 0, left: 0 };
   const frameNow: CameraFrame = { ...DEFAULT_FRAME, target: DEFAULT_FRAME.target.clone() };
   const frameTarget: CameraFrame = { ...DEFAULT_FRAME, target: DEFAULT_FRAME.target.clone() };
   const lookTarget = new THREE.Vector3(0, 0.2, 0);
@@ -489,6 +508,14 @@ export function createStage(canvas: HTMLCanvasElement, initial?: Quality): Stage
     // A slightly wider lens upright, so the far deck does not shrink to nothing.
     camera.fov = height > width ? 44 : 36;
     camera.updateProjectionMatrix();
+    const safeHeight = Math.max(1, height - viewportInsets.top - viewportInsets.bottom);
+    const safeCenterY = viewportInsets.top + safeHeight / 2;
+    const opticalOffsetY = height / 2 - safeCenterY;
+    if (Math.abs(opticalOffsetY) > 0.5) {
+      camera.setViewOffset(width, height, 0, opticalOffsetY, width, height);
+    } else {
+      camera.clearViewOffset();
+    }
     renderer.setSize(width, height, false);
     composer.setSize(width, height);
     bloomPass.resolution.set(width, height);
@@ -548,7 +575,9 @@ export function createStage(canvas: HTMLCanvasElement, initial?: Quality): Stage
     frameNow.target.lerp(frameTarget.target, glide);
     lookTarget.copy(frameNow.target);
 
-    const distance = distanceFor(camera, frameNow) * zoom;
+    const width = canvas.clientWidth || window.innerWidth;
+    const height = canvas.clientHeight || window.innerHeight;
+    const distance = distanceFor(camera, frameNow, width, height, viewportInsets) * zoom;
     const pitch = (frameNow.pitch * Math.PI) / 180;
     const breathe = Math.sin(time * 0.32) * 0.1;
     camera.position.set(
@@ -628,6 +657,13 @@ export function createStage(canvas: HTMLCanvasElement, initial?: Quality): Stage
         frameNow.target.copy(frameTarget.target);
         lookCurrent.copy(frameTarget.target);
       }
+    },
+    setViewportInsets(next) {
+      viewportInsets.top = Math.max(0, next.top ?? viewportInsets.top);
+      viewportInsets.right = Math.max(0, next.right ?? viewportInsets.right);
+      viewportInsets.bottom = Math.max(0, next.bottom ?? viewportInsets.bottom);
+      viewportInsets.left = Math.max(0, next.left ?? viewportInsets.left);
+      resize();
     },
     onFrame(callback) {
       callbacks.add(callback);

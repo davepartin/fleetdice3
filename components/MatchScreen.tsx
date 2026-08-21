@@ -40,6 +40,8 @@ type Props = {
 
 export function MatchScreen({ controller, onExit, title, subtitle }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const headerRef = useRef<HTMLDivElement>(null);
+  const bottomRef = useRef<HTMLDivElement>(null);
   const arenaRef = useRef<Arena | null>(null);
   const [arenaReady, setArenaReady] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -78,6 +80,43 @@ export function MatchScreen({ controller, onExit, title, subtitle }: Props) {
     });
   }, []);
 
+  /* Frame the 3D fleet inside the phone pixels the HUD actually leaves free. */
+  useEffect(() => {
+    const arena = arenaRef.current;
+    const header = headerRef.current;
+    const bottom = bottomRef.current;
+    if (!arena || !header || !bottom) return;
+
+    const updateInsets = () => {
+      const phone = window.innerWidth <= 640;
+      if (!phone) {
+        arena.stage.setViewportInsets({ top: 0, right: 0, bottom: 0, left: 0 });
+        return;
+      }
+      const viewport = window.visualViewport;
+      const viewTop = viewport?.offsetTop ?? 0;
+      const viewBottom = viewTop + (viewport?.height ?? window.innerHeight);
+      const top = Math.max(0, header.getBoundingClientRect().bottom - viewTop + 10);
+      const bottomInset = Math.max(0, viewBottom - bottom.getBoundingClientRect().top + 14);
+      arena.stage.setViewportInsets({ top, right: 8, bottom: bottomInset, left: 8 });
+    };
+
+    const observer = new ResizeObserver(updateInsets);
+    observer.observe(header);
+    observer.observe(bottom);
+    window.addEventListener("resize", updateInsets);
+    window.visualViewport?.addEventListener("resize", updateInsets);
+    window.visualViewport?.addEventListener("scroll", updateInsets);
+    updateInsets();
+
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", updateInsets);
+      window.visualViewport?.removeEventListener("resize", updateInsets);
+      window.visualViewport?.removeEventListener("scroll", updateInsets);
+    };
+  }, [arenaReady, controller.mode]);
+
   const toggleRef = useRef(toggleDie);
   toggleRef.current = toggleDie;
   const phaseRef = useRef(phase);
@@ -96,6 +135,7 @@ export function MatchScreen({ controller, onExit, title, subtitle }: Props) {
       // expensive tiers outright instead of discovering they need to.
       const forced = new URLSearchParams(window.location.search).get("q");
       const arena = createArena(canvasRef.current, {
+        mode: controller.mode,
         quality:
           forced === "low" || forced === "medium" || forced === "high" ? forced : undefined,
         onTapDie: (shipId) => {
@@ -112,7 +152,7 @@ export function MatchScreen({ controller, onExit, title, subtitle }: Props) {
       arenaRef.current?.dispose();
       arenaRef.current = null;
     };
-  }, []);
+  }, [controller.mode]);
 
   /* Keep the board in step with the rules ---------------------------- */
 
@@ -341,9 +381,12 @@ export function MatchScreen({ controller, onExit, title, subtitle }: Props) {
     <>
       <canvas ref={canvasRef} className="stage-canvas" />
 
-      <div className={`hud ${shake ? "anim-shake" : ""}`}>
+      <div
+        className={`hud match-hud match-hud-solo match-hud-${controller.mode} ${shake ? "anim-shake" : ""}`}
+      >
         {/* ---------------- top ---------------- */}
-        <header className="flex items-start gap-2 px-3 pt-3">
+        <div ref={headerRef} className="match-top">
+          <header className="match-header flex items-start gap-2 px-3 pt-3">
           <Button tone="ghost" size="sm" onClick={onExit} ariaLabel="Leave the match">
             ‹ Quit
           </Button>
@@ -362,7 +405,7 @@ export function MatchScreen({ controller, onExit, title, subtitle }: Props) {
             <HealthBar className="mt-1.5" value={them?.hp ?? 0} max={them?.maxHp ?? TUNING.hp} />
           </div>
 
-          <div className="flex flex-col gap-1.5">
+          <div className="match-desktop-utilities flex flex-col gap-1.5">
             <Button tone="ghost" size="sm" onClick={() => setHelpOpen(true)} ariaLabel="How to play">
               ?
             </Button>
@@ -378,22 +421,40 @@ export function MatchScreen({ controller, onExit, title, subtitle }: Props) {
               <SoundIcon muted={muted} />
             </Button>
           </div>
-        </header>
 
-        {(you.round > TUNING.escalateAfterRound || controller.mode === "versus") && (
-          <div className="flex items-center justify-center gap-2 pt-2">
-            {you.round > TUNING.escalateAfterRound && (
-              <Chip tone="attack">War escalating +{(you.round - TUNING.escalateAfterRound) * TUNING.escalateStep}</Chip>
-            )}
-            {controller.mode === "versus" && <Chip>Room {state.code}</Chip>}
-          </div>
-        )}
+          <details className="match-mobile-menu">
+            <summary className="btn btn-ghost btn-sm" aria-label="Game menu">•••</summary>
+            <div className="match-mobile-menu-popover panel">
+              <button type="button" onClick={() => setHelpOpen(true)}>How to play</button>
+              <button
+                type="button"
+                onClick={() => {
+                  audio.unlock();
+                  setMuted(audio.toggleMuted());
+                }}
+              >
+                <SoundIcon muted={muted} />
+                {muted ? "Sound off" : "Sound on"}
+              </button>
+            </div>
+          </details>
+          </header>
+
+          {(you.round > TUNING.escalateAfterRound || controller.mode === "versus") && (
+            <div className="flex items-center justify-center gap-2 pt-2">
+              {you.round > TUNING.escalateAfterRound && (
+                <Chip tone="attack">War escalating +{(you.round - TUNING.escalateAfterRound) * TUNING.escalateStep}</Chip>
+              )}
+              {controller.mode === "versus" && <Chip>Room {state.code}</Chip>}
+            </div>
+          )}
+        </div>
 
         {/* ---------------- middle: the board shows through ---------------- */}
         <div className="hud-pass-through min-h-0 flex-1" />
 
         {/* ---------------- bottom ---------------- */}
-        <div className="mx-auto w-full max-w-[44rem] px-2 pb-2">
+        <div ref={bottomRef} className="match-bottom mx-auto w-full max-w-[44rem] px-2 pb-2">
           {error && (
             <Notice tone="warn" className="mb-2">
               {error}{" "}
@@ -426,7 +487,7 @@ export function MatchScreen({ controller, onExit, title, subtitle }: Props) {
               />
             </div>
           ) : phase === "report" && you.report ? (
-            <div className="panel panel-you flex max-h-[74dvh] flex-col p-4">
+            <div className="round-report-panel panel panel-you flex max-h-[74dvh] flex-col p-4">
               <RoundReportCard
                 report={you.report}
                 you={you}
@@ -494,29 +555,40 @@ export function MatchScreen({ controller, onExit, title, subtitle }: Props) {
 /* The dock, one per phase                                             */
 /* ------------------------------------------------------------------ */
 
-function TallyStrip({ you, tally }: { you: PlayerState; tally: ReturnType<typeof previewTally> | null }) {
+function TallyStrip({ tally }: { tally: ReturnType<typeof previewTally> | null }) {
   return (
-    <div className="grid grid-cols-5 gap-1 py-1">
-      <Stat kind="attack" value={tally?.attack ?? 0} label="Attack" size="sm" />
-      <Stat kind="shield" value={tally?.defense ?? 0} label="Shields" size="sm" />
-      <Stat kind="direct" value={tally?.direct ?? 0} label="Direct" size="sm" />
-      <Stat kind="repair" value={tally?.heal ?? 0} label="Repair" size="sm" />
-      <Stat kind="energy" value={you.energy} label="Bank" size="sm" />
+    <div className="tally-strip grid grid-cols-4 gap-1">
+      <div className="tally-cell tally-cell-attack">
+        <Stat kind="attack" value={tally?.attack ?? 0} label="Attack" />
+      </div>
+      <div className="tally-cell tally-cell-shield">
+        <Stat kind="shield" value={tally?.defense ?? 0} label="Shields" />
+      </div>
+      <div className="tally-cell tally-cell-direct">
+        <Stat kind="direct" value={tally?.direct ?? 0} label="Direct" />
+      </div>
+      <div className="tally-cell tally-cell-repair">
+        <Stat kind="repair" value={tally?.heal ?? 0} label="Repair" />
+      </div>
     </div>
   );
 }
 
 function YourHealth({ you }: { you: PlayerState }) {
   return (
-    <div>
-      <div className="flex items-baseline justify-between gap-2">
-        <span className="t-eyebrow">{you.name}</span>
-        <span className="t-num text-[0.82rem] text-white">
-          <Ticker value={you.hp} />
-          <span className="c-dim"> / {you.maxHp}</span>
-        </span>
-      </div>
-      <HealthBar className="mt-1.5" value={you.hp} max={you.maxHp} />
+    <div className="commander-rail flex items-center gap-2">
+      <span className="commander-name t-eyebrow shrink-0">
+        <span className="commander-name-full">{you.name}</span>
+        <span className="commander-name-mobile">Hull</span>
+      </span>
+      <HealthBar className="commander-hpbar min-w-0 flex-1" value={you.hp} max={you.maxHp} />
+      <span className="t-num shrink-0 text-[0.82rem] text-white">
+        <Ticker value={you.hp} />
+        <span className="c-dim">/{you.maxHp}</span>
+      </span>
+      <span className="commander-bank t-num shrink-0 c-energy" aria-label={`${you.energy} Energy in bank`}>
+        ⚡ {you.energy}
+      </span>
     </div>
   );
 }
@@ -564,9 +636,9 @@ function RollDock({
   const canAffordReroll = rerollCost === 0 || you.energy >= rerollCost;
 
   return (
-    <div className="panel panel-you flex flex-col gap-2.5 p-3.5">
+    <div className="roll-dock panel panel-you flex flex-col gap-2.5 p-3.5">
       <YourHealth you={you} />
-      <TallyStrip you={you} tally={tally} />
+      <TallyStrip tally={tally} />
 
       {tiers.length > 1 && (
         <div className="rounded-xl border border-[--color-run]/30 bg-[--color-run]/[0.08] p-2.5">
@@ -599,7 +671,7 @@ function RollDock({
 
       {hint && (
         <p
-          className={`text-[0.8rem] leading-snug ${
+          className={`roll-hint text-[0.8rem] leading-snug ${
             hint.tone === "good"
               ? "c-repair"
               : hint.tone === "warn"
@@ -611,19 +683,20 @@ function RollDock({
         </p>
       )}
 
-      <FlagshipLine you={you} />
+      <div className="flagship-control-row flex items-center gap-2">
+        <FlagshipLine you={you} />
 
-      {you.flag.token && you.phase === "rolling" && (
-        <div className="flex items-center gap-2">
-          <span className="t-eyebrow flex-1">Flagship token</span>
-          <Button tone="ghost" size="sm" onClick={() => onToken(-1)} disabled={busy}>
-            −1
-          </Button>
-          <Button tone="ghost" size="sm" onClick={() => onToken(1)} disabled={busy}>
-            +1
-          </Button>
-        </div>
-      )}
+        {you.flag.token && you.phase === "rolling" && (
+          <div className="flagship-token-controls flex shrink-0 items-center gap-1.5" aria-label="Flagship token">
+            <Button tone="ghost" size="sm" onClick={() => onToken(-1)} disabled={busy} ariaLabel="Lower flagship face">
+              −1
+            </Button>
+            <Button tone="ghost" size="sm" onClick={() => onToken(1)} disabled={busy} ariaLabel="Raise flagship face">
+              +1
+            </Button>
+          </div>
+        )}
+      </div>
 
       {waiting ? (
         <div className="flex items-center justify-center gap-3 py-2">
@@ -663,7 +736,7 @@ function RollDock({
       )}
 
       {you.phase === "rolling" && selected.size === 0 && (
-        <p className="text-center text-[0.76rem] c-dim">
+        <p className="roll-instruction text-center text-[0.76rem] c-dim">
           Tap any ship die to send it back.{" "}
           {rollsLeft > 0
             ? `${rollsLeft} free ${rollsLeft === 1 ? "roll" : "rolls"} left.`
@@ -696,7 +769,7 @@ function BraceDock({
   const fatal = after <= 0;
 
   return (
-    <div className="panel panel-you flex flex-col gap-3 p-3.5">
+    <div className="brace-dock panel panel-you flex flex-col gap-3 p-3.5">
       <div>
         <p className="t-eyebrow">Incoming</p>
         <h2 className="t-display text-2xl">
@@ -710,13 +783,13 @@ function BraceDock({
             </>
           )}
         </h2>
-        <p className="mt-1 text-[0.84rem] leading-snug c-dim">
+        <p className="brace-explanation mt-1 text-[0.84rem] leading-snug c-dim">
           Throw ships in front of it. Each one soaks its own size and sits out the next round.
           Nothing stops Direct.
         </p>
       </div>
 
-      <div className="flex flex-wrap gap-1.5">
+      <div className="brace-ship-list flex flex-wrap gap-1.5">
         {available.map((ship) => {
           const picked = chosen.has(ship.id);
           return (
@@ -737,7 +810,7 @@ function BraceDock({
         })}
       </div>
 
-      <div className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-black/30 px-3 py-2.5">
+      <div className="brace-summary flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-black/30 px-3 py-2.5">
         <div className="text-[0.8rem] c-dim">
           Soaked <b className="c-shield t-num">{Math.min(soak, you.incoming)}</b> · landing{" "}
           <b className="c-attack t-num">{landing}</b>
@@ -851,14 +924,30 @@ function FlagshipLine({ you }: { you: PlayerState }) {
   const face = FLAGSHIP_FACES.find((entry) => entry.face === you.flag.face);
   if (!face) return null;
   const level = face.levels[Math.min(2, Math.max(0, you.flag.level - 1))];
+  const compact =
+    face.face === 1
+      ? `+${level?.bonus ?? 0} Energy/round`
+      : face.face === 2
+        ? `+${level?.bonus ?? 0} Direct per 2`
+        : face.face === 3
+          ? `+${level?.bonus ?? 0} Repair per 3`
+          : face.face === 4
+            ? `+${level?.bonus ?? 0} Energy per 4`
+            : face.face === 5
+              ? `+${level?.bonus ?? 0} Shields per odd`
+              : `+${level?.bonus ?? 0} Attack per even`;
   return (
-    <div className="flex items-center gap-2 rounded-xl border border-[--color-energy]/25 bg-[--color-energy]/[0.07] px-3 py-2">
+    <div
+      className="flagship-line flex min-w-0 flex-1 items-center gap-2 rounded-xl border border-[--color-energy]/25 bg-[--color-energy]/[0.07] px-3 py-2"
+      title={level?.text ?? face.short}
+    >
       <span className="t-num shrink-0 rounded-md bg-[--color-energy]/20 px-2 py-0.5 text-sm c-energy">
         {face.face}
       </span>
       <span className="min-w-0 text-[0.8rem] leading-snug">
         <b className="c-energy">{face.name}</b>
-        <span className="c-dim"> — {level?.text ?? face.short}</span>
+        <span className="flagship-long c-dim"> — {level?.text ?? face.short}</span>
+        <span className="flagship-compact c-dim"> · {compact}</span>
       </span>
     </div>
   );

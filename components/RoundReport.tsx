@@ -58,7 +58,7 @@ export function RoundReportCard({
   const blocked = Math.max(0, (enemy?.attack ?? 0) + report.escalation - report.incoming);
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-3">
+    <div className="round-report flex min-h-0 flex-1 flex-col gap-3">
       <div className="flex items-baseline justify-between">
         <div>
           <p className="t-eyebrow">Round {report.round}</p>
@@ -69,7 +69,23 @@ export function RoundReportCard({
         <Stat kind="energy" value={`+${report.energyEarned}`} label="earned" />
       </div>
 
-      <div className="scroll-y fade-edges -mx-1 min-h-0 flex-1 px-1">
+      <div className="round-report-mobile-summary">
+        <div className="grid grid-cols-4 gap-1">
+          <Stat kind="attack" value={t.attack} label="Attack" size="sm" />
+          <Stat kind="shield" value={t.defense} label="Shields" size="sm" />
+          <Stat kind="direct" value={t.direct} label="Direct" size="sm" />
+          <Stat kind="repair" value={t.heal} label="Repair" size="sm" />
+        </div>
+        <div className="round-report-mobile-hp flex items-center gap-2">
+          <span className="t-eyebrow">Hull</span>
+          <HealthBar className="min-w-0 flex-1" value={report.hpAfter} max={you.maxHp} />
+          <span className="t-num text-white"><Ticker value={report.hpAfter} />/{you.maxHp}</span>
+        </div>
+      </div>
+
+      <details className="round-report-disclosure min-h-0">
+        <summary className="round-report-disclosure-button">Battle details</summary>
+        <div className="scroll-y fade-edges -mx-1 min-h-0 flex-1 px-1">
         {/* What you fired */}
         <section className="panel panel-you panel-flush p-3.5">
           <p className="t-eyebrow mb-1">Your volley</p>
@@ -158,7 +174,8 @@ export function RoundReportCard({
             <p className="mt-2 text-sm text-[--color-attack-glow]">Your flagship is gone.</p>
           )}
         </section>
-      </div>
+        </div>
+      </details>
 
       <Button tone="primary" size="lg" full onClick={onContinue} disabled={busy}>
         {survived ? "To the shipyard" : "See the result"}

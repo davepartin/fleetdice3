@@ -1,7 +1,7 @@
 # Handing Fleet Dice 3 to another assistant
 
-Read this, then `README.md`, then `NEXT.md`. `BALANCE.md` matters if you touch
-any number.
+Read this, then `README.md`, `NEXT.md`, and `AAA_BRIEF.md`. `BALANCE.md` matters
+if you touch any number.
 
 The owner is **not a developer**. He thinks in how the game feels and relies on
 you for the maths and the code. Prefer plain words. Prefer showing him something
@@ -21,8 +21,8 @@ he can open on a phone over inventing architecture.
 | 6 | HUD, VFX and audio | **Built. Audio never heard by a human** |
 | 7 | Solo mode and versus rooms | **Solo done and tested. Versus never ran against a live server** |
 | 8 | One-button How to Play | **Done** — generated from the engine, cannot go stale |
-| 9 | Harsh-critic screenshot loop | **Partly** — see the honest note below |
-| 10 | Playtest and verify end to end | **Solo yes on phone and desktop. Versus no** |
+| 9 | Harsh-critic screenshot loop | **Passed for solo phone** — 390×844 and 402×874 |
+| 10 | Playtest and verify end to end | **Solo yes at both phone sizes. Versus no** |
 
 ### Item 5, honestly
 
@@ -34,19 +34,21 @@ shadow-receiving slab with a painted texture. Post chain is bloom, vignette,
 grain and a little chromatic aberration, with three quality tiers and a
 frame-time watchdog that drops a tier rather than stuttering.
 
-What it is **not**: a finished art pass. Camera framing has now been tuned on a
-phone and a wide desktop, and the home-page emoji have been replaced with game
-icons. Victory and defeat are still quiet.
+What it is **not**: a finished art pass. The solo battlefield now frames itself
+inside the actual phone pixels left by the HUD, with large readable dice and a
+compact totals dock at 390×844 and 402×874. That proven phone layout is shared
+with versus, but versus still needs a live two-device check. Victory and defeat
+are still quiet.
 
 ### Item 9, honestly
 
-The original brief asked for separate critic agents comparing screenshots blind
-against a real AAA game and iterating until wowed. That is not what happened.
-What happened was roughly fifteen rounds of build → screenshot → look → fix,
-done by one pair of eyes, plus five sub-agents that each owned one module
-(balance, audio, reference copy, VFX, Firebase rooms). One of those agents hit
-the account's spend limit mid-run. So the visual bar is "carefully iterated by
-one person", not "adversarially judged". Treat the look as good, not proven.
+The first build did not complete the requested adversarial review. The later
+solo-phone pass did: separate layout and renderer audits identified the unsafe
+camera/HUD composition, then an independent harsh critic reviewed medium and
+high renders at 390×844 and 402×874. Rolled, selected, brace, and report states
+passed for die readability, totals, selection clearance, and next-action
+hierarchy. That gate applies to solo phone. It is not evidence that versus,
+audio, victory, or defeat are finished.
 
 ---
 
@@ -67,9 +69,10 @@ node tools/playtest.mjs 6 phone   # plays the real game in a real browser
 ```
 
 `tools/playtest.mjs` is the most useful thing in the repo for you. It drives the
-built site with Playwright through a whole solo match, screenshots every screen
-into `shots/`, and fails loudly on a console error or a stuck screen. Run it
-after anything you change in `components/` or `lib/three/`.
+built site with Playwright through a whole solo match at 402×874 and 390×844,
+screenshots every screen into `shots/`, and fails loudly on a console error or
+a stuck screen. Run it after anything you change in `components/` or
+`lib/three/`.
 
 Note: the sim harness bundles the TypeScript with esbuild into `.simbuild/`
 first, so it always measures the same code the browser runs. Never hand-write a
