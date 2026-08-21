@@ -2,11 +2,12 @@
 
 /** A live two-player match. The room id is in the query string. */
 
-import { Suspense } from "react";
+import { Suspense, useCallback, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { MatchScreen } from "@/components/MatchScreen";
 import { Button, Notice, RoomCode, Spinner } from "@/components/ui";
 import { useRoomMatch } from "@/lib/useMatch";
+import { cancelRoom } from "@/lib/rooms";
 
 export default function MatchPage() {
   return (
@@ -27,7 +28,22 @@ function MatchInner() {
   const params = useSearchParams();
   const id = params.get("id");
   const controller = useRoomMatch(id);
+  const [closing, setClosing] = useState(false);
   const home = () => router.push("/");
+
+  const closeRoom = useCallback(async () => {
+    if (!id) {
+      router.push("/");
+      return;
+    }
+    setClosing(true);
+    try {
+      await cancelRoom(id);
+    } catch {
+      // Already gone. Either way we are leaving.
+    }
+    router.push("/");
+  }, [id, router]);
 
   if (controller.status === "error") {
     return (
@@ -55,8 +71,8 @@ function MatchInner() {
       <div className="hud">
         <div className="scroll-y fade-edges flex-1">
           <div className="mx-auto flex w-full max-w-[30rem] flex-col gap-4 px-4 pb-10 pt-6">
-            <Button tone="ghost" size="sm" onClick={home} className="self-start">
-              ‹ Home
+            <Button tone="ghost" size="sm" onClick={closeRoom} disabled={closing} className="self-start">
+              ‹ {closing ? "Closing…" : "Cancel game"}
             </Button>
             <header className="text-center">
               <p className="t-eyebrow">Your room is open</p>

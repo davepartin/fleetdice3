@@ -28,6 +28,7 @@ import {
   playAction,
   startRoomHeartbeat,
   watchRoom,
+  cancelRoom,
   type LiveRoom,
 } from "./rooms";
 import { commanderName } from "./firebase";
@@ -49,6 +50,8 @@ export type MatchController = {
   act(action: MatchAction): void;
   /** Solo only: start a fresh match with the same settings. */
   restart?(): void;
+  /** Versus only: end the room for both commanders. */
+  cancel?(): void;
   mode: "solo" | "versus";
 };
 
@@ -254,6 +257,17 @@ export function useRoomMatch(matchId: string | null): MatchController {
     [matchId],
   );
 
+  const cancel = useCallback(() => {
+    if (!matchId) return;
+    setBusy(true);
+    queueRef.current = queueRef.current
+      .then(() => cancelRoom(matchId))
+      .catch((reason: unknown) => {
+        setError(reason instanceof Error ? reason.message : String(reason));
+      })
+      .finally(() => setBusy(false));
+  }, [matchId]);
+
   const state = room?.state ?? null;
   const side = room?.side ?? "host";
   const you = state?.players[side] ?? null;
@@ -270,6 +284,7 @@ export function useRoomMatch(matchId: string | null): MatchController {
     error,
     clearError: () => setError(null),
     act,
+    cancel,
     mode: "versus",
   };
 }
