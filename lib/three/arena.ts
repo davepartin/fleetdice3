@@ -10,7 +10,7 @@ import * as THREE from "three";
 import type { MatchState, PlayerState, SideId, Tally } from "../engine";
 import { activeShips, cellForSlot, opponentOf } from "../engine";
 import { createStage, type Quality, type Stage } from "./stage";
-import { createBoard, cellCentre, type Board } from "./board";
+import { CELL, createBoard, cellCentre, type Board } from "./board";
 import { createDie, type Die, type DieKind } from "./die";
 import { FLAG_FACE_PALETTE } from "./faceArt";
 import { createVfx, type Vfx } from "./vfx";
@@ -249,7 +249,7 @@ export function createArena(canvas: HTMLCanvasElement, options: ArenaOptions = {
       if (!die) {
         // On a phone the face, not the board decoration, is the product. This
         // raises linear size by a third and nearly doubles visible face area.
-        die = createDie(spec.kind, font, isSoloPhone() ? 1.52 : 1.14);
+        die = createDie(spec.kind, font, isSoloPhone() ? 1.52 : 1.14, CELL);
         die.object.userData.shipId = id;
         die.object.traverse((node) => {
           node.userData.shipId = id;

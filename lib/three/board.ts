@@ -203,8 +203,10 @@ export function createBoard(side: BoardSide, font: string): Board {
       group.add(mesh);
       ripples.push({ mesh, life: 1, strength });
     },
-    update(dt, time) {
-      trimMaterial.opacity = 0.4 + Math.sin(time * 0.8) * 0.08;
+    update(dt, _time) {
+      // Persistent board state is deliberately steady. Motion is reserved for
+      // brief impacts and payouts, never for information the player must read.
+      trimMaterial.opacity = 0.48;
 
       for (let i = lineFlashes.length - 1; i >= 0; i -= 1) {
         const flash = lineFlashes[i]!;
@@ -237,7 +239,7 @@ export function createBoard(side: BoardSide, font: string): Board {
 
       for (const bar of runBars) {
         if (!bar.visible) continue;
-        (bar.material as THREE.MeshBasicMaterial).opacity = 0.55 + Math.sin(time * 4.5) * 0.3;
+        (bar.material as THREE.MeshBasicMaterial).opacity = 0.78;
       }
     },
     dispose() {

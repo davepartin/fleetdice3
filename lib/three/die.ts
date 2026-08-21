@@ -14,7 +14,7 @@ import { buildAtlas, faceSpec, flagFaceSpec, type Atlas } from "./faceArt";
 export type DieKind = 4 | 6 | 8 | 10 | "flag";
 
 export type DieState = {
-  /** Picked for a reroll — lifts and pulses. */
+  /** Picked for a reroll — lifts with a steady marker. */
   selected?: boolean;
   /** Part of the straight — orange bar under the hull. */
   inRun?: boolean;
@@ -84,11 +84,11 @@ function sharedFor(kind: DieKind, font: string): Shared {
     // has nothing to reflect. Low metalness plus a hard clearcoat gives the
     // polished-resin look these want, and keeps red reading red.
     metalness: 0.04,
-    roughness: 0.48,
-    clearcoat: 0.42,
-    clearcoatRoughness: 0.34,
-    reflectivity: 0.32,
-    envMapIntensity: 0.66,
+    roughness: 0.34,
+    clearcoat: 1,
+    clearcoatRoughness: 0.12,
+    reflectivity: 0.5,
+    envMapIntensity: 1.15,
   });
 
   // A slightly larger shell drawn from the inside gives a clean dark rim, which
@@ -178,7 +178,7 @@ const FACE_LEAN = 0.66;
 // face and the number/marks receive the maximum possible phone pixels.
 const PHONE_FACE_LEAN = 1.22;
 
-export function createDie(kind: DieKind, font: string, scale = 1): Die {
+export function createDie(kind: DieKind, font: string, scale = 1, cellSize = 0): Die {
   const shared = sharedFor(kind, font);
   const sides = kind === "flag" ? 6 : kind;
   // Solo phone dice are deliberately oversized (scale 1.52) and viewed from a
@@ -212,7 +212,7 @@ export function createDie(kind: DieKind, font: string, scale = 1): Die {
     depthWrite: false,
   });
   const glow = new THREE.Mesh(
-    new THREE.PlaneGeometry(shared.built.radius * 2.6, shared.built.radius * 2.6),
+    new THREE.PlaneGeometry(shared.built.radius * 2.2, shared.built.radius * 2.2),
     glowMaterial,
   );
   glow.rotation.x = -Math.PI / 2;
@@ -224,14 +224,14 @@ export function createDie(kind: DieKind, font: string, scale = 1): Die {
   // quality tiers, and without *something* dark directly beneath it a die does
   // not read as resting on the deck — it reads as hovering over it.
   const contactMaterial = new THREE.MeshBasicMaterial({
-    map: radialSprite(),
+    map: softShadowTexture(),
     color: new THREE.Color(0x000000),
     transparent: true,
-    opacity: 0.5,
+    opacity: 0.42,
     depthWrite: false,
   });
   const contact = new THREE.Mesh(
-    new THREE.PlaneGeometry(shared.built.radius * 2.1, shared.built.radius * 2.1),
+    new THREE.PlaneGeometry(shared.built.radius * 1.75, shared.built.radius * 1.55),
     contactMaterial,
   );
   contact.rotation.x = -Math.PI / 2;
@@ -255,73 +255,82 @@ export function createDie(kind: DieKind, font: string, scale = 1): Die {
   bar.position.set(0, -shared.built.seatHeight * 0.98, shared.built.radius * 0.72);
   object.add(bar);
 
-  // The thin ring the flagship draws around matching ships.
-  const ringMaterial = new THREE.MeshBasicMaterial({
+  // Every marker on this board is a square the size of the cell the die sits
+  // in, and none of them blink.
+  //
+  // They used to be rings that pulsed. Three different circles pulsing at
+  // different rates around a grid of squares read as an error state, not as
+  // information — and on the damage screen, where you are being asked to pick
+  // ships, motion is the last thing you want. A steady square that lines up
+  // with the printed cell says "this one" without ever competing with the dice.
+  const markerSize = (cellSize > 0 ? cellSize : shared.built.radius * 2.6) / Math.max(0.001, scale);
+
+  /** The flagship's link: a pale wash filling the cell, in the flagship's colour. */
+  const linkMaterial = new THREE.MeshBasicMaterial({
+    map: squareTexture("fill"),
     color: 0xffd23d,
     transparent: true,
     opacity: 0,
-    blending: THREE.AdditiveBlending,
     depthWrite: false,
     side: THREE.DoubleSide,
+    // Added rather than painted on, so the cell reads as lit by the flagship
+    // rather than as a grey sticker sitting under the die.
+    blending: THREE.AdditiveBlending,
   });
-  const ring = new THREE.Mesh(
-    new THREE.RingGeometry(shared.built.radius * 1.05, shared.built.radius * 1.2, 72),
-    ringMaterial,
+  const link = new THREE.Mesh(
+    new THREE.PlaneGeometry(markerSize * 0.94, markerSize * 0.94),
+    linkMaterial,
   );
-  ring.rotation.x = -Math.PI / 2;
-  ring.position.y = -shared.built.seatHeight * 0.96;
-  object.add(ring);
+  link.rotation.x = -Math.PI / 2;
+  // Keep every marker decisively above the deck.  The old near-coplanar
+  // placement intersected the board as the die idled, which looked exactly
+  // like an opacity blink even though the material itself was steady.
+  link.position.y = -shared.built.seatHeight + 0.06 / Math.max(0.001, scale);
+  link.renderOrder = -1;
+  object.add(link);
 
-  // Selection is a gameplay state, not a lighting effect. A larger cyan ring
-  // plus the physical lift stays obvious in grayscale and leaves the face
-  // exposure untouched; gold rings remain reserved for scoring bonuses.
+  /** Picked for a reroll. */
   const selectionMaterial = new THREE.MeshBasicMaterial({
+    map: squareTexture("outline"),
     color: 0x69dcff,
     transparent: true,
     opacity: 0,
-    blending: THREE.AdditiveBlending,
     depthWrite: false,
     side: THREE.DoubleSide,
   });
-  // The cube's circumscribed radius reaches its corners, so using it directly
-  // made the flagship selection ring spill through three neighbouring cells.
-  // A footprint radius hugs the square body while keeping the shared marker
-  // language used by every other die.
-  const selectionRadius = kind === "flag" ? shared.built.radius * 0.65 : shared.built.radius;
-  const selectionRing = new THREE.Mesh(
-    new THREE.RingGeometry(selectionRadius * 1.18, selectionRadius * 1.27, 72),
+  const selectionSquare = new THREE.Mesh(
+    new THREE.PlaneGeometry(markerSize * 0.98, markerSize * 0.98),
     selectionMaterial,
   );
-  selectionRing.rotation.x = -Math.PI / 2;
-  selectionRing.position.y = -shared.built.seatHeight * 0.95;
-  object.add(selectionRing);
+  selectionSquare.rotation.x = -Math.PI / 2;
+  selectionSquare.position.y = -shared.built.seatHeight + 0.08 / Math.max(0.001, scale);
+  object.add(selectionSquare);
 
-  // Bracing is deliberately not the same cyan reroll state. A steady red
-  // target and X beneath the die makes "this ship will take damage" readable
-  // without relying on motion, glow, or the dock copy.
+  /** This ship will take the hit. */
   const damageMaterial = new THREE.MeshBasicMaterial({
+    map: squareTexture("outline"),
     color: 0xff4056,
     transparent: true,
     opacity: 0,
     depthWrite: false,
     side: THREE.DoubleSide,
   });
-  const damageRing = new THREE.Mesh(
-    new THREE.RingGeometry(shared.built.radius * 1.18, shared.built.radius * 1.38, 72),
+  const damageSquare = new THREE.Mesh(
+    new THREE.PlaneGeometry(markerSize * 1.02, markerSize * 1.02),
     damageMaterial,
   );
-  damageRing.rotation.x = -Math.PI / 2;
-  damageRing.position.y = -shared.built.seatHeight * 0.94;
-  object.add(damageRing);
+  damageSquare.rotation.x = -Math.PI / 2;
+  damageSquare.position.y = -shared.built.seatHeight + 0.1 / Math.max(0.001, scale);
+  object.add(damageSquare);
 
   const damageBars: THREE.Mesh[] = [];
   for (const angle of [Math.PI / 4, -Math.PI / 4]) {
     const bar = new THREE.Mesh(
-      new THREE.PlaneGeometry(shared.built.radius * 1.55, shared.built.radius * 0.16),
+      new THREE.PlaneGeometry(markerSize * 0.86, markerSize * 0.075),
       damageMaterial.clone(),
     );
     bar.rotation.set(-Math.PI / 2, 0, angle);
-    bar.position.y = -shared.built.seatHeight * 0.93;
+    bar.position.y = -shared.built.seatHeight + 0.11 / Math.max(0.001, scale);
     object.add(bar);
     damageBars.push(bar);
   }
@@ -346,7 +355,6 @@ export function createDie(kind: DieKind, font: string, scale = 1): Die {
   let spinSpeed = 0;
   let onLand: (() => void) | undefined;
   let landPunch = 0;
-  let idleSeed = Math.random() * 100;
   let throwCount = 0;
   let frameCount = 0;
 
@@ -362,7 +370,7 @@ export function createDie(kind: DieKind, font: string, scale = 1): Die {
     if (state.facedown) {
       glowMaterial.opacity = 0;
       barMaterial.opacity = 0;
-      ringMaterial.opacity = 0;
+      linkMaterial.opacity = 0;
       selectionMaterial.opacity = 0;
       damageMaterial.opacity = 0;
       for (const damageBar of damageBars) {
@@ -384,29 +392,31 @@ export function createDie(kind: DieKind, font: string, scale = 1): Die {
       material.metalness = 0.02;
       glowMaterial.opacity = 0;
     } else {
-      material.roughness = 0.48;
+      material.roughness = 0.34;
       material.metalness = 0.04;
       material.emissiveIntensity = state.selected
         ? kind === "flag" ? 0.07 : 0.2
         : state.enemy
           ? 0.1
           : kind === "flag" ? 0.04 : 0.14;
-      glowMaterial.opacity = state.selected ? 0.34 : 0.08;
+      glowMaterial.opacity = state.selected ? 0.3 : 0;
     }
-    selectionMaterial.opacity = !state.disabled && state.selected && !state.damageSelected ? 0.72 : 0;
+    selectionMaterial.opacity = !state.disabled && state.selected && !state.damageSelected ? 0.95 : 0;
     damageMaterial.opacity = !state.disabled && state.damageSelected ? 0.94 : 0;
     for (const damageBar of damageBars) {
       (damageBar.material as THREE.MeshBasicMaterial).opacity = damageMaterial.opacity;
     }
-    barMaterial.opacity = state.inRun ? 0.95 : 0;
+    barMaterial.opacity = state.inRun ? 0.92 : 0;
     if (state.inLine) {
-      ringMaterial.color.setHex(state.inLine === "col" ? 0xff4d4d : 0xffd23d);
-      ringMaterial.opacity = 0.85;
+      linkMaterial.color.setHex(state.inLine === "col" ? 0xff8090 : 0xffe07a);
+      linkMaterial.opacity = 0.72;
     } else if (state.flagRing) {
-      ringMaterial.color.setHex(state.flagRingColor ?? 0xffd23d);
-      ringMaterial.opacity = 0.82;
+      // A light tint of the flagship's own face colour, so the connection is
+      // obvious at a glance and obviously comes from the flagship.
+      linkMaterial.color.setHex(lighten(state.flagRingColor ?? 0xffd23d, 0.34));
+      linkMaterial.opacity = 0.6;
     } else {
-      ringMaterial.opacity = 0;
+      linkMaterial.opacity = 0;
     }
   }
 
@@ -463,10 +473,9 @@ export function createDie(kind: DieKind, font: string, scale = 1): Die {
       landPunch = Math.max(landPunch, 0.5 * strength);
       spinAxis = new THREE.Vector3(Math.random() - 0.5, 1, Math.random() - 0.5).normalize();
     },
-    update(dt, time) {
+    update(dt, _time) {
       frameCount += 1;
       const lift = (state.selected || state.damageSelected) && !rolling ? 0.42 : 0;
-      const idle = state.disabled ? 0 : Math.sin(time * 1.15 + idleSeed) * 0.055;
 
       if (rolling) {
         flightTime += dt;
@@ -509,7 +518,10 @@ export function createDie(kind: DieKind, font: string, scale = 1): Die {
         contact.scale.setScalar(contact.scale.x + (1 - contact.scale.x) * Math.min(1, dt * 8));
         object.position.x += (home.x - object.position.x) * Math.min(1, dt * 14);
         object.position.z += (home.z - object.position.z) * Math.min(1, dt * 14);
-        const targetY = home.y + lift + idle;
+        // Resting dice stay physically planted. Besides improving clarity,
+        // this guarantees that every persistent marker remains at one depth
+        // instead of dipping into the deck and flickering on alternate frames.
+        const targetY = home.y + lift;
         object.position.y += (targetY - object.position.y) * Math.min(1, dt * 12);
       }
 
@@ -523,19 +535,8 @@ export function createDie(kind: DieKind, font: string, scale = 1): Die {
         pivot.scale.setScalar(1);
       }
 
-      if (state.selected) {
-        const pulse = 0.36 + Math.sin(time * 7) * 0.16;
-        glowMaterial.opacity = pulse;
-        const base = kind === "flag" ? 0.05 : 0.17;
-        material.emissiveIntensity = base + Math.sin(time * 7) * 0.025;
-        selectionMaterial.opacity = 0.6 + Math.sin(time * 7) * 0.1;
-      }
-      if (state.inRun) {
-        barMaterial.opacity = 0.7 + Math.sin(time * 4.5) * 0.28;
-      }
-      if (ringMaterial.opacity > 0) {
-        ring.rotation.z += dt * 0.55;
-      }
+      // Nothing on this board pulses. Selection, damage and the flagship link
+      // are all steady squares — see the note where they are built.
     },
     stats() {
       return { throwCount, frameCount, flightTime, flightDelay, flightDuration, rolling };
@@ -548,12 +549,12 @@ export function createDie(kind: DieKind, font: string, scale = 1): Die {
       contactMaterial.dispose();
       barMaterial.dispose();
       bar.geometry.dispose();
-      ringMaterial.dispose();
-      ring.geometry.dispose();
+      linkMaterial.dispose();
+      link.geometry.dispose();
       selectionMaterial.dispose();
-      selectionRing.geometry.dispose();
+      selectionSquare.geometry.dispose();
       damageMaterial.dispose();
-      damageRing.geometry.dispose();
+      damageSquare.geometry.dispose();
       for (const damageBar of damageBars) {
         damageBar.geometry.dispose();
         (damageBar.material as THREE.Material).dispose();
@@ -572,6 +573,89 @@ function clampFace(value: number, sides: number): number {
 }
 
 /* ------------------------------------------------------------------ */
+
+/** Mix a colour toward white. Used for the flagship's link square. */
+function lighten(hex: number, amount: number): number {
+  const r = (hex >> 16) & 255;
+  const g = (hex >> 8) & 255;
+  const b = hex & 255;
+  const mix = (c: number) => Math.round(c + (255 - c) * amount);
+  return (mix(r) << 16) | (mix(g) << 8) | mix(b);
+}
+
+/**
+ * A rounded square, either filled with a soft edge or drawn as an outline.
+ * Cached — every die on the board shares the same two textures.
+ */
+const SQUARES = new Map<string, THREE.CanvasTexture>();
+function squareTexture(kind: "fill" | "outline"): THREE.CanvasTexture {
+  const hit = SQUARES.get(kind);
+  if (hit) return hit;
+  const size = 256;
+  const canvas = document.createElement("canvas");
+  canvas.width = canvas.height = size;
+  const ctx = canvas.getContext("2d")!;
+  const pad = size * 0.06;
+  const radius = size * 0.13;
+
+  if (kind === "fill") {
+    // A flat wash with a brighter rim. An earlier version faded the edges with
+    // repeated `destination-in` passes, which compound rather than shade: they
+    // ate the fill and left only the outline, so half the marked cells looked
+    // empty.
+    ctx.fillStyle = "rgba(255,255,255,0.5)";
+    ctx.beginPath();
+    ctx.roundRect(pad, pad, size - pad * 2, size - pad * 2, radius);
+    ctx.fill();
+
+    // Brighter along the top edge, where the deck lights fall.
+    const lift = ctx.createLinearGradient(0, pad, 0, size - pad);
+    lift.addColorStop(0, "rgba(255,255,255,0.35)");
+    lift.addColorStop(0.55, "rgba(255,255,255,0)");
+    ctx.fillStyle = lift;
+    ctx.beginPath();
+    ctx.roundRect(pad, pad, size - pad * 2, size - pad * 2, radius);
+    ctx.fill();
+
+    ctx.strokeStyle = "rgba(255,255,255,0.98)";
+    ctx.lineWidth = size * 0.03;
+    ctx.beginPath();
+    ctx.roundRect(pad, pad, size - pad * 2, size - pad * 2, radius);
+    ctx.stroke();
+  } else {
+    ctx.strokeStyle = "#ffffff";
+    ctx.lineWidth = size * 0.038;
+    ctx.lineJoin = "round";
+    ctx.beginPath();
+    ctx.roundRect(pad, pad, size - pad * 2, size - pad * 2, radius);
+    ctx.stroke();
+  }
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.anisotropy = 8;
+  SQUARES.set(kind, texture);
+  return texture;
+}
+
+let shadowTex: THREE.CanvasTexture | null = null;
+function softShadowTexture(): THREE.CanvasTexture {
+  if (shadowTex) return shadowTex;
+  const size = 128;
+  const canvas = document.createElement("canvas");
+  canvas.width = canvas.height = size;
+  const ctx = canvas.getContext("2d")!;
+  // A rounded, slightly squashed blob. A perfect circle under a triangular d4
+  // reads as a stray decal on the deck rather than as the die's own shadow.
+  ctx.filter = `blur(${size * 0.11}px)`;
+  ctx.fillStyle = "rgba(255,255,255,0.9)";
+  ctx.beginPath();
+  ctx.roundRect(size * 0.16, size * 0.24, size * 0.68, size * 0.54, size * 0.2);
+  ctx.fill();
+  ctx.filter = "none";
+  shadowTex = new THREE.CanvasTexture(canvas);
+  return shadowTex;
+}
 
 let sprite: THREE.CanvasTexture | null = null;
 function radialSprite(): THREE.CanvasTexture {

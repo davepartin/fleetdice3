@@ -31,6 +31,14 @@ export type FaceSpec = {
 };
 
 const HIT = { ink: "#ffffff", top: "#ff6075", bottom: "#c92342", glow: "#ff7182", deep: "#5e0b1b" };
+/** The flagship's hull. Brass, so it is never mistaken for one of its own ships. */
+const FLAG_BRASS = { top: "#a8842f", bottom: "#463008", deep: "#1c1200" };
+
+/** A cheap repeatable hash, so the resin speckle is identical on every build. */
+function pseudo(n: number): number {
+  const x = Math.sin(n * 12.9898) * 43758.5453;
+  return x - Math.floor(x);
+}
 const BLOCK = { ink: "#ffffff", top: "#48b9ff", bottom: "#1268b5", glow: "#73caff", deep: "#062c58" };
 
 /**
@@ -41,10 +49,10 @@ export const FLAG_FACE_PALETTE: Record<
   number,
   { fill: string; mid: string; deep: string; ink: string; ring: number }
 > = {
-  1: { fill: "#ffea31", mid: "#d7b91a", deep: "#302703", ink: "#211a02", ring: 0xffe81f },
+  1: { fill: "#ffe94a", mid: "#e0bf1c", deep: "#302703", ink: "#241c02", ring: 0xffe81f },
   2: { fill: "#c49aff", mid: "#9870d8", deep: "#27143e", ink: "#1e1233", ring: 0xb98bff },
   3: { fill: "#79f0ac", mid: "#49bb79", deep: "#082b1b", ink: "#06291b", ring: 0x72efa6 },
-  4: { fill: "#ffea31", mid: "#d7b91a", deep: "#302703", ink: "#211a02", ring: 0xffe81f },
+  4: { fill: "#ffe94a", mid: "#e0bf1c", deep: "#302703", ink: "#241c02", ring: 0xffe81f },
   5: { fill: "#51bcff", mid: "#258bd1", deep: "#062f4e", ink: "#062a47", ring: 0x45b6ff },
   6: { fill: "#ff6578", mid: "#d03a50", deep: "#430a14", ink: "#3d0812", ring: 0xff5569 },
 };
@@ -53,48 +61,96 @@ export const FLAG_FACE_PALETTE: Record<
 /* Glyphs                                                              */
 /* ------------------------------------------------------------------ */
 
-function drawBolt(ctx: CanvasRenderingContext2D, x: number, y: number, size: number) {
+/**
+ * Marks are drawn twice: a dark keyline first, then the bright core on top.
+ * At the size these end up on a phone — a few dozen pixels on a face turned
+ * away from the lens — a single flat shape dissolves into its background.
+ * The keyline is what keeps the symbol a symbol.
+ */
+function paintGlyph(
+  ctx: CanvasRenderingContext2D,
+  path: () => void,
+  colour: string,
+  size: number,
+  mode: "fill" | "stroke",
+  strokeWidth = 0,
+) {
+  ctx.save();
+  ctx.lineJoin = "round";
+  ctx.lineCap = "round";
+
+  // Keyline
+  ctx.strokeStyle = "rgba(4,9,20,0.9)";
+  ctx.lineWidth = mode === "stroke" ? strokeWidth + size * 0.085 : size * 0.075;
+  path();
+  ctx.stroke();
+  if (mode === "fill") {
+    ctx.fillStyle = "rgba(4,9,20,0.9)";
+    ctx.fill();
+  }
+
+  // Core, with its own top-lit gradient so the mark has a little form.
+  const shine = ctx.createLinearGradient(0, -size * 0.5, 0, size * 0.5);
+  shine.addColorStop(0, "#ffffff");
+  shine.addColorStop(0.45, colour);
+  shine.addColorStop(1, colour);
+  ctx.strokeStyle = shine;
+  ctx.fillStyle = shine;
+  ctx.lineWidth = mode === "stroke" ? strokeWidth : 0;
+  path();
+  if (mode === "stroke") ctx.stroke();
+  else ctx.fill();
+  ctx.restore();
+}
+
+function drawBolt(ctx: CanvasRenderingContext2D, x: number, y: number, size: number, colour: string) {
   // Wide enough to remain a lightning bolt after the face is reduced to a
-  // handful of phone pixels. The previous narrow zigzag collapsed to a line.
-  const w = size * 0.84;
+  // handful of phone pixels. A narrow zigzag collapses to a line.
+  const w = size * 0.78;
   const h = size;
-  ctx.beginPath();
-  ctx.moveTo(x + w * 0.28, y - h * 0.5);
-  ctx.lineTo(x - w * 0.5, y + h * 0.08);
-  ctx.lineTo(x - w * 0.02, y + h * 0.08);
-  ctx.lineTo(x - w * 0.26, y + h * 0.5);
-  ctx.lineTo(x + w * 0.5, y - h * 0.1);
-  ctx.lineTo(x + w * 0.02, y - h * 0.1);
-  ctx.closePath();
-  ctx.fill();
+  const path = () => {
+    ctx.beginPath();
+    ctx.moveTo(x + w * 0.3, y - h * 0.5);
+    ctx.lineTo(x - w * 0.5, y + h * 0.1);
+    ctx.lineTo(x - w * 0.04, y + h * 0.1);
+    ctx.lineTo(x - w * 0.28, y + h * 0.5);
+    ctx.lineTo(x + w * 0.5, y - h * 0.12);
+    ctx.lineTo(x + w * 0.02, y - h * 0.12);
+    ctx.closePath();
+  };
+  paintGlyph(ctx, path, colour, size, "fill");
 }
 
-function drawCross(ctx: CanvasRenderingContext2D, x: number, y: number, size: number) {
-  const arm = size * 0.5;
-  const thick = size * 0.36;
-  ctx.beginPath();
-  ctx.roundRect(x - thick / 2, y - arm, thick, arm * 2, thick * 0.34);
-  ctx.roundRect(x - arm, y - thick / 2, arm * 2, thick, thick * 0.34);
-  ctx.fill();
+function drawCross(ctx: CanvasRenderingContext2D, x: number, y: number, size: number, colour: string) {
+  const arm = size * 0.46;
+  const thick = size * 0.34;
+  const path = () => {
+    ctx.beginPath();
+    ctx.roundRect(x - thick / 2, y - arm, thick, arm * 2, thick * 0.3);
+    ctx.roundRect(x - arm, y - thick / 2, arm * 2, thick, thick * 0.3);
+  };
+  paintGlyph(ctx, path, colour, size, "fill");
 }
 
-function drawChevron(ctx: CanvasRenderingContext2D, x: number, y: number, size: number) {
-  // A solid forward dart reads at six pixels where an outlined chevron does
-  // not. Repeated darts still preserve the exact Direct count printed by the
-  // physical die.
-  const w = size * 0.82;
-  const h = size * 0.78;
-  const tail = size * 0.2;
-  ctx.beginPath();
-  ctx.moveTo(x - w / 2, y - tail);
-  ctx.lineTo(x + w * 0.04, y - tail);
-  ctx.lineTo(x + w * 0.04, y - h / 2);
-  ctx.lineTo(x + w / 2, y);
-  ctx.lineTo(x + w * 0.04, y + h / 2);
-  ctx.lineTo(x + w * 0.04, y + tail);
-  ctx.lineTo(x - w / 2, y + tail);
-  ctx.closePath();
-  ctx.fill();
+/**
+ * A chevron: the bent bar off a sergeant's sleeve, not an arrow.
+ *
+ * It was drawn as a solid forward dart for a while, which read as "→" and had
+ * every player thinking Direct pushed something sideways. Stroking a two-leg
+ * polyline with a round join gives a true chevron and holds its shape at any
+ * size, which a hand-built outline does not.
+ */
+function drawChevron(ctx: CanvasRenderingContext2D, x: number, y: number, size: number, colour: string) {
+  const w = size * 0.8;
+  const h = size * 0.4;
+  const thick = size * 0.22;
+  const path = () => {
+    ctx.beginPath();
+    ctx.moveTo(x - w / 2, y + h * 0.5);
+    ctx.lineTo(x, y - h * 0.5);
+    ctx.lineTo(x + w / 2, y + h * 0.5);
+  };
+  paintGlyph(ctx, path, colour, size, "stroke", thick);
 }
 
 function drawMark(
@@ -103,10 +159,11 @@ function drawMark(
   x: number,
   y: number,
   size: number,
+  colour: string,
 ) {
-  if (kind === "energy") drawBolt(ctx, x, y, size);
-  else if (kind === "repair") drawCross(ctx, x, y, size);
-  else drawChevron(ctx, x, y, size);
+  if (kind === "energy") drawBolt(ctx, x, y, size, colour);
+  else if (kind === "repair") drawCross(ctx, x, y, size, colour);
+  else drawChevron(ctx, x, y, size, colour);
 }
 
 /* ------------------------------------------------------------------ */
@@ -123,8 +180,11 @@ function paintFace(
 ) {
   const isFlag = spec.role === "flag";
   const flagPalette = FLAG_FACE_PALETTE[spec.value] ?? FLAG_FACE_PALETTE[1]!;
+  // The flagship is brass, always. Its face colour lives in an inset panel
+  // rather than washing the whole hull, because a blue flagship next to blue
+  // ships stops reading as the flagship at all — which is exactly what it did.
   const palette = isFlag
-    ? { ink: flagPalette.ink, top: flagPalette.fill, bottom: flagPalette.mid, glow: flagPalette.fill, deep: flagPalette.deep }
+    ? { ink: "#fffdf2", top: FLAG_BRASS.top, bottom: FLAG_BRASS.bottom, glow: flagPalette.fill, deep: FLAG_BRASS.deep }
     : spec.fights === "hits" ? HIT : BLOCK;
   const glow = palette.glow;
   const cx = size / 2;
@@ -139,12 +199,28 @@ function paintFace(
     ctx.fillStyle = plate;
     ctx.fillRect(0, 0, size, size);
 
+    // Resin speckle. Barely visible on its own; without it a face this flat
+    // reads as printed vinyl rather than a cast, polished die.
+    ctx.save();
+    ctx.globalAlpha = 0.05;
+    for (let i = 0; i < 340; i += 1) {
+      const px = pseudo(spec.value * 31 + i) * size;
+      const py = pseudo(spec.value * 77 + i * 3) * size;
+      const r = 0.4 + pseudo(i * 13) * size * 0.004;
+      ctx.fillStyle = pseudo(i * 7) > 0.5 ? "#ffffff" : "#000000";
+      ctx.beginPath();
+      ctx.arc(px, py, r, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+
     // One restrained resin highlight gives depth without touching the glyphs.
     ctx.save();
     const sheen = ctx.createLinearGradient(0, 0, size, size * 0.7);
-    sheen.addColorStop(0, "rgba(255,255,255,0.22)");
-    sheen.addColorStop(0.38, "rgba(255,255,255,0.07)");
-    sheen.addColorStop(0.39, "rgba(255,255,255,0)");
+    sheen.addColorStop(0, "rgba(255,255,255,0.4)");
+    sheen.addColorStop(0.3, "rgba(255,255,255,0.14)");
+    sheen.addColorStop(0.42, "rgba(255,255,255,0.03)");
+    sheen.addColorStop(0.43, "rgba(255,255,255,0)");
     ctx.fillStyle = sheen;
     ctx.fillRect(0, 0, size, size * 0.62);
     ctx.restore();
@@ -153,14 +229,38 @@ function paintFace(
     // every atlas cell made the d4/d8 triangles and d10 kites look as though a
     // rectangular sticker had been pasted across the hull.
     if (sides === 6) {
-      ctx.save();
-      ctx.globalAlpha = isFlag ? 0.25 : 0.38;
-      ctx.strokeStyle = isFlag ? flagPalette.ink : "#ffffff";
-      ctx.lineWidth = size * 0.012;
-      ctx.beginPath();
-      ctx.roundRect(size * 0.09, size * 0.09, size * 0.82, size * 0.82, size * 0.16);
-      ctx.stroke();
-      ctx.restore();
+      if (isFlag) {
+        // The coloured panel: this is what tells you what the flagship boosts.
+        ctx.save();
+        const inset = size * 0.115;
+        const panel = ctx.createLinearGradient(0, inset, 0, size - inset);
+        panel.addColorStop(0, flagPalette.fill);
+        panel.addColorStop(1, flagPalette.mid);
+        ctx.fillStyle = panel;
+        ctx.beginPath();
+        ctx.roundRect(inset, inset, size - inset * 2, size - inset * 2, size * 0.15);
+        ctx.fill();
+        // A dark seat under the panel so it reads as set into the brass.
+        ctx.strokeStyle = "rgba(14,9,0,0.85)";
+        ctx.lineWidth = size * 0.034;
+        ctx.stroke();
+        // and a bright top edge where the brass catches the light.
+        ctx.strokeStyle = "rgba(255,238,180,0.85)";
+        ctx.lineWidth = size * 0.014;
+        ctx.beginPath();
+        ctx.roundRect(inset - size * 0.012, inset - size * 0.012, size - inset * 2 + size * 0.024, size - inset * 2 + size * 0.024, size * 0.16);
+        ctx.stroke();
+        ctx.restore();
+      } else {
+        ctx.save();
+        ctx.globalAlpha = 0.38;
+        ctx.strokeStyle = "#ffffff";
+        ctx.lineWidth = size * 0.012;
+        ctx.beginPath();
+        ctx.roundRect(size * 0.09, size * 0.09, size * 0.82, size * 0.82, size * 0.16);
+        ctx.stroke();
+        ctx.restore();
+      }
     }
   } else {
     ctx.fillStyle = "#000000";
@@ -188,11 +288,42 @@ function paintFace(
   ctx.font = `900 ${numberSize}px ${numberFont}`;
   if (mode === "albedo") {
     ctx.shadowBlur = 0;
-    ctx.strokeStyle = palette.deep;
-    ctx.lineWidth = size * (isFlag ? 0.012 : 0.022);
     ctx.lineJoin = "round";
-    ctx.strokeText(String(spec.value), cx, numberY);
-    ctx.fillStyle = palette.ink;
+
+    // The numeral is built up in passes so it reads as struck into the face
+    // rather than printed on it. A single flat fill — which is what was here —
+    // gives you a legible number and a die that looks like a sticker.
+    const n = String(spec.value);
+    const drop = size * 0.026;
+
+    // 1. Keyline, so the glyph survives against any hull colour.
+    ctx.strokeStyle = isFlag ? "rgba(28,18,0,0.85)" : palette.deep;
+    ctx.lineWidth = size * 0.038;
+    ctx.strokeText(n, cx, numberY);
+
+    // 2. Cast shadow down and right, in two passes so it has a falloff.
+    ctx.fillStyle = isFlag ? "rgba(26,16,0,0.34)" : "rgba(3,8,18,0.38)";
+    ctx.fillText(n, cx + drop, numberY + drop);
+    ctx.fillStyle = isFlag ? "rgba(26,16,0,0.4)" : "rgba(3,8,18,0.44)";
+    ctx.fillText(n, cx + drop * 0.5, numberY + drop * 0.5);
+
+    // 3. A lit edge up and left, where the key light falls.
+    ctx.fillStyle = isFlag ? "rgba(255,246,214,0.9)" : "rgba(255,255,255,0.95)";
+    ctx.fillText(n, cx - drop * 0.34, numberY - drop * 0.34);
+
+    // 4. The face of the glyph, top-lit so it has its own form.
+    const face = ctx.createLinearGradient(0, numberY - numberSize * 0.52, 0, numberY + numberSize * 0.5);
+    if (isFlag) {
+      // Dark on a bright panel: the flagship's number is struck, not painted.
+      face.addColorStop(0, "#4a3908");
+      face.addColorStop(0.55, "#20180b");
+      face.addColorStop(1, "#100c04");
+    } else {
+      face.addColorStop(0, "#ffffff");
+      face.addColorStop(0.52, "#f2f6ff");
+      face.addColorStop(1, "#aabfdd");
+    }
+    ctx.fillStyle = face;
   } else {
     ctx.shadowColor = "#000000";
     ctx.shadowBlur = 0;
@@ -207,11 +338,20 @@ function paintFace(
     ctx.save();
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    ctx.font = `900 ${size * 0.108}px ${numberFont}`;
-    ctx.letterSpacing = `${size * 0.009}px`;
-    ctx.fillStyle = mode === "albedo" ? palette.ink : "#000000";
+    const capY = size * 0.775;
+    if (mode === "albedo") {
+      // A dark plate under the word. Small caps on a bright panel are the
+      // first thing to disappear when the die tilts away from the camera.
+      ctx.fillStyle = "rgba(18,11,0,0.62)";
+      ctx.beginPath();
+      ctx.roundRect(size * 0.155, capY - size * 0.082, size * 0.69, size * 0.164, size * 0.05);
+      ctx.fill();
+    }
+    ctx.font = `900 ${size * 0.105}px ${numberFont}`;
+    ctx.letterSpacing = `${size * 0.012}px`;
+    ctx.fillStyle = mode === "albedo" ? "#fff6dd" : "#000000";
     ctx.shadowBlur = 0;
-    ctx.fillText(spec.caption.toUpperCase(), cx, size * 0.755);
+    ctx.fillText(spec.caption.toUpperCase(), cx, capY);
     ctx.restore();
   }
 
@@ -220,21 +360,22 @@ function paintFace(
     for (const mark of spec.marks) {
       for (let i = 0; i < mark.count; i += 1) glyphs.push(mark.kind);
     }
-    const markSize = size * (glyphs.length === 1 ? 0.34 : glyphs.length === 2 ? 0.3 : 0.225);
-    const gap = markSize * (glyphs.length > 2 ? 1.05 : 1.02);
+    const markSize = size * (glyphs.length === 1 ? 0.26 : glyphs.length === 2 ? 0.23 : 0.175);
+    const gap = markSize * (glyphs.length > 2 ? 1.22 : 1.16);
     const startX = cx - ((glyphs.length - 1) * gap) / 2;
     const markY = size * 0.785;
 
     ctx.save();
     glyphs.forEach((kind, index) => {
-      ctx.fillStyle = MARK_COLOR[kind];
       ctx.shadowBlur = 0;
-      drawMark(ctx, kind, startX + index * gap, markY, markSize);
-      if (mode === "albedo") {
-        ctx.strokeStyle = "rgba(3,8,18,0.88)";
-        ctx.lineWidth = size * 0.013;
-        ctx.stroke();
-      }
+      drawMark(
+        ctx,
+        kind,
+        startX + index * gap,
+        markY,
+        markSize,
+        mode === "albedo" ? MARK_COLOR[kind] : "#ffffff",
+      );
     });
     ctx.restore();
   }

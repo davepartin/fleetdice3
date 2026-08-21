@@ -346,7 +346,7 @@ function BoardPicker({
               open
                 ? "border-white/14 bg-white/[0.04]"
                 : "border-dashed border-white/10 bg-black/40",
-              pickable ? "!border-[--color-repair] bg-[--color-repair]/12 anim-breathe" : "",
+              pickable ? "!border-[--color-repair] bg-[--color-repair]/12" : "",
             ].join(" ")}
           >
             {ship ? (
