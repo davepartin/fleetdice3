@@ -16,6 +16,7 @@ import {
   activeShips,
   bestRun,
   cellForSlot,
+  flagBonusSize,
   previewTally,
   type MatchAction,
   type PlayerState,
@@ -61,6 +62,10 @@ export function MatchScreen({ controller, onExit, title, subtitle }: Props) {
 
   const { state, you, them, act, busy, error, clearError, waitingOnEnemy } = controller;
   const phase = you?.phase ?? "waiting";
+  const tally = useMemo(
+    () => (you && you.dice.length ? previewTally(you) : null),
+    [you],
+  );
 
   /* --------------------------------------------------------------- */
   /* The arena                                                        */
@@ -164,12 +169,13 @@ export function MatchScreen({ controller, onExit, title, subtitle }: Props) {
       instant: firstSyncRef.current,
       selected,
       damageSelected: phase === "brace" ? braceShips : undefined,
+      previewTally: tally,
       revealEnemy: phase === "brace" || phase === "report" || phase === "over",
       thrown: thrownRef.current,
     });
     thrownRef.current = new Set();
     firstSyncRef.current = false;
-  }, [state, selected, braceShips, phase, controller.side, arenaReady]);
+  }, [state, selected, braceShips, phase, controller.side, arenaReady, tally]);
 
   /* Point the camera at whatever matters right now ------------------- */
 
@@ -354,10 +360,6 @@ export function MatchScreen({ controller, onExit, title, subtitle }: Props) {
 
   /* --------------------------------------------------------------- */
 
-  const tally = useMemo(
-    () => (you && you.dice.length ? previewTally(you) : null),
-    [you],
-  );
   const hint = useMemo(
     () => (state && phase === "rolling" ? rollHint(state, controller.side) : null),
     [state, phase, controller.side],
@@ -567,38 +569,87 @@ function TallyStrip({ tally }: { tally: ReturnType<typeof previewTally> | null }
   return (
     <div className="tally-strip grid grid-cols-5 gap-1">
       <div className="tally-cell tally-cell-attack">
-        <Stat kind="attack" value={tally?.attack ?? 0} label="Attack" />
+        <Stat
+          kind="attack"
+          value={tally?.attack ?? 0}
+          label="Attack"
+          showGlyph={false}
+          colorLabel
+        />
       </div>
       <div className="tally-cell tally-cell-shield">
-        <Stat kind="shield" value={tally?.defense ?? 0} label="Shields" />
+        <Stat
+          kind="shield"
+          value={tally?.defense ?? 0}
+          label="Shields"
+          showGlyph={false}
+          colorLabel
+        />
       </div>
       <div className="tally-cell tally-cell-direct">
-        <Stat kind="direct" value={tally?.direct ?? 0} label="Direct" />
+        <Stat
+          kind="direct"
+          value={tally?.direct ?? 0}
+          label="Direct"
+          showGlyph={false}
+          colorLabel
+        />
       </div>
       <div className="tally-cell tally-cell-repair">
-        <Stat kind="repair" value={tally?.heal ?? 0} label="Repair" />
+        <Stat
+          kind="repair"
+          value={tally?.heal ?? 0}
+          label="Repair"
+          showGlyph={false}
+          colorLabel
+        />
       </div>
       <div className="tally-cell tally-cell-energy">
-        <Stat kind="energy" value={tally?.energy ?? 0} label="Energy" />
+        <Stat
+          kind="energy"
+          value={tally?.energy ?? 0}
+          label="Energy"
+          showGlyph={false}
+          colorLabel
+        />
       </div>
     </div>
   );
 }
 
 function YourHealth({ you }: { you: PlayerState }) {
+  const reactorShowing = you.dice.some((die) => die.flag) && you.flag.face === 1;
+  const projectedBase = reactorShowing
+    ? Math.min(TUNING.reactorCap, you.baseEnergy + flagBonusSize(you.flag.level))
+    : you.baseEnergy;
+  const baseRising = projectedBase > you.baseEnergy;
+
   return (
     <div className="commander-rail flex items-center gap-2">
       <span className="commander-name t-eyebrow shrink-0">
         <span className="commander-name-full">{you.name}</span>
-        <span className="commander-name-mobile">Hull</span>
+        <span className="commander-name-mobile">Ship</span>
       </span>
       <HealthBar className="commander-hpbar min-w-0 flex-1" value={you.hp} max={you.maxHp} />
       <span className="t-num shrink-0 text-[0.82rem] text-white">
         <Ticker value={you.hp} />
         <span className="c-dim">/{you.maxHp}</span>
       </span>
-      <span className="commander-bank t-num shrink-0 c-energy" aria-label={`${you.energy} Energy in bank`}>
-        ⚡ {you.energy}
+      <span className="commander-energy-cluster flex shrink-0 items-stretch gap-1">
+        <span className="commander-bank t-num c-energy" aria-label={`${you.energy} Energy in bank`}>
+          ⚡ {you.energy}
+        </span>
+        <span
+          className={`commander-base ${baseRising ? "commander-base-rising" : ""}`}
+          aria-label={
+            baseRising
+              ? `Base Energy income will rise from ${you.baseEnergy} to ${projectedBase}`
+              : `Base Energy income is ${you.baseEnergy} each round`
+          }
+        >
+          <span>Base</span>
+          <b className="t-num">+{projectedBase}</b>
+        </span>
       </span>
     </div>
   );
@@ -736,7 +787,7 @@ function RollDock({
         </div>
       ) : notRolled ? (
         <Button tone="primary" size="lg" full onClick={onRollAll} disabled={busy}>
-          Roll your fleet
+          Roll Fleet · {TUNING.rollsPerRound} Rolls
         </Button>
       ) : (
         <div className="flex gap-2">
@@ -751,9 +802,25 @@ function RollDock({
                 full
                 onClick={onReroll}
                 disabled={busy || !canAffordReroll}
+                className={`reroll-action ${rerollCost && !canAffordReroll ? "reroll-unaffordable" : ""}`}
+                ariaLabel={
+                  rerollCost
+                    ? canAffordReroll
+                      ? `Reroll ${selected.size} dice for ${rerollCost} Energy`
+                      : `Reroll unavailable. Need ${rerollCost} Energy`
+                    : `Reroll ${selected.size} dice for free`
+                }
               >
-                Reroll {selected.size}
-                {rerollCost ? ` · ${rerollCost}⚡` : rollsLeft > 0 ? " · free" : ""}
+                <span>Reroll {selected.size}</span>
+                {rerollCost ? (
+                  <span className="reroll-cost">
+                    {canAffordReroll ? "Cost" : "Need"}
+                    <EnergyBolt />
+                    {rerollCost} Energy
+                  </span>
+                ) : rollsLeft > 0 ? (
+                  <span className="reroll-free">Free</span>
+                ) : null}
               </Button>
             </>
           ) : (
@@ -766,15 +833,20 @@ function RollDock({
         </div>
       )}
 
-      {you.phase === "rolling" && selected.size === 0 && (
-        <p className="roll-instruction text-center text-[0.76rem] c-dim">
-          Tap any ship or flagship die to reroll it.{" "}
-          {rollsLeft > 0
-            ? `${rollsLeft} free ${rollsLeft === 1 ? "roll" : "rolls"} left.`
-            : "Extra rolls cost 1 Energy a die."}
-        </p>
-      )}
     </div>
+  );
+}
+
+function EnergyBolt() {
+  return (
+    <svg
+      className="reroll-energy-icon"
+      viewBox="0 0 16 20"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <path d="M9.1 0 1.8 11.1h4.7L5.6 20l8.6-12.3H9.4L9.1 0Z" fill="currentColor" />
+    </svg>
   );
 }
 
@@ -958,6 +1030,16 @@ function FlagshipLine({ you }: { you: PlayerState }) {
   const face = FLAGSHIP_FACES.find((entry) => entry.face === you.flag.face);
   if (!face) return null;
   const level = face.levels[Math.min(2, Math.max(0, you.flag.level - 1))];
+  const tone =
+    face.face === 2
+      ? "direct"
+      : face.face === 3
+        ? "repair"
+        : face.face === 5
+          ? "shield"
+          : face.face === 6
+            ? "attack"
+            : "energy";
   const compact =
     face.face === 1
       ? `+${level?.bonus ?? 0} Energy/round`
@@ -972,16 +1054,16 @@ function FlagshipLine({ you }: { you: PlayerState }) {
               : `+${level?.bonus ?? 0} Attack per even`;
   return (
     <div
-      className="flagship-line flex min-w-0 flex-1 items-center gap-2 rounded-xl border border-[--color-energy]/25 bg-[--color-energy]/[0.07] px-3 py-2"
+      className={`flagship-line c-${tone} flex min-w-0 flex-1 items-center gap-2 rounded-xl border border-current/25 bg-current/[0.07] px-3 py-2`}
       title={level?.text ?? face.short}
     >
-      <span className="t-num shrink-0 rounded-md bg-[--color-energy]/20 px-2 py-0.5 text-sm c-energy">
+      <span className="t-num shrink-0 rounded-md bg-current/20 px-2 py-0.5 text-sm">
         {face.face}
       </span>
       <span className="min-w-0 text-[0.8rem] leading-snug">
-        <b className="c-energy">{face.name}</b>
-        <span className="flagship-long c-dim"> — {level?.text ?? face.short}</span>
-        <span className="flagship-compact c-dim"> · {compact}</span>
+        <b>{face.name}</b>
+        <span className="flagship-long"> — {level?.text ?? face.short}</span>
+        <span className="flagship-compact"> · {compact}</span>
       </span>
     </div>
   );

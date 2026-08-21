@@ -22,14 +22,17 @@ export const ENEMY_DECK = new THREE.Vector3(0, 0, -7.9);
 
 export type Focus = "fleet" | "both" | "enemy" | "wide";
 
-const FRAMES: Record<Focus, { pitch: number; fitWidth: number; fitDepth: number; target: THREE.Vector3 }> = {
+const FRAMES: Record<Focus, { pitch: number; fitWidth: number; fitDepth: number; target: THREE.Vector3; parallax: number }> = {
   // Aimed below the deck on purpose: the action dock covers the bottom of a
   // phone screen, so the board has to sit high in the frame or the near row of
   // ships hides behind it.
-  fleet: { pitch: 51, fitWidth: 12.6, fitDepth: 12.6, target: new THREE.Vector3(0, -2.6, 5.2) },
-  both: { pitch: 57, fitWidth: 13.8, fitDepth: 24.5, target: new THREE.Vector3(0, -3.4, -1.4) },
-  enemy: { pitch: 49, fitWidth: 13.2, fitDepth: 13.2, target: new THREE.Vector3(0, 0.3, -7.9) },
-  wide: { pitch: 34, fitWidth: 20, fitDepth: 20, target: new THREE.Vector3(0, 1.4, 0) },
+  // Gameplay framing is deliberately fixed. Pointer parallax made the board
+  // and every die edge shift under the player's finger or mouse, which reads
+  // as unstable information rather than depth on a precision dice board.
+  fleet: { pitch: 51, fitWidth: 12.6, fitDepth: 12.6, target: new THREE.Vector3(0, -2.6, 5.2), parallax: 0 },
+  both: { pitch: 57, fitWidth: 13.8, fitDepth: 24.5, target: new THREE.Vector3(0, -3.4, -1.4), parallax: 0 },
+  enemy: { pitch: 49, fitWidth: 13.2, fitDepth: 13.2, target: new THREE.Vector3(0, 0.3, -7.9), parallax: 0 },
+  wide: { pitch: 34, fitWidth: 20, fitDepth: 20, target: new THREE.Vector3(0, 1.4, 0), parallax: 0 },
 };
 
 /**
@@ -51,28 +54,28 @@ function frameFor(focus: Focus, soloPhone = false) {
   if (soloPhone && focus === "fleet") {
     return {
       ...base,
-      // A near-overhead command view is the only honest phone composition:
+      // A nearly overhead command view is the only honest phone composition:
       // every cell stays separated, the flagship cannot hide the rear ship,
       // and the deck uses the tall safe rectangle instead of leaving a band
       // of empty sky above it.
-      pitch: 70,
+      pitch: 88,
       // On tall browser states we intentionally crop a sliver of decorative
       // deck edge. The dice, not the metal frame, deserve those pixels.
       fitWidth: 9.1,
       fitDepth: 10.1,
       target: new THREE.Vector3(0, 0, 5.2),
-      parallax: 0.12,
+      parallax: 0,
     };
   }
   if (soloPhone && focus === "both") {
     return {
       ...base,
-      // Brace and report still show both fleets, but a steeper overview keeps
-      // the two centre flagships from masking the ship directly behind them.
-      pitch: 66,
+      // Brace and report still show both fleets. The same overhead language
+      // keeps damage choices and their markers unambiguous there too.
+      pitch: 84,
       fitWidth: 13,
       fitDepth: 23.2,
-      parallax: 0.08,
+      parallax: 0,
     };
   }
   const landscape = window.innerWidth >= 900 && window.innerWidth > window.innerHeight;
@@ -93,6 +96,8 @@ export type SyncOptions = {
   selected?: Set<string>;
   /** Ship ids currently committed to taking the incoming volley. */
   damageSelected?: Set<string>;
+  /** Live score while the player is still rerolling, including formations. */
+  previewTally?: Tally | null;
   /** Show the enemy's dice. False until both commanders have locked in. */
   revealEnemy?: boolean;
   /**
@@ -247,9 +252,10 @@ export function createArena(canvas: HTMLCanvasElement, options: ArenaOptions = {
         die = undefined;
       }
       if (!die) {
-        // On a phone the face, not the board decoration, is the product. This
-        // raises linear size by a third and nearly doubles visible face area.
-        die = createDie(spec.kind, font, isSoloPhone() ? 1.52 : 1.14, CELL);
+        // On a phone the face, not the board decoration, is the product. The
+        // larger hulls fill their cells while the atlas keeps their values and
+        // payoff marks clean at the steeper command angle.
+        die = createDie(spec.kind, font, isSoloPhone() ? 1.66 : 1.14, CELL);
         die.object.userData.shipId = id;
         die.object.traverse((node) => {
           node.userData.shipId = id;
@@ -307,14 +313,25 @@ export function createArena(canvas: HTMLCanvasElement, options: ArenaOptions = {
       deck.board.setCellOpen(cell, player.open[slot] ?? false);
     }
 
-    applyScoreMarks(deck, player, show);
+    applyScoreMarks(
+      deck,
+      player,
+      show,
+      deckKey === "you" ? opts.previewTally : undefined,
+    );
   }
 
-  /** Orange bars for the straight, rings for the flagship's matching ships. */
-  function applyScoreMarks(deck: DeckState, player: PlayerState, show: boolean) {
-    const tally: Tally | null = player.tally;
+  /** Steady formation rails, straight bars and flagship matching markers. */
+  function applyScoreMarks(
+    deck: DeckState,
+    player: PlayerState,
+    show: boolean,
+    liveTally?: Tally | null,
+  ) {
+    const tally: Tally | null = liveTally ?? player.tally;
     if (!show) {
       deck.board.setRunCells([]);
+      deck.board.setFormations([]);
       for (const die of deck.dice.values()) die.setState({ inRun: false, inLine: null, flagRing: false });
       return;
     }
@@ -325,6 +342,13 @@ export function createArena(canvas: HTMLCanvasElement, options: ArenaOptions = {
     for (const line of tally?.lines ?? []) {
       for (const cell of line.idx) lineCells.set(cell, line.kind);
     }
+    deck.board.setFormations(
+      (tally?.lines ?? []).map((line) => ({
+        kind: line.kind,
+        cells: line.idx,
+        amount: line.kind === "row" ? line.energy : line.attack,
+      })),
+    );
 
     const face = player.flag.face;
     const ringsAll = face === 5 || face === 6;

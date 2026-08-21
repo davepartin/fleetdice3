@@ -269,6 +269,69 @@ button {
   filter: brightness(1.07);
 }
 
+/* Cool command blue: buying and returning to battle are navigation/upgrade
+   actions, not Energy itself and not incoming danger. */
+.btn-command {
+  color: #03111f;
+  background:
+    linear-gradient(180deg, rgb(255 255 255 / 0.42), rgb(255 255 255 / 0) 46%),
+    linear-gradient(180deg, #80d4ff 0%, #35aef7 52%, #1675c5 100%);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.62),
+    inset 0 -2px 0 rgb(0 0 0 / 0.24),
+    0 6px 0 -1px #0a3f73,
+    0 16px 34px -12px rgb(53 174 247 / 0.66);
+}
+.btn-command:hover:not(:disabled) {
+  filter: brightness(1.08);
+}
+
+.reroll-action {
+  gap: 0.7rem;
+}
+.reroll-cost,
+.reroll-free {
+  display: inline-flex;
+  min-height: 26px;
+  align-items: center;
+  gap: 0.24rem;
+  border: 1px solid rgb(26 18 0 / 0.3);
+  border-radius: 999px;
+  background: rgb(26 18 0 / 0.14);
+  padding: 0.24rem 0.52rem;
+  font-size: 0.62rem;
+  letter-spacing: 0.045em;
+  line-height: 1;
+}
+.reroll-free {
+  border-color: rgb(255 255 255 / 0.24);
+  background: rgb(255 255 255 / 0.14);
+}
+.reroll-energy-icon {
+  width: 0.68rem;
+  height: 0.82rem;
+  flex: none;
+}
+.reroll-action.reroll-unaffordable:disabled {
+  opacity: 1;
+  color: var(--color-hull-100);
+  filter: none;
+  border: 1px solid rgb(255 210 61 / 0.42);
+  background:
+    linear-gradient(180deg, rgb(255 255 255 / 0.07), rgb(255 255 255 / 0.01)),
+    #15171d;
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.08),
+    0 5px 0 -1px #08090d,
+    0 12px 28px -16px rgb(255 210 61 / 0.45);
+}
+.reroll-action.reroll-unaffordable:disabled .reroll-cost {
+  color: #171000;
+  border-color: var(--color-energy);
+  background: var(--color-energy);
+  box-shadow: 0 0 18px rgb(255 210 61 / 0.25);
+}
+
 /* The quiet one. Sits beside the primary without competing. */
 .btn-ghost {
   color: var(--color-hull-200);
@@ -623,6 +686,8 @@ button {
   .match-hud-solo .commander-name-mobile { display: inline; }
   .match-hud-solo .commander-hpbar {
     height: 8px;
+    flex: 0 1 42%;
+    min-width: 64px;
   }
   .commander-bank {
     display: inline-flex;
@@ -633,6 +698,33 @@ button {
     background: rgb(255 210 61 / 0.08);
     padding: 0 0.48rem;
     font-size: 0.78rem;
+  }
+  .commander-base {
+    display: inline-flex;
+    min-height: 28px;
+    align-items: center;
+    gap: 0.22rem;
+    border: 1px solid rgb(77 180 255 / 0.24);
+    border-radius: 9px;
+    background: rgb(77 180 255 / 0.08);
+    padding: 0 0.42rem;
+    color: var(--color-hull-300);
+    font-family: var(--font-display);
+    font-size: 0.5rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+  .commander-base b {
+    color: var(--color-energy);
+    font-size: 0.78rem;
+    letter-spacing: 0;
+  }
+  .commander-base-rising {
+    border-color: rgb(255 210 61 / 0.52);
+    background: rgb(255 210 61 / 0.11);
+    box-shadow: 0 0 15px rgb(255 210 61 / 0.18);
   }
 
   .match-hud-solo .tally-strip {
@@ -698,15 +790,6 @@ button {
     font-size: 0.96rem;
   }
 
-  .match-hud-solo .roll-instruction {
-    min-height: 16px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    font-size: 0.68rem;
-    line-height: 1.1;
-  }
-
   .match-hud-solo .brace-dock {
     gap: 0.55rem;
     max-height: calc(220px + var(--hud-safe-bottom));
@@ -758,11 +841,14 @@ button {
     height: 8px;
   }
   .match-hud-solo .round-report-disclosure {
-    flex: 0 1 auto;
+    flex: 0 0 auto;
     overflow: hidden;
   }
   .match-hud-solo .round-report-disclosure-button {
+    display: flex;
     min-height: 36px;
+    align-items: center;
+    justify-content: space-between;
     border: 1px solid rgb(255 255 255 / 0.12);
     border-radius: 10px;
     padding: 0.48rem 0.7rem;
@@ -771,10 +857,36 @@ button {
     font-size: 0.68rem;
     font-weight: 800;
     letter-spacing: 0.12em;
-    list-style-position: inside;
+    list-style: none;
     text-transform: uppercase;
   }
+  .match-hud-solo .round-report-disclosure-button::-webkit-details-marker {
+    display: none;
+  }
+  .match-hud-solo .round-report-disclosure-button::after {
+    content: "+";
+    color: var(--color-shield);
+    font-family: var(--font-display);
+    font-size: 1rem;
+    line-height: 1;
+  }
+  .match-hud-solo .round-report-disclosure[open] > .round-report-disclosure-button::after {
+    content: "−";
+  }
+  .match-hud-solo .round-report-panel:has(.round-report-disclosure[open]) {
+    height: min(74dvh, 650px);
+    max-height: min(74dvh, 650px);
+  }
   .match-hud-solo .round-report-disclosure[open] {
+    display: flex;
+    min-height: 0;
+    flex: 1 1 auto;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .match-hud-solo .round-report-disclosure[open] > :not(summary) {
+    min-height: 0;
+    flex: 1 1 auto;
     overflow-y: auto;
   }
   .match-hud-solo .round-report .btn-lg {
@@ -924,40 +1036,52 @@ button {
   transform: scale(0.97);
 }
 
-/* Affordable cells are lit from the edge. This is the whole readout: if it
-   glows, you can buy it. */
-.yard-cell[data-affordable] {
-  border-color: rgb(255 210 61 / 0.5);
-  box-shadow:
-    inset 0 1px 0 rgb(255 255 255 / 0.12),
-    0 0 0 1px rgb(255 210 61 / 0.14),
-    0 0 20px -6px rgb(255 210 61 / 0.45);
-}
-.yard-cell[data-selected] {
-  border-color: rgb(255 255 255 / 0.85);
-  background: linear-gradient(180deg, rgb(255 255 255 / 0.13), rgb(255 255 255 / 0.04));
-  box-shadow:
-    inset 0 1px 0 rgb(255 255 255 / 0.22),
-    0 0 26px -6px rgb(255 255 255 / 0.4);
-}
 .yard-cell[data-dead] {
   opacity: 0.4;
 }
 
 .yard-cell-locked {
-  background: repeating-linear-gradient(
-    -45deg,
-    rgb(255 255 255 / 0.02) 0 6px,
-    rgb(0 0 0 / 0.25) 6px 12px
-  );
+  border-color: rgb(255 102 118 / 0.22);
+  background:
+    repeating-linear-gradient(-45deg, rgb(255 89 107 / 0.045) 0 7px, transparent 7px 14px),
+    linear-gradient(180deg, rgb(38 12 24 / 0.82), rgb(10 7 15 / 0.94));
+  box-shadow: inset 0 0 22px rgb(255 61 82 / 0.06);
 }
 .yard-cell-empty {
   border-style: dashed;
-  border-color: rgb(255 255 255 / 0.22);
+  border-color: rgb(176 125 255 / 0.5);
+  background:
+    radial-gradient(circle at 50% 36%, rgb(176 125 255 / 0.12), transparent 48%),
+    linear-gradient(180deg, rgb(28 23 48 / 0.78), rgb(10 10 22 / 0.92));
+}
+.yard-cell-ship {
+  border-color: rgb(77 180 255 / 0.46);
+  background:
+    radial-gradient(circle at 50% 25%, rgb(77 180 255 / 0.14), transparent 48%),
+    linear-gradient(180deg, rgb(17 37 67 / 0.86), rgb(7 15 29 / 0.96));
+  box-shadow:
+    inset 0 1px 0 rgb(154 215 255 / 0.15),
+    inset 0 -18px 32px rgb(4 10 21 / 0.35);
 }
 .yard-cell-flag {
   background: linear-gradient(180deg, rgb(200 164 78 / 0.3), rgb(70 48 8 / 0.35));
   border-color: rgb(255 220 130 / 0.45);
+}
+
+/* Affordability and selection sit above the four cell identities, so those
+   interaction states never erase the ship/empty/locked/flagship distinction. */
+.yard-cell[data-affordable] {
+  border-color: rgb(77 180 255 / 0.68);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.15),
+    0 0 0 1px rgb(77 180 255 / 0.18),
+    0 0 20px -6px rgb(77 180 255 / 0.5);
+}
+.yard-cell[data-selected] {
+  border-color: #a9e3ff;
+  box-shadow:
+    inset 0 0 0 2px rgb(169 227 255 / 0.72),
+    0 0 26px -5px rgb(77 180 255 / 0.7);
 }
 
 .yard-cell-art {
@@ -974,13 +1098,18 @@ button {
   text-shadow: 0 0 16px rgb(255 210 61 / 0.7);
 }
 .yard-cell-empty-art {
-  color: var(--color-hull-400);
+  color: var(--color-direct-glow);
   font-weight: 300;
   font-size: 1.9rem;
+  text-shadow: 0 0 16px rgb(176 125 255 / 0.35);
 }
 .yard-cell-lock {
-  color: var(--color-hull-500);
-  font-size: 1.1rem;
+  color: rgb(255 128 142 / 0.68);
+}
+.yard-cell-lock svg {
+  width: 1.4rem;
+  height: 1.65rem;
+  filter: drop-shadow(0 0 8px rgb(255 61 82 / 0.2));
 }
 
 .yard-cell-name {
@@ -1019,23 +1148,23 @@ button {
   line-height: 1.35;
   white-space: nowrap;
 }
+.yard-price-icon {
+  width: 0.58rem;
+  height: 0.72rem;
+  flex: none;
+}
 .yard-price-ok {
-  color: #17120a;
-  background: linear-gradient(180deg, #ffe071, #f0b91f);
-  box-shadow: 0 1px 0 rgb(0 0 0 / 0.35);
+  color: #eff9ff;
+  background: linear-gradient(180deg, #278ed5, #145b9d);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.24),
+    0 1px 0 rgb(0 0 0 / 0.38),
+    0 0 13px rgb(53 174 247 / 0.22);
 }
 .yard-price-no {
   color: var(--color-attack-glow);
   background: rgb(255 77 77 / 0.14);
   box-shadow: inset 0 0 0 1px rgb(255 77 77 / 0.3);
-}
-
-.yard-hint {
-  flex: none;
-  min-height: 1.1rem;
-  text-align: center;
-  font-size: 0.8rem;
-  color: var(--color-hull-400);
 }
 
 /* ---------------- the drawer ---------------- */
@@ -1142,7 +1271,7 @@ button {
   transition: transform 0.14s var(--ease-snap), border-color 0.16s ease;
 }
 .yard-hull:not(:disabled) {
-  border-color: rgb(255 210 61 / 0.42);
+  border-color: rgb(77 180 255 / 0.48);
 }
 .yard-hull:active:not(:disabled) {
   transform: scale(0.975);

@@ -470,6 +470,21 @@ export function pressureOf(state: MatchState, side: SideId): number {
 export function nextActions(state: MatchState, side: SideId, brain: Brain): MatchAction[] {
   const player = state.players[side];
   if (!player || state.status === "finished") return [];
+
+  // In Solo, the battle report belongs to the human. Do not let the Enemy
+  // continue, shop and roll the next round behind that report: its newly
+  // rolled dice can briefly appear while the reveal camera is still active.
+  // Pressing "To the Shipyard" moves the host to `shop`, which is the explicit
+  // handoff that releases the Enemy to prepare its next turn out of sight.
+  if (
+    state.mode === "solo" &&
+    side === "guest" &&
+    player.phase === "report" &&
+    state.players.host.phase !== "shop"
+  ) {
+    return [];
+  }
+
   const knobs = DIFFICULTY[brain.difficulty];
   const pressure = pressureOf(state, side);
 

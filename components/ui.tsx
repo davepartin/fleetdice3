@@ -18,7 +18,7 @@ type ButtonProps = {
   children: ReactNode;
   onClick?: () => void;
   disabled?: boolean;
-  tone?: "primary" | "confirm" | "energy" | "ghost";
+  tone?: "primary" | "confirm" | "energy" | "command" | "ghost";
   size?: "sm" | "md" | "lg";
   full?: boolean;
   className?: string;
@@ -166,12 +166,16 @@ export function Stat({
   label,
   size = "md",
   bare,
+  showGlyph = true,
+  colorLabel = false,
 }: {
   kind: StatKind;
   value: number | string;
   label?: string;
   size?: "sm" | "md" | "lg";
   bare?: boolean;
+  showGlyph?: boolean;
+  colorLabel?: boolean;
 }) {
   const text = size === "lg" ? "text-2xl" : size === "sm" ? "text-sm" : "text-lg";
   const body = (
@@ -180,12 +184,18 @@ export function Stat({
   if (bare) return body;
   return (
     <div className="flex flex-col items-center gap-1">
-      <div className="flex items-baseline gap-1">
-        <span className={`c-${kind} text-[0.7em] opacity-80`}>{STAT_GLYPH[kind]}</span>
+      <div className="flex w-full items-baseline justify-center gap-1 text-center">
+        {showGlyph && (
+          <span className={`c-${kind} text-[0.7em] opacity-80`}>{STAT_GLYPH[kind]}</span>
+        )}
         {body}
       </div>
       {label !== "" && (
-        <span className="t-eyebrow text-[0.58rem] tracking-[0.16em]">
+        <span
+          className={`t-eyebrow text-[0.58rem] tracking-[0.16em] ${
+            colorLabel ? `c-${kind}` : ""
+          }`}
+        >
           {label ?? STAT_LABEL[kind]}
         </span>
       )}

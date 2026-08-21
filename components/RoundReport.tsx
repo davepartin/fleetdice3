@@ -77,7 +77,7 @@ export function RoundReportCard({
           <Stat kind="repair" value={t.heal} label="Repair" size="sm" />
         </div>
         <div className="round-report-mobile-hp flex items-center gap-2">
-          <span className="t-eyebrow">Hull</span>
+          <span className="t-eyebrow">Ship</span>
           <HealthBar className="min-w-0 flex-1" value={report.hpAfter} max={you.maxHp} />
           <span className="t-num text-white"><Ticker value={report.hpAfter} />/{you.maxHp}</span>
         </div>

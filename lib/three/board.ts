@@ -17,6 +17,12 @@ export const DECK_SIZE = 11.4;
 export const CELL = (DECK_SIZE * PLAY_FRACTION) / 3;
 export const DECK_THICKNESS = 0.42;
 
+export type BoardFormation = {
+  kind: "row" | "col";
+  cells: number[];
+  amount: number;
+};
+
 export type Board = {
   group: THREE.Group;
   /** Local position of the centre of a 3×3 cell, 0–8, on the deck surface. */
@@ -26,6 +32,8 @@ export type Board = {
   flashLine(cells: number[], color: THREE.ColorRepresentation): void;
   /** Which cells are part of the straight. */
   setRunCells(cells: number[]): void;
+  /** Persistent line and payoff label for matching rows and columns. */
+  setFormations(formations: BoardFormation[]): void;
   /** Ripple the deck when something lands on it. */
   impact(cell: number, strength: number): void;
   update(dt: number, time: number): void;
@@ -76,29 +84,9 @@ export function createBoard(side: BoardSide, font: string): Board {
   slab.receiveShadow = true;
   group.add(slab);
 
-  // A lit strip running around the edge of the slab.
-  const trimGeometry = new THREE.BoxGeometry(DECK_SIZE + 0.16, 0.07, DECK_SIZE + 0.16);
-  const trimMaterial = new THREE.MeshBasicMaterial({ color: rim, transparent: true, opacity: 0.55 });
-  const trim = new THREE.Mesh(trimGeometry, trimMaterial);
-  trim.position.y = -0.05;
-  group.add(trim);
-
-  // The pool of light the deck floats in.
-  const halo = new THREE.Mesh(
-    new THREE.PlaneGeometry(DECK_SIZE * 2.1, DECK_SIZE * 2.1),
-    new THREE.MeshBasicMaterial({
-      color: rim,
-      transparent: true,
-      opacity: 0.045,
-      blending: THREE.AdditiveBlending,
-      depthWrite: false,
-      map: softDisc(),
-    }),
-  );
-  halo.rotation.x = -Math.PI / 2;
-  halo.position.y = -DECK_THICKNESS - 0.02;
-  halo.renderOrder = -3;
-  group.add(halo);
+  // The painted play mat is the frame. An additional emissive strip and halo
+  // outside it created a second cyan rectangle and wasted the phone's edge
+  // pixels on decoration instead of dice.
 
   // Locked cells get a dark cap so they read as sealed rather than empty.
   const capMaterial = new THREE.MeshPhysicalMaterial({
@@ -145,6 +133,80 @@ export function createBoard(side: BoardSide, font: string): Board {
 
   const lineFlashes: { mesh: THREE.Mesh; life: number }[] = [];
   const ripples: { mesh: THREE.Mesh; life: number; strength: number }[] = [];
+  const formationGroup = new THREE.Group();
+  group.add(formationGroup);
+  let formationSignature = "";
+
+  const clearFormations = () => {
+    for (const child of [...formationGroup.children]) {
+      formationGroup.remove(child);
+      if (!(child instanceof THREE.Mesh)) continue;
+      child.geometry.dispose();
+      const material = child.material as THREE.Material | THREE.Material[];
+      const materials = Array.isArray(material) ? material : [material];
+      for (const entry of materials) {
+        if (entry instanceof THREE.MeshBasicMaterial) entry.map?.dispose();
+        entry.dispose();
+      }
+    }
+  };
+
+  const addFormation = (formation: BoardFormation) => {
+    if (formation.cells.length < 3) return;
+    const first = cellCentre(formation.cells[0]!);
+    const last = cellCentre(formation.cells[formation.cells.length - 1]!);
+    const row = formation.kind === "row";
+    const colour = row ? 0xffd23d : 0xff4d5f;
+
+    // A wide light channel runs through the actual centres of the matching
+    // cells. Depth testing is intentional: the dice interrupt the rail, which
+    // makes it feel embedded in the deck behind them instead of pasted over
+    // their faces. A broad dim bed plus a narrow core gives the line weight
+    // without turning it into a flat highlighter stroke.
+    const centreX = row ? (first.x + last.x) / 2 : first.x;
+    const centreZ = row ? first.z : (first.z + last.z) / 2;
+    const addRailLayer = (thickness: number, opacity: number, height: number) => {
+      const rail = new THREE.Mesh(
+        row
+          ? new THREE.PlaneGeometry(CELL * 2.92, thickness)
+          : new THREE.PlaneGeometry(thickness, CELL * 2.92),
+        new THREE.MeshBasicMaterial({
+          color: colour,
+          transparent: true,
+          opacity,
+          blending: THREE.AdditiveBlending,
+          depthWrite: false,
+          depthTest: true,
+        }),
+      );
+      rail.rotation.x = -Math.PI / 2;
+      rail.position.set(centreX, height, centreZ);
+      rail.renderOrder = 1;
+      formationGroup.add(rail);
+    };
+    addRailLayer(0.46, 0.2, 0.035);
+    addRailLayer(0.18, 0.88, 0.045);
+
+    const badge = new THREE.Mesh(
+      new THREE.PlaneGeometry(1.5, 0.76),
+      new THREE.MeshBasicMaterial({
+        map: formationBadgeTexture(formation.kind, formation.amount, font),
+        transparent: true,
+        depthWrite: false,
+        depthTest: false,
+      }),
+    );
+    badge.rotation.x = -Math.PI / 2;
+    badge.position.set(
+      // The payoff anchors the far end of its rail, clear of the dice. The
+      // number remains screen-facing while the physical rail stays underneath.
+      row ? DECK_SIZE / 2 - 0.25 : first.x,
+      0.14,
+      row ? first.z : DECK_SIZE / 2 - 0.42,
+    );
+    badge.renderOrder = 5;
+    formationGroup.add(badge);
+  };
 
   const board: Board = {
     group,
@@ -185,6 +247,16 @@ export function createBoard(side: BoardSide, font: string): Board {
         bar.visible = wanted.has(cell);
       });
     },
+    setFormations(formations) {
+      const signature = formations
+        .map((formation) => `${formation.kind}:${formation.cells.join(",")}:${formation.amount}`)
+        .sort()
+        .join("|");
+      if (signature === formationSignature) return;
+      formationSignature = signature;
+      clearFormations();
+      for (const formation of formations) addFormation(formation);
+    },
     impact(cell, strength) {
       const centre = cellCentre(cell);
       const mesh = new THREE.Mesh(
@@ -206,8 +278,6 @@ export function createBoard(side: BoardSide, font: string): Board {
     update(dt, _time) {
       // Persistent board state is deliberately steady. Motion is reserved for
       // brief impacts and payouts, never for information the player must read.
-      trimMaterial.opacity = 0.48;
-
       for (let i = lineFlashes.length - 1; i >= 0; i -= 1) {
         const flash = lineFlashes[i]!;
         flash.life -= dt * 0.85;
@@ -243,6 +313,7 @@ export function createBoard(side: BoardSide, font: string): Board {
       }
     },
     dispose() {
+      clearFormations();
       albedo.dispose();
       emissive.dispose();
       group.traverse((object) => {
@@ -263,23 +334,6 @@ export function createBoard(side: BoardSide, font: string): Board {
 
 /* ------------------------------------------------------------------ */
 
-let disc: THREE.CanvasTexture | null = null;
-function softDisc(): THREE.CanvasTexture {
-  if (disc) return disc;
-  const size = 256;
-  const canvas = document.createElement("canvas");
-  canvas.width = canvas.height = size;
-  const ctx = canvas.getContext("2d")!;
-  const gradient = ctx.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
-  gradient.addColorStop(0, "rgba(255,255,255,1)");
-  gradient.addColorStop(0.4, "rgba(255,255,255,0.3)");
-  gradient.addColorStop(1, "rgba(255,255,255,0)");
-  ctx.fillStyle = gradient;
-  ctx.fillRect(0, 0, size, size);
-  disc = new THREE.CanvasTexture(canvas);
-  return disc;
-}
-
 function softBar(horizontal: boolean): THREE.CanvasTexture {
   const size = 128;
   const canvas = document.createElement("canvas");
@@ -294,4 +348,37 @@ function softBar(horizontal: boolean): THREE.CanvasTexture {
   ctx.fillStyle = gradient;
   ctx.fillRect(0, 0, size, size);
   return new THREE.CanvasTexture(canvas);
+}
+
+function formationBadgeTexture(
+  kind: "row" | "col",
+  amount: number,
+  font: string,
+): THREE.CanvasTexture {
+  const canvas = document.createElement("canvas");
+  canvas.width = 384;
+  canvas.height = 192;
+  const ctx = canvas.getContext("2d")!;
+  const colour = kind === "row" ? "#ffd23d" : "#ff5a69";
+
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  // The rail already explains which dice formed the reward. At phone size the
+  // only useful label is the payout itself, so give it nearly the whole badge.
+  ctx.font = `900 132px ${font}`;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.lineJoin = "round";
+  ctx.strokeStyle = "rgba(3,6,13,0.96)";
+  ctx.lineWidth = 22;
+  ctx.strokeText(`+${amount}`, 192, 101);
+  ctx.shadowColor = colour;
+  ctx.shadowBlur = 14;
+  ctx.fillStyle = colour;
+  ctx.fillText(`+${amount}`, 192, 101);
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.minFilter = THREE.LinearFilter;
+  texture.magFilter = THREE.LinearFilter;
+  return texture;
 }

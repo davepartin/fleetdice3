@@ -179,19 +179,17 @@ export function paintDeck(
     ctx.globalAlpha = 1;
   }
 
-  // The border of the play area.
+  // A subtle physical seam around the play area. The emissive version used to
+  // draw a second bright cyan rectangle around the entire mat; at phone crop
+  // it dominated the left, right and bottom edges instead of framing the dice.
   const play = SIZE * PLAY;
   const origin = (SIZE - play) / 2;
-  ctx.strokeStyle = emissive ? palette.rim : "rgba(255,255,255,0.1)";
-  ctx.globalAlpha = emissive ? 0.55 : 1;
-  ctx.lineWidth = emissive ? 4 : 2;
-  if (emissive) {
-    ctx.shadowColor = palette.rim;
-    ctx.shadowBlur = 18;
+  if (!emissive) {
+    ctx.strokeStyle = "rgba(255,255,255,0.08)";
+    ctx.globalAlpha = 1;
+    ctx.lineWidth = 2;
+    ctx.strokeRect(origin - 22, origin - 22, play + 44, play + 44);
   }
-  ctx.strokeRect(origin - 22, origin - 22, play + 44, play + 44);
-  ctx.shadowBlur = 0;
-  ctx.globalAlpha = 1;
 
   // Stencilled markings around the edge.
   ctx.save();
@@ -203,8 +201,6 @@ export function paintDeck(
   ctx.fillText("FLEET DICE III", origin - 20, origin - 46);
   ctx.textAlign = "right";
   ctx.fillText("SECTOR 03", origin + play + 20, origin - 46);
-  ctx.textAlign = "left";
-  ctx.fillText("BUILD THE FLEET · BREAK THE FLAGSHIP", origin - 20, origin + play + 50);
   ctx.restore();
 
   // Hazard stripes in the two spare corners.

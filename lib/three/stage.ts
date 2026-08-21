@@ -575,7 +575,9 @@ export function createStage(canvas: HTMLCanvasElement, initial?: Quality): Stage
 
     for (const callback of callbacks) callback(dt, time);
 
-    // Camera: a resting three-quarter view, breathing, with a little parallax.
+    // Camera movement is opt-in through parallax. Gameplay frames set it to
+    // zero so outlines, highlights and hit targets stay pixel-stable; the
+    // animated home-stage composition may still request a living camera.
     zoom += (zoomTarget - zoom) * Math.min(1, dt * 4.5);
     lookCurrent.lerp(lookTarget, Math.min(1, dt * 4));
     const glide = Math.min(1, dt * 3.2);
@@ -590,7 +592,7 @@ export function createStage(canvas: HTMLCanvasElement, initial?: Quality): Stage
     const height = canvas.clientHeight || window.innerHeight;
     const distance = distanceFor(camera, frameNow, width, height, viewportInsets) * zoom;
     const pitch = (frameNow.pitch * Math.PI) / 180;
-    const breathe = Math.sin(time * 0.32) * 0.1;
+    const breathe = frameNow.parallax > 0 ? Math.sin(time * 0.32) * 0.1 : 0;
     camera.position.set(
       frameNow.target.x + pointer.x * 0.75 * frameNow.parallax,
       frameNow.target.y + Math.sin(pitch) * distance + breathe - pointer.y * 0.5 * frameNow.parallax,

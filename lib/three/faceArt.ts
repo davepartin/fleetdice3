@@ -17,7 +17,7 @@ export const MARK_COLOR: Record<MarkKind, string> = {
   // core and a dark keyline to survive at real iPhone size.
   energy: "#fff06a",
   repair: "#8dffc0",
-  direct: "#eadcff",
+  direct: "#b875ff",
 };
 
 export type FaceSpec = {
@@ -31,8 +31,12 @@ export type FaceSpec = {
 };
 
 const HIT = { ink: "#ffffff", top: "#ff6075", bottom: "#c92342", glow: "#ff7182", deep: "#5e0b1b" };
-/** The flagship's hull. Brass, so it is never mistaken for one of its own ships. */
-const FLAG_BRASS = { top: "#a8842f", bottom: "#463008", deep: "#1c1200" };
+/**
+ * The flagship's outer resin shell. The face inset carries the active bonus
+ * colour; keeping the surrounding hull nearly black makes that inset read as
+ * one rounded die face instead of a yellow tile mounted on a brown box.
+ */
+const FLAG_SHELL = { top: "#171c27", bottom: "#03060c", deep: "#000207" };
 
 /** A cheap repeatable hash, so the resin speckle is identical on every build. */
 function pseudo(n: number): number {
@@ -74,6 +78,7 @@ function paintGlyph(
   size: number,
   mode: "fill" | "stroke",
   strokeWidth = 0,
+  highlight = "#ffffff",
 ) {
   ctx.save();
   ctx.lineJoin = "round";
@@ -91,7 +96,7 @@ function paintGlyph(
 
   // Core, with its own top-lit gradient so the mark has a little form.
   const shine = ctx.createLinearGradient(0, -size * 0.5, 0, size * 0.5);
-  shine.addColorStop(0, "#ffffff");
+  shine.addColorStop(0, highlight);
   shine.addColorStop(0.45, colour);
   shine.addColorStop(1, colour);
   ctx.strokeStyle = shine;
@@ -150,7 +155,7 @@ function drawChevron(ctx: CanvasRenderingContext2D, x: number, y: number, size: 
     ctx.lineTo(x, y - h * 0.5);
     ctx.lineTo(x + w / 2, y + h * 0.5);
   };
-  paintGlyph(ctx, path, colour, size, "stroke", thick);
+  paintGlyph(ctx, path, colour, size, "stroke", thick, "#d7b5ff");
 }
 
 function drawMark(
@@ -180,11 +185,17 @@ function paintFace(
 ) {
   const isFlag = spec.role === "flag";
   const flagPalette = FLAG_FACE_PALETTE[spec.value] ?? FLAG_FACE_PALETTE[1]!;
-  // The flagship is brass, always. Its face colour lives in an inset panel
-  // rather than washing the whole hull, because a blue flagship next to blue
-  // ships stops reading as the flagship at all — which is exactly what it did.
+  // The flagship's face colour lives in an inset panel rather than washing the
+  // whole hull. The black shell frames every bonus colour consistently and
+  // keeps the flagship visually separate from the fleet dice around it.
   const palette = isFlag
-    ? { ink: "#fffdf2", top: FLAG_BRASS.top, bottom: FLAG_BRASS.bottom, glow: flagPalette.fill, deep: FLAG_BRASS.deep }
+    ? {
+        ink: "#fffdf2",
+        top: FLAG_SHELL.top,
+        bottom: FLAG_SHELL.bottom,
+        glow: flagPalette.fill,
+        deep: FLAG_SHELL.deep,
+      }
     : spec.fights === "hits" ? HIT : BLOCK;
   const glow = palette.glow;
   const cx = size / 2;
@@ -214,16 +225,20 @@ function paintFace(
     }
     ctx.restore();
 
-    // One restrained resin highlight gives depth without touching the glyphs.
-    ctx.save();
-    const sheen = ctx.createLinearGradient(0, 0, size, size * 0.7);
-    sheen.addColorStop(0, "rgba(255,255,255,0.4)");
-    sheen.addColorStop(0.3, "rgba(255,255,255,0.14)");
-    sheen.addColorStop(0.42, "rgba(255,255,255,0.03)");
-    sheen.addColorStop(0.43, "rgba(255,255,255,0)");
-    ctx.fillStyle = sheen;
-    ctx.fillRect(0, 0, size, size * 0.62);
-    ctx.restore();
+    // Fleet dice keep a restrained resin highlight. The flagship does not:
+    // its inset panel and black surround already provide the depth cues, and
+    // the diagonal sheen made its top-left corner look misshapen on phones.
+    if (!isFlag) {
+      ctx.save();
+      const sheen = ctx.createLinearGradient(0, 0, size, size * 0.7);
+      sheen.addColorStop(0, "rgba(255,255,255,0.4)");
+      sheen.addColorStop(0.3, "rgba(255,255,255,0.14)");
+      sheen.addColorStop(0.42, "rgba(255,255,255,0.03)");
+      sheen.addColorStop(0.43, "rgba(255,255,255,0)");
+      ctx.fillStyle = sheen;
+      ctx.fillRect(0, 0, size, size * 0.62);
+      ctx.restore();
+    }
 
     // A square inset belongs on the square d6 faces only. Painting it into
     // every atlas cell made the d4/d8 triangles and d10 kites look as though a
@@ -279,8 +294,10 @@ function paintFace(
   }
 
   const hasMarks = spec.marks.length > 0 || Boolean(spec.caption);
-  const numberY = hasMarks ? size * (isFlag ? 0.39 : 0.4) : size * 0.5;
-  const numberSize = hasMarks ? size * (isFlag ? 0.58 : 0.62) : size * 0.69;
+  // Fleet numerals sit lower and leave more air around the triangle tip. Keep
+  // the payoff marks anchored so their spacing does not change with the type.
+  const numberY = hasMarks ? size * (isFlag ? 0.39 : 0.445) : size * (isFlag ? 0.5 : 0.54);
+  const numberSize = hasMarks ? size * (isFlag ? 0.58 : 0.5) : size * (isFlag ? 0.69 : 0.56);
 
   ctx.save();
   ctx.textAlign = "center";
@@ -374,7 +391,11 @@ function paintFace(
         startX + index * gap,
         markY,
         markSize,
-        mode === "albedo" ? MARK_COLOR[kind] : "#ffffff",
+        mode === "albedo"
+          ? MARK_COLOR[kind]
+          : kind === "direct"
+            ? MARK_COLOR.direct
+            : "#ffffff",
       );
     });
     ctx.restore();

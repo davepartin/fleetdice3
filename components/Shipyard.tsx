@@ -35,10 +35,10 @@ import { Button, Chip } from "./ui";
 
 const HULLS: DieSize[] = [4, 6, 8, 10];
 
-/** What a hull is for, in one line, so a price is never just a number. */
+/** What a ship is for, in one line, so a price is never just a number. */
 const HULL_BLURB: Record<DieSize, string> = {
   4: "Cheap and busy. Every face pays a mark.",
-  6: "The all-rounder, and the best hull for straights.",
+  6: "The all-rounder, and the best ship for straights.",
   8: "Hits harder and reaches the bigger marks.",
   10: "The heaviest gun and the most Direct in the game.",
 };
@@ -78,16 +78,29 @@ function HullShape({ sides, tone }: { sides: DieSize; tone: "live" | "ghost" }) 
   );
 }
 
-/** The gold price pill. Red when you cannot afford it — never hidden. */
+/** A cool-blue Energy price. Red when you cannot afford it — never hidden. */
 function Price({ cost, affordable }: { cost: number; affordable: boolean }) {
   return (
     <span
       className={`yard-price ${affordable ? "yard-price-ok" : "yard-price-no"}`}
       aria-label={`${cost} Energy`}
     >
-      <span aria-hidden="true">⚡</span>
+      <svg className="yard-price-icon" viewBox="0 0 16 20" aria-hidden="true">
+        <path d="M9.1 0 1.8 11.1h4.7L5.6 20l8.6-12.3H9.4L9.1 0Z" fill="currentColor" />
+      </svg>
       <span className="t-num">{cost}</span>
     </span>
+  );
+}
+
+function LockIcon() {
+  return (
+    <svg viewBox="0 0 32 38" aria-hidden="true">
+      <path d="M8 16v-5C8 5 11.3 2 16 2s8 3 8 9v5" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" />
+      <rect x="4" y="15" width="24" height="20" rx="5" fill="currentColor" />
+      <circle cx="16" cy="24" r="2.4" fill="#090711" />
+      <path d="M16 25.5v4" stroke="#090711" strokeWidth="2.6" strokeLinecap="round" />
+    </svg>
   );
 }
 
@@ -183,14 +196,6 @@ export function Shipyard({ player, onAction, onDone, busy }: Props) {
     if (offer.kind === "flagship" && offer.cost === null) setSelected(null);
   }, [offers, selected]);
 
-  const cheapestBuy = Math.min(...HULLS.map(priceOf));
-  const anythingAffordable = offers.some((offer) => {
-    if (offer.kind === "ship") return offer.cost !== null && offer.cost <= energy;
-    if (offer.kind === "locked") return offer.cost !== null && offer.cost <= energy;
-    if (offer.kind === "flagship") return offer.cost !== null && offer.cost <= energy;
-    return cheapestBuy <= energy;
-  });
-
   const act = (action: MatchAction) => {
     setSelected(null);
     onAction(action);
@@ -212,7 +217,7 @@ export function Shipyard({ player, onAction, onDone, busy }: Props) {
 
       <div className="yard-stats">
         <Chip>{player.ships.length} ships</Chip>
-        <Chip>{openSlotCount(player)}/8 cells</Chip>
+        <Chip>{openSlotCount(player)}/8 bays</Chip>
         <Chip tone="energy">Flagship L{player.flag.level}</Chip>
       </div>
 
@@ -230,11 +235,6 @@ export function Shipyard({ player, onAction, onDone, busy }: Props) {
         ))}
       </div>
 
-        <p className="yard-hint">
-          {anythingAffordable
-            ? "Tap a cell to spend Energy on it."
-            : "Not enough Energy for anything yet. Take the field and earn some."}
-        </p>
       </div>
 
       {/* ---------------- the drawer ---------------- */}
@@ -252,8 +252,8 @@ export function Shipyard({ player, onAction, onDone, busy }: Props) {
 
       {/* ---------------- out ---------------- */}
       <div className="yard-foot">
-        <Button tone="primary" size="lg" full onClick={onDone} disabled={busy}>
-          Take the field
+        <Button tone="command" size="lg" full onClick={onDone} disabled={busy}>
+          Return to battle
         </Button>
       </div>
     </div>
@@ -299,36 +299,36 @@ function CellButton({
     cost = offer.cost;
     affordable = cost !== null && cost <= energy;
     state = "ship";
-    label = `d${offer.ship.sides}${offer.next ? `, upgrade to d${offer.next}` : ", at maximum"}`;
+    label = `d${offer.ship.sides} ship${offer.next ? `, upgrade to d${offer.next}` : ", at maximum"}`;
     body = (
       <>
         <span className="yard-cell-art">
           <HullShape sides={offer.ship.sides} tone="live" />
         </span>
-        <span className="yard-cell-name">d{offer.ship.sides}</span>
-        <span className="yard-cell-sub yard-cell-sub-plain">{offer.next ? `→ d${offer.next}` : "max hull"}</span>
+        <span className="yard-cell-name">d{offer.ship.sides} ship</span>
+        <span className="yard-cell-sub yard-cell-sub-plain">{offer.next ? `upgrade → d${offer.next}` : "max ship"}</span>
       </>
     );
   } else if (offer.kind === "empty") {
     cost = offer.cheapest;
     affordable = cost <= energy;
     state = "empty";
-    label = "Empty cell";
+    label = "Open bay, add a ship";
     body = (
       <>
         <span className="yard-cell-art yard-cell-empty-art">+</span>
-        <span className="yard-cell-name">Empty</span>
-        <span className="yard-cell-sub">buy a hull</span>
+        <span className="yard-cell-name">Open bay</span>
+        <span className="yard-cell-sub">add a ship</span>
       </>
     );
   } else {
     cost = offer.cost;
     affordable = cost !== null && cost <= energy;
     state = "locked";
-    label = "Locked cell";
+    label = "Locked bay";
     body = (
       <>
-        <span className="yard-cell-art yard-cell-lock">▮</span>
+        <span className="yard-cell-art yard-cell-lock"><LockIcon /></span>
         <span className="yard-cell-name">Locked</span>
         <span className="yard-cell-sub">
           {offer.opensLines.length ? `opens a ${offer.opensLines[0]!.split(" ")[1]}` : "open it"}
@@ -394,12 +394,12 @@ function Drawer({
               faces.
             </p>
             <Button
-              tone="energy"
+              tone="command"
               full
               disabled={busy || cost > energy}
               onClick={() => onAct({ type: "shop", operation: "flagship" })}
             >
-              Level up · {cost}⚡ {cost <= energy ? `· ${after(cost)}` : "· not enough"}
+              Level up · {cost} Energy {cost <= energy ? `· ${after(cost)}` : "· not enough"}
             </Button>
           </>
         )}
@@ -411,9 +411,9 @@ function Drawer({
     const cost = offer.cost;
     return (
       <section className="yard-drawer anim-rise">
-        <DrawerHead title={`d${offer.ship.sides} in cell ${offer.cell + 1}`} onClose={onClose} />
+        <DrawerHead title={`d${offer.ship.sides} ship · bay ${offer.cell + 1}`} onClose={onClose} />
         {offer.next === null || cost === null ? (
-          <p className="yard-copy">A d10 is the biggest hull there is. Nothing left to buy here.</p>
+          <p className="yard-copy">A d10 is the biggest ship there is. Nothing left to buy here.</p>
         ) : (
           <>
             <div className="yard-compare">
@@ -437,12 +437,12 @@ function Drawer({
             </div>
             <p className="yard-copy">{HULL_BLURB[offer.next]}</p>
             <Button
-              tone="energy"
+              tone="command"
               full
               disabled={busy || cost > energy}
               onClick={() => onAct({ type: "shop", operation: "upgrade", shipId: offer.ship.id })}
             >
-              Upgrade · {cost}⚡ {cost <= energy ? `· ${after(cost)}` : "· not enough"}
+              Upgrade · {cost} Energy {cost <= energy ? `· ${after(cost)}` : "· not enough"}
             </Button>
           </>
         )}
@@ -453,7 +453,7 @@ function Drawer({
   if (offer.kind === "empty") {
     return (
       <section className="yard-drawer anim-rise">
-        <DrawerHead title={`Empty cell ${offer.cell + 1}`} onClose={onClose} />
+        <DrawerHead title={`Open bay ${offer.cell + 1}`} onClose={onClose} />
         <div className="yard-hulls">
           {HULLS.map((sides) => {
             const cost = priceOf(sides);
@@ -485,7 +485,7 @@ function Drawer({
   const cost = offer.cost;
   return (
     <section className="yard-drawer anim-rise">
-      <DrawerHead title={`Locked cell ${offer.cell + 1}`} onClose={onClose} />
+      <DrawerHead title={`Locked bay ${offer.cell + 1}`} onClose={onClose} />
       <p className="yard-copy">
         Opening a cell gives you somewhere to park another ship.
         {offer.opensLines.length > 0 && (
@@ -502,12 +502,12 @@ function Drawer({
         <p className="yard-copy">Every cell is already open.</p>
       ) : (
         <Button
-          tone="confirm"
+          tone="command"
           full
           disabled={busy || cost > energy}
           onClick={() => onAct({ type: "shop", operation: "slot", slotIndex: offer.slot })}
         >
-          Open this cell · {cost}⚡ {cost <= energy ? `· ${after(cost)}` : "· not enough"}
+          Open this bay · {cost} Energy {cost <= energy ? `· ${after(cost)}` : "· not enough"}
         </Button>
       )}
     </section>

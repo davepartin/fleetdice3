@@ -84,11 +84,11 @@ function sharedFor(kind: DieKind, font: string): Shared {
     // has nothing to reflect. Low metalness plus a hard clearcoat gives the
     // polished-resin look these want, and keeps red reading red.
     metalness: 0.04,
-    roughness: 0.34,
-    clearcoat: 1,
-    clearcoatRoughness: 0.12,
-    reflectivity: 0.5,
-    envMapIntensity: 1.15,
+    roughness: kind === "flag" ? 0.5 : 0.34,
+    clearcoat: kind === "flag" ? 0.45 : 1,
+    clearcoatRoughness: kind === "flag" ? 0.34 : 0.12,
+    reflectivity: kind === "flag" ? 0.28 : 0.5,
+    envMapIntensity: kind === "flag" ? 0.62 : 1.15,
   });
 
   // A slightly larger shell drawn from the inside gives a clean dark rim, which
@@ -173,17 +173,17 @@ export type ThrowOptions = {
  * off the deck.
  */
 const FACE_LEAN = 0.66;
-// Match the solo command camera's 70 degree pitch. When the resolved face is
+// Match the solo command camera's near-overhead pitch. When the resolved face is
 // square to the lens, neighbouring facets do not leak into the information
 // face and the number/marks receive the maximum possible phone pixels.
-const PHONE_FACE_LEAN = 1.22;
+const PHONE_FACE_LEAN = 1.535;
 
 export function createDie(kind: DieKind, font: string, scale = 1, cellSize = 0): Die {
   const shared = sharedFor(kind, font);
   const sides = kind === "flag" ? 6 : kind;
-  // Solo phone dice are deliberately oversized (scale 1.52) and viewed from a
-  // steeper command camera. Aim their resolved face farther upward as well so
-  // the number and payoff marks stay square to the player's eye.
+  // Solo phone dice are deliberately oversized and viewed from a near-overhead
+  // command camera. Aim their resolved face upward as well so the number and
+  // payoff marks stay square to the player's eye.
   const faceLean = scale >= 1.45 ? PHONE_FACE_LEAN : FACE_LEAN;
   const lean = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), -faceLean);
 
@@ -292,18 +292,37 @@ export function createDie(kind: DieKind, font: string, scale = 1, cellSize = 0):
   /** Picked for a reroll. */
   const selectionMaterial = new THREE.MeshBasicMaterial({
     map: squareTexture("outline"),
-    color: 0x69dcff,
+    color: 0x69e6ff,
     transparent: true,
     opacity: 0,
     depthWrite: false,
     side: THREE.DoubleSide,
   });
+  const selectionFillMaterial = new THREE.MeshBasicMaterial({
+    map: squareTexture("fill"),
+    color: 0x37cfff,
+    transparent: true,
+    opacity: 0,
+    depthWrite: false,
+    side: THREE.DoubleSide,
+    blending: THREE.AdditiveBlending,
+  });
+  const selectionScale = kind === "flag" ? 1.17 : 0.98;
+  const selectionFill = new THREE.Mesh(
+    new THREE.PlaneGeometry(markerSize * selectionScale, markerSize * selectionScale),
+    selectionFillMaterial,
+  );
+  selectionFill.rotation.x = -Math.PI / 2;
+  selectionFill.position.y = -shared.built.seatHeight + 0.075 / Math.max(0.001, scale);
+  selectionFill.renderOrder = 0;
+  object.add(selectionFill);
   const selectionSquare = new THREE.Mesh(
-    new THREE.PlaneGeometry(markerSize * 0.98, markerSize * 0.98),
+    new THREE.PlaneGeometry(markerSize * selectionScale, markerSize * selectionScale),
     selectionMaterial,
   );
   selectionSquare.rotation.x = -Math.PI / 2;
-  selectionSquare.position.y = -shared.built.seatHeight + 0.08 / Math.max(0.001, scale);
+  selectionSquare.position.y = -shared.built.seatHeight + 0.09 / Math.max(0.001, scale);
+  selectionSquare.renderOrder = 1;
   object.add(selectionSquare);
 
   /** This ship will take the hit. */
@@ -392,7 +411,7 @@ export function createDie(kind: DieKind, font: string, scale = 1, cellSize = 0):
       material.metalness = 0.02;
       glowMaterial.opacity = 0;
     } else {
-      material.roughness = 0.34;
+      material.roughness = kind === "flag" ? 0.5 : 0.34;
       material.metalness = 0.04;
       material.emissiveIntensity = state.selected
         ? kind === "flag" ? 0.07 : 0.2
@@ -401,7 +420,11 @@ export function createDie(kind: DieKind, font: string, scale = 1, cellSize = 0):
           : kind === "flag" ? 0.04 : 0.14;
       glowMaterial.opacity = state.selected ? 0.3 : 0;
     }
-    selectionMaterial.opacity = !state.disabled && state.selected && !state.damageSelected ? 0.95 : 0;
+    const rerollSelected = !state.disabled && state.selected && !state.damageSelected;
+    selectionMaterial.opacity = rerollSelected ? 1 : 0;
+    // The black flagship shell covers more of its cell than a triangular hull,
+    // so it gets a larger steady cyan plate as well as the same outline.
+    selectionFillMaterial.opacity = rerollSelected ? kind === "flag" ? 0.4 : 0.08 : 0;
     damageMaterial.opacity = !state.disabled && state.damageSelected ? 0.94 : 0;
     for (const damageBar of damageBars) {
       (damageBar.material as THREE.MeshBasicMaterial).opacity = damageMaterial.opacity;
@@ -553,6 +576,8 @@ export function createDie(kind: DieKind, font: string, scale = 1, cellSize = 0):
       link.geometry.dispose();
       selectionMaterial.dispose();
       selectionSquare.geometry.dispose();
+      selectionFillMaterial.dispose();
+      selectionFill.geometry.dispose();
       damageMaterial.dispose();
       damageSquare.geometry.dispose();
       for (const damageBar of damageBars) {

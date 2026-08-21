@@ -283,6 +283,27 @@ function freshMatch(seed = 7) {
   return state;
 }
 
+test("the Solo Enemy waits for To the Shipyard before starting its next round", () => {
+  const state = newMatch("solo-test", "0000", "you", "You", "solo");
+  state.players.guest = newPlayer("enemy", "Enemy", "report");
+  state.players.host.phase = "report";
+  state.status = "active";
+  const brain = newBrain("balanced", "captain");
+
+  assert.deepEqual(
+    nextActions(state, "guest", brain),
+    [],
+    "Enemy must remain on its report while the human is still watching theirs",
+  );
+
+  state.players.host.phase = "shop";
+  assert.deepEqual(
+    nextActions(state, "guest", brain),
+    [{ type: "continue" }],
+    "entering the Shipyard hands the next turn back to the Enemy",
+  );
+});
+
 test("the round report adds up, every round, in a real match", () => {
   const state = freshMatch(11);
   const brains = { host: newBrain("balanced", "captain"), guest: newBrain("width", "captain") };
