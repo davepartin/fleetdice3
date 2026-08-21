@@ -329,9 +329,9 @@ const QUALITY_SETTINGS: Record<
   // A low effects tier must not also mean low-resolution game information.
   // Safari commonly chooses medium and has a 3× display; the old 1.4 cap was
   // then enlarged by iOS and made every face look soft in a real screenshot.
-  low: { dpr: 1.75, bloom: 0, shadows: false, grade: false, stars: true, nebula: false },
-  medium: { dpr: 2, bloom: 0.13, shadows: true, grade: true, stars: true, nebula: true },
-  high: { dpr: 2.5, bloom: 0.18, shadows: true, grade: true, stars: true, nebula: true },
+  low: { dpr: 2, bloom: 0, shadows: false, grade: false, stars: true, nebula: false },
+  medium: { dpr: 2.5, bloom: 0.13, shadows: true, grade: true, stars: true, nebula: true },
+  high: { dpr: 3, bloom: 0.18, shadows: true, grade: true, stars: true, nebula: true },
 };
 
 /** Where the camera rests when nothing dramatic is happening. */

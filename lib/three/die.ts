@@ -173,11 +173,16 @@ export type ThrowOptions = {
  * off the deck.
  */
 const FACE_LEAN = 0.66;
+const PHONE_FACE_LEAN = 0.96;
 
 export function createDie(kind: DieKind, font: string, scale = 1): Die {
   const shared = sharedFor(kind, font);
   const sides = kind === "flag" ? 6 : kind;
-  const lean = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), -FACE_LEAN);
+  // Solo phone dice are deliberately oversized (scale 1.52) and viewed from a
+  // steeper command camera. Aim their resolved face farther upward as well so
+  // the number and payoff marks stay square to the player's eye.
+  const faceLean = scale >= 1.45 ? PHONE_FACE_LEAN : FACE_LEAN;
+  const lean = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), -faceLean);
 
   const object = new THREE.Group();
   const pivot = new THREE.Group();
@@ -257,7 +262,7 @@ export function createDie(kind: DieKind, font: string, scale = 1): Die {
     side: THREE.DoubleSide,
   });
   const ring = new THREE.Mesh(
-    new THREE.RingGeometry(shared.built.radius * 1.05, shared.built.radius * 1.2, 48),
+    new THREE.RingGeometry(shared.built.radius * 1.05, shared.built.radius * 1.2, 72),
     ringMaterial,
   );
   ring.rotation.x = -Math.PI / 2;
@@ -275,8 +280,13 @@ export function createDie(kind: DieKind, font: string, scale = 1): Die {
     depthWrite: false,
     side: THREE.DoubleSide,
   });
+  // The cube's circumscribed radius reaches its corners, so using it directly
+  // made the flagship selection ring spill through three neighbouring cells.
+  // A footprint radius hugs the square body while keeping the shared marker
+  // language used by every other die.
+  const selectionRadius = kind === "flag" ? shared.built.radius * 0.65 : shared.built.radius;
   const selectionRing = new THREE.Mesh(
-    new THREE.RingGeometry(shared.built.radius * 1.28, shared.built.radius * 1.35, 48),
+    new THREE.RingGeometry(selectionRadius * 1.18, selectionRadius * 1.27, 72),
     selectionMaterial,
   );
   selectionRing.rotation.x = -Math.PI / 2;
@@ -294,7 +304,7 @@ export function createDie(kind: DieKind, font: string, scale = 1): Die {
     side: THREE.DoubleSide,
   });
   const damageRing = new THREE.Mesh(
-    new THREE.RingGeometry(shared.built.radius * 1.18, shared.built.radius * 1.38, 48),
+    new THREE.RingGeometry(shared.built.radius * 1.18, shared.built.radius * 1.38, 72),
     damageMaterial,
   );
   damageRing.rotation.x = -Math.PI / 2;
