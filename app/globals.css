@@ -533,6 +533,10 @@ button {
   display: none;
 }
 
+.match-desktop-utilities .match-cancel-game {
+  color: var(--color-attack-glow);
+}
+
 .tally-cell {
   border: 1px solid rgb(255 255 255 / 0.08);
   border-radius: 12px;
@@ -645,7 +649,7 @@ button {
     top: calc(100% + 0.4rem);
     right: 0;
     z-index: 40;
-    width: 148px;
+    width: 168px;
     overflow: hidden;
     padding: 0.3rem;
   }
@@ -661,6 +665,9 @@ button {
     font-size: 0.8rem;
     font-weight: 700;
     text-align: left;
+  }
+  .match-mobile-menu-popover .match-cancel-game {
+    color: var(--color-attack-glow);
   }
 
   .match-hud-solo .match-bottom {

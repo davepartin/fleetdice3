@@ -27,7 +27,7 @@ import type { MatchController } from "@/lib/useMatch";
 import { createArena, type Arena, type Focus } from "@/lib/three/arena";
 import { waitForFonts } from "@/lib/three/fonts";
 import { audio } from "@/lib/audio";
-import { Button, Chip, HealthBar, Notice, Stat, Ticker } from "./ui";
+import { Button, Chip, HealthBar, Notice, Sheet, Stat, Ticker } from "./ui";
 import { HowToPlaySheet } from "./HowToPlay";
 import { Shipyard } from "./Shipyard";
 import { RoundReportCard } from "./RoundReport";
@@ -48,6 +48,7 @@ export function MatchScreen({ controller, onExit, title, subtitle }: Props) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [braceShips, setBraceShips] = useState<Set<string>>(new Set());
   const [helpOpen, setHelpOpen] = useState(false);
+  const [confirmCancel, setConfirmCancel] = useState(false);
   const [muted, setMuted] = useState(false);
   const [shake, setShake] = useState(false);
   /**
@@ -60,7 +61,7 @@ export function MatchScreen({ controller, onExit, title, subtitle }: Props) {
   /** Dice the player just sent back, so they animate even on the same number. */
   const thrownRef = useRef<Set<string>>(new Set());
 
-  const { state, you, them, act, busy, error, clearError, waitingOnEnemy } = controller;
+  const { state, you, them, act, busy, error, clearError, waitingOnEnemy, cancel } = controller;
   const phase = you?.phase ?? "waiting";
   const tally = useMemo(
     () => (you && you.dice.length ? previewTally(you) : null),
@@ -301,6 +302,7 @@ export function MatchScreen({ controller, onExit, title, subtitle }: Props) {
   useEffect(() => {
     if (state?.status !== "finished" || finishedRef.current) return;
     finishedRef.current = true;
+    if (state?.cancelledBy) return;
     const arena = arenaRef.current;
     const won = state.winner === controller.side;
     audio.play(won ? "victory" : "defeat");
@@ -310,7 +312,7 @@ export function MatchScreen({ controller, onExit, title, subtitle }: Props) {
       arena.stage.shake(1.3);
       arena.stage.flash(won ? 0x45e08b : 0xff4d4d, 0.6);
     }
-  }, [state?.status, state?.winner, controller.side]);
+  }, [state?.status, state?.winner, state?.cancelledBy, controller.side]);
 
   /* --------------------------------------------------------------- */
   /* Actions                                                          */
@@ -427,6 +429,18 @@ export function MatchScreen({ controller, onExit, title, subtitle }: Props) {
             >
               <SoundIcon muted={muted} />
             </Button>
+            {cancel && state.status !== "finished" && (
+              <Button
+                tone="ghost"
+                size="sm"
+                className="match-cancel-game"
+                ariaLabel="Cancel game"
+                onClick={() => setConfirmCancel(true)}
+                disabled={busy}
+              >
+                Cancel game
+              </Button>
+            )}
           </div>
 
           <details className="match-mobile-menu">
@@ -443,6 +457,20 @@ export function MatchScreen({ controller, onExit, title, subtitle }: Props) {
                 <SoundIcon muted={muted} />
                 {muted ? "Sound off" : "Sound on"}
               </button>
+              {cancel && state.status !== "finished" && (
+                <button
+                  type="button"
+                  className="match-cancel-game"
+                  disabled={busy}
+                  onClick={(event) => {
+                    const menu = event.currentTarget.closest("details");
+                    if (menu) menu.open = false;
+                    setConfirmCancel(true);
+                  }}
+                >
+                  Cancel game
+                </button>
+              )}
             </div>
           </details>
           </header>
@@ -524,6 +552,8 @@ export function MatchScreen({ controller, onExit, title, subtitle }: Props) {
             <ResultDock
               won={state.winner === controller.side}
               draw={state.winner === "draw"}
+              cancelledBy={state.cancelledBy ?? null}
+              youCancelled={Boolean(state.cancelledBy && you.name === state.cancelledBy)}
               you={you}
               enemyName={enemyName}
               onExit={onExit}
@@ -558,6 +588,34 @@ export function MatchScreen({ controller, onExit, title, subtitle }: Props) {
       </div>
 
       <HowToPlaySheet open={helpOpen} onClose={() => setHelpOpen(false)} />
+      <Sheet
+        open={confirmCancel}
+        onClose={() => setConfirmCancel(false)}
+        title="Cancel this game?"
+        footer={
+          <div className="flex flex-col gap-2">
+            <Button tone="ghost" full onClick={() => setConfirmCancel(false)}>
+              Keep playing
+            </Button>
+            <Button
+              tone="primary"
+              full
+              disabled={busy}
+              onClick={() => {
+                setConfirmCancel(false);
+                cancel?.();
+              }}
+            >
+              Cancel game
+            </Button>
+          </div>
+        }
+      >
+        <p className="text-[0.94rem] leading-relaxed text-[--color-hull-200]">
+          This ends it for both of you. The four-digit code dies, and neither of you can come back
+          to this battle.
+        </p>
+      </Sheet>
     </>
   );
 }
@@ -948,6 +1006,8 @@ function BraceDock({
 function ResultDock({
   won,
   draw,
+  cancelledBy,
+  youCancelled,
   you,
   enemyName,
   onExit,
@@ -955,17 +1015,30 @@ function ResultDock({
 }: {
   won: boolean;
   draw: boolean;
+  cancelledBy?: string | null;
+  youCancelled?: boolean;
   you: PlayerState;
   enemyName: string;
   onExit(): void;
   onRestart?(): void;
 }) {
+  const cancelled = Boolean(cancelledBy);
   return (
     <div className="panel panel-you anim-rise flex flex-col gap-3 p-5">
       <div className="text-center">
-        <p className="t-eyebrow">{draw ? "Both flagships fell" : won ? "Victory" : "Defeat"}</p>
-        <h2 className={`t-display text-4xl ${won ? "c-repair" : draw ? "text-white" : "c-attack"}`}>
-          {draw ? "A draw" : won ? `You beat ${enemyName}` : `${enemyName} wins`}
+        <p className="t-eyebrow">
+          {cancelled ? "Game cancelled" : draw ? "Both flagships fell" : won ? "Victory" : "Defeat"}
+        </p>
+        <h2 className={`t-display text-4xl ${cancelled ? "text-white" : won ? "c-repair" : draw ? "text-white" : "c-attack"}`}>
+          {cancelled
+            ? youCancelled
+              ? "You ended the game"
+              : `${cancelledBy} ended the game`
+            : draw
+              ? "A draw"
+              : won
+                ? `You beat ${enemyName}`
+                : `${enemyName} wins`}
         </h2>
       </div>
 
@@ -980,7 +1053,7 @@ function ResultDock({
         <Button tone="ghost" size="lg" full onClick={onExit}>
           Home
         </Button>
-        {onRestart && (
+        {onRestart && !cancelled && (
           <Button tone="primary" size="lg" full onClick={onRestart}>
             Again
           </Button>
