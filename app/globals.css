@@ -592,16 +592,15 @@ button {
   list-style-position: inside;
 }
 
-.round-report-disclosure > summary {
+.round-report-disclosure-button {
+  display: none;
+  width: 100%;
   cursor: pointer;
 }
 
 @media (min-width: 641px) {
-  .round-report-disclosure > summary {
-    display: none;
-  }
-  .round-report-disclosure > :not(summary) {
-    display: block !important;
+  .round-report-details-body {
+    display: block;
   }
 }
 
@@ -817,10 +816,13 @@ button {
 
   .match-hud-solo .round-report-panel {
     max-height: calc(270px + var(--hud-safe-bottom));
+    overflow: hidden;
     padding: 0.7rem;
   }
   .match-hud-solo .round-report {
+    min-height: 0;
     gap: 0.5rem;
+    overflow: hidden;
   }
   .match-hud-solo .round-report > div:first-child h2 {
     font-size: 1.35rem;
@@ -841,12 +843,14 @@ button {
     height: 8px;
   }
   .match-hud-solo .round-report-disclosure {
+    display: flex;
     flex: 0 0 auto;
-    overflow: hidden;
+    flex-direction: column;
+    min-height: 0;
   }
   .match-hud-solo .round-report-disclosure-button {
     display: flex;
-    min-height: 36px;
+    min-height: 44px;
     align-items: center;
     justify-content: space-between;
     border: 1px solid rgb(255 255 255 / 0.12);
@@ -857,11 +861,7 @@ button {
     font-size: 0.68rem;
     font-weight: 800;
     letter-spacing: 0.12em;
-    list-style: none;
     text-transform: uppercase;
-  }
-  .match-hud-solo .round-report-disclosure-button::-webkit-details-marker {
-    display: none;
   }
   .match-hud-solo .round-report-disclosure-button::after {
     content: "+";
@@ -870,26 +870,40 @@ button {
     font-size: 1rem;
     line-height: 1;
   }
-  .match-hud-solo .round-report-disclosure[open] > .round-report-disclosure-button::after {
+  .match-hud-solo .round-report.is-open .round-report-disclosure-button::after {
     content: "−";
   }
-  .match-hud-solo .round-report-panel:has(.round-report-disclosure[open]) {
+  .match-hud-solo .round-report:not(.is-open) .round-report-details-body {
+    display: none;
+  }
+  /* Phone Safari will not scroll a <details> flex child. The open report uses
+     ordinary divs, and height:0 + flex-grow gives the list a real scrollport. */
+  .match-hud-solo .round-report-panel:has(.round-report.is-open) {
     height: min(74dvh, 650px);
     max-height: min(74dvh, 650px);
   }
-  .match-hud-solo .round-report-disclosure[open] {
-    display: flex;
-    min-height: 0;
+  .match-hud-solo .round-report.is-open .round-report-disclosure {
     flex: 1 1 auto;
-    flex-direction: column;
+    min-height: 0;
     overflow: hidden;
   }
-  .match-hud-solo .round-report-disclosure[open] > :not(summary) {
+  .match-hud-solo .round-report.is-open .round-report-details-body {
+    display: block;
+    position: relative;
+    z-index: 2;
+    height: 0;
     min-height: 0;
     flex: 1 1 auto;
-    overflow-y: auto;
+    padding: 0.15rem 0.15rem 0.65rem;
+    overflow-x: hidden;
+    overflow-y: scroll;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-y;
+    pointer-events: auto;
   }
   .match-hud-solo .round-report .btn-lg {
+    flex: 0 0 auto;
     min-height: 56px;
     padding: 0.75rem 0.8rem;
     font-size: 0.92rem;

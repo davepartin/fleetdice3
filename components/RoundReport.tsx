@@ -8,6 +8,7 @@
  * laid out rather than summarised.
  */
 
+import { useState } from "react";
 import type { PlayerState, RoundReport as Report } from "@/lib/engine";
 import { Button, HealthBar, Rule, Stat, Ticker } from "./ui";
 
@@ -56,9 +57,10 @@ export function RoundReportCard({
 
   const took = report.damage;
   const blocked = Math.max(0, (enemy?.attack ?? 0) + report.escalation - report.incoming);
+  const [detailsOpen, setDetailsOpen] = useState(false);
 
   return (
-    <div className="round-report flex min-h-0 flex-1 flex-col gap-3">
+    <div className={`round-report flex min-h-0 flex-1 flex-col gap-3 ${detailsOpen ? "is-open" : ""}`}>
       <div className="flex items-baseline justify-between">
         <div>
           <p className="t-eyebrow">Round {report.round}</p>
@@ -83,9 +85,16 @@ export function RoundReportCard({
         </div>
       </div>
 
-      <details className="round-report-disclosure min-h-0">
-        <summary className="round-report-disclosure-button">Battle details</summary>
-        <div className="scroll-y fade-edges -mx-1 min-h-0 flex-1 px-1">
+      <div className="round-report-disclosure min-h-0">
+        <button
+          type="button"
+          className="round-report-disclosure-button"
+          aria-expanded={detailsOpen}
+          onClick={() => setDetailsOpen((open) => !open)}
+        >
+          Battle details
+        </button>
+        <div className="round-report-details-body">
         {/* What you fired */}
         <section className="panel panel-you panel-flush p-3.5">
           <p className="t-eyebrow mb-1">Your volley</p>
@@ -175,7 +184,7 @@ export function RoundReportCard({
           )}
         </section>
         </div>
-      </details>
+      </div>
 
       <Button tone="primary" size="lg" full onClick={onContinue} disabled={busy}>
         {survived ? "To the shipyard" : "See the result"}

@@ -497,7 +497,7 @@ export function MatchScreen({ controller, onExit, title, subtitle }: Props) {
               />
             </div>
           ) : phase === "report" && you.report ? (
-            <div className="round-report-panel panel panel-you flex max-h-[74dvh] flex-col p-4">
+            <div className="round-report-panel panel panel-you flex max-h-[74dvh] min-h-0 flex-col overflow-hidden p-4">
               <RoundReportCard
                 report={you.report}
                 you={you}
