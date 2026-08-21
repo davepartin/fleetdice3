@@ -1,40 +1,162 @@
 "use client";
 
 /**
- * Between rounds. Buy hulls, upgrade what you have, open a cell, level the
- * flagship — then go back out.
+ * The shipyard. Between rounds, this is the whole screen.
  *
- * Every price is read from the engine, and every button says what it costs and
- * what it gives you before you press it. Nothing here is a surprise.
+ * The design rule here is one sentence: **the shipyard is the board.** You are
+ * spending Energy on nine specific squares, so you should be looking at those
+ * nine squares, with the price written on each one. The version this replaces
+ * showed a list of buttons above a tiny grid of the words "locked" and "d4",
+ * with no price visible anywhere until you had already tapped something.
+ *
+ * Tap a cell, then confirm. Every cell says what it is, what it would cost, and
+ * whether you can afford it, before you touch anything.
  */
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   type DieSize,
   type MatchAction,
   type PlayerState,
+  type Ship,
   TUNING,
   cellForSlot,
-  emptyOpenSlots,
   flagshipUpgradeCost,
+  flagBonusSize,
   nextSlotCost,
   openSlotCount,
   priceOf,
   shipInSlot,
+  slotForCell,
   upgradeCost,
   upgradeTarget,
 } from "@/lib/engine";
-import { Button, Chip, Notice, Rule, Stat } from "./ui";
+import { Button, Chip } from "./ui";
 
 const HULLS: DieSize[] = [4, 6, 8, 10];
 
 /** What a hull is for, in one line, so a price is never just a number. */
 const HULL_BLURB: Record<DieSize, string> = {
   4: "Cheap and busy. Every face pays a mark.",
-  6: "The all-rounder. Best hull for straights.",
-  8: "Hits harder and starts reaching the high marks.",
-  10: "Heaviest gun and the most Direct in the game.",
+  6: "The all-rounder, and the best hull for straights.",
+  8: "Hits harder and reaches the bigger marks.",
+  10: "The heaviest gun and the most Direct in the game.",
 };
+
+const HULL_FACES: Record<DieSize, string> = {
+  4: "rolls 1–4",
+  6: "rolls 1–6",
+  8: "rolls 1–8",
+  10: "rolls 1–10",
+};
+
+/* ------------------------------------------------------------------ */
+/* Hull art                                                            */
+/* ------------------------------------------------------------------ */
+
+/**
+ * The four hull silhouettes, the same shapes the dice have on the board: a d4
+ * is a triangle, a d6 a square, a d8 a diamond, a d10 a pentagon. Recognising
+ * the shape is most of how you read your own fleet at a glance.
+ */
+function HullShape({ sides, tone }: { sides: DieSize; tone: "live" | "ghost" }) {
+  const stroke = tone === "live" ? "rgba(255,255,255,0.85)" : "rgba(255,255,255,0.3)";
+  const fill =
+    tone === "live"
+      ? { 4: "#3b5a86", 6: "#3f6ba8", 8: "#5a5aa8", 10: "#7d51a0" }[sides]
+      : "rgba(255,255,255,0.05)";
+  const paths: Record<DieSize, string> = {
+    4: "M32 8 L57 52 L7 52 Z",
+    6: "M10 12 h44 a2 2 0 0 1 2 2 v36 a2 2 0 0 1 -2 2 h-44 a2 2 0 0 1 -2 -2 v-36 a2 2 0 0 1 2 -2 z",
+    8: "M32 6 L56 32 L32 58 L8 32 Z",
+    10: "M32 6 L57 24 L47 55 L17 55 L7 24 Z",
+  };
+  return (
+    <svg viewBox="0 0 64 64" className="h-full w-full" aria-hidden="true">
+      <path d={paths[sides]} fill={fill} stroke={stroke} strokeWidth="2.5" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+/** The gold price pill. Red when you cannot afford it — never hidden. */
+function Price({ cost, affordable }: { cost: number; affordable: boolean }) {
+  return (
+    <span
+      className={`yard-price ${affordable ? "yard-price-ok" : "yard-price-no"}`}
+      aria-label={`${cost} Energy`}
+    >
+      <span aria-hidden="true">⚡</span>
+      <span className="t-num">{cost}</span>
+    </span>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Working out what each cell offers                                   */
+/* ------------------------------------------------------------------ */
+
+type CellOffer =
+  | { kind: "flagship"; cell: 4; level: number; cost: number | null }
+  | { kind: "ship"; cell: number; slot: number; ship: Ship; next: DieSize | null; cost: number | null }
+  | { kind: "empty"; cell: number; slot: number; cheapest: number }
+  | { kind: "locked"; cell: number; slot: number; cost: number | null; opensLines: string[] };
+
+const ROWS = [
+  [0, 1, 2],
+  [3, 4, 5],
+  [6, 7, 8],
+];
+const COLS = [
+  [0, 3, 6],
+  [1, 4, 7],
+  [2, 5, 8],
+];
+
+function cellIsOpen(player: PlayerState, cell: number): boolean {
+  if (cell === 4) return true;
+  const slot = slotForCell(cell);
+  return slot === null ? false : Boolean(player.open[slot]);
+}
+
+/**
+ * Which lines opening this cell would complete.
+ *
+ * This is the one piece of strategy the game has never told anyone: a corner
+ * does not just add a ship, it can finish a row or a column, and those pay
+ * 5 Energy and 10 Attack. Saying so on the cell itself is the cheapest way to
+ * teach it.
+ */
+function linesOpenedBy(player: PlayerState, cell: number): string[] {
+  const out: string[] = [];
+  const openAfter = (other: number) => other === cell || cellIsOpen(player, other);
+  ROWS.forEach((line, index) => {
+    if (line.includes(cell) && line.every(openAfter)) {
+      out.push(`${["top", "middle", "bottom"][index]} row`);
+    }
+  });
+  COLS.forEach((line, index) => {
+    if (line.includes(cell) && line.every(openAfter)) {
+      out.push(`${["left", "middle", "right"][index]} column`);
+    }
+  });
+  return out;
+}
+
+function offerFor(player: PlayerState, cell: number): CellOffer {
+  if (cell === 4) {
+    return { kind: "flagship", cell: 4, level: player.flag.level, cost: flagshipUpgradeCost(player.flag.level) };
+  }
+  const slot = slotForCell(cell)!;
+  if (!player.open[slot]) {
+    return { kind: "locked", cell, slot, cost: nextSlotCost(player), opensLines: linesOpenedBy(player, cell) };
+  }
+  const ship = shipInSlot(player, slot);
+  if (!ship) return { kind: "empty", cell, slot, cheapest: priceOf(4) };
+  const next = upgradeTarget(ship.sides);
+  return { kind: "ship", cell, slot, ship, next, cost: next ? upgradeCost(ship.sides) : null };
+}
+
+/* ------------------------------------------------------------------ */
 
 type Props = {
   player: PlayerState;
@@ -44,324 +166,366 @@ type Props = {
 };
 
 export function Shipyard({ player, onAction, onDone, busy }: Props) {
-  const [pickingFor, setPickingFor] = useState<DieSize | "slot" | null>(null);
+  const [selected, setSelected] = useState<number | null>(null);
   const energy = player.energy;
-  const empties = emptyOpenSlots(player);
-  const slotCost = nextSlotCost(player);
-  const flagCost = flagshipUpgradeCost(player.flag.level);
-  const opened = openSlotCount(player);
 
-  const lockedSlots = player.open
-    .map((open, slot) => ({ open, slot }))
-    .filter((entry) => !entry.open)
-    .map((entry) => entry.slot);
+  const offers = useMemo(
+    () => Array.from({ length: 9 }, (_, cell) => offerFor(player, cell)),
+    [player],
+  );
 
-  function buy(sides: DieSize) {
-    if (empties.length === 1) {
-      onAction({ type: "shop", operation: "buy", sides, slotIndex: empties[0]! });
-      return;
-    }
-    setPickingFor(sides);
-  }
+  // A cell that has just been bought is no longer the same offer, so drop the
+  // selection rather than leaving a stale drawer open under the player's thumb.
+  useEffect(() => {
+    if (selected === null) return;
+    const offer = offers[selected]!;
+    if (offer.kind === "ship" && !offer.next) setSelected(null);
+    if (offer.kind === "flagship" && offer.cost === null) setSelected(null);
+  }, [offers, selected]);
 
-  function openCell() {
-    if (lockedSlots.length === 1) {
-      onAction({ type: "shop", operation: "slot", slotIndex: lockedSlots[0]! });
-      return;
-    }
-    setPickingFor("slot");
-  }
+  const cheapestBuy = Math.min(...HULLS.map(priceOf));
+  const anythingAffordable = offers.some((offer) => {
+    if (offer.kind === "ship") return offer.cost !== null && offer.cost <= energy;
+    if (offer.kind === "locked") return offer.cost !== null && offer.cost <= energy;
+    if (offer.kind === "flagship") return offer.cost !== null && offer.cost <= energy;
+    return cheapestBuy <= energy;
+  });
 
-  function chooseSlot(slot: number) {
-    if (pickingFor === "slot") {
-      onAction({ type: "shop", operation: "slot", slotIndex: slot });
-    } else if (pickingFor) {
-      onAction({ type: "shop", operation: "buy", sides: pickingFor, slotIndex: slot });
-    }
-    setPickingFor(null);
-  }
-
-  const pickable = pickingFor === "slot" ? lockedSlots : pickingFor ? empties : [];
+  const act = (action: MatchAction) => {
+    setSelected(null);
+    onAction(action);
+  };
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-3">
-      <div className="shipyard-header flex items-center justify-between gap-3">
+    <div className="yard">
+      {/* ---------------- header ---------------- */}
+      <header className="yard-head">
         <div>
-          <p className="t-eyebrow">Shipyard</p>
-          <h2 className="t-display text-2xl">Build for round {player.round}</h2>
+          <p className="t-eyebrow">Round {player.round}</p>
+          <h2 className="t-display text-3xl leading-none">Shipyard</h2>
         </div>
-        <div className="flex items-center gap-2">
-          <Stat kind="energy" value={energy} label="in the bank" />
+        <div className="yard-bank">
+          <span className="yard-bank-value t-num c-energy">{energy}</span>
+          <span className="t-eyebrow text-[0.55rem]">in the bank</span>
         </div>
+      </header>
+
+      <div className="yard-stats">
+        <Chip>{player.ships.length} ships</Chip>
+        <Chip>{openSlotCount(player)}/8 cells</Chip>
+        <Chip tone="energy">Flagship L{player.flag.level}</Chip>
       </div>
 
-      <div className="shipyard-overview grid grid-cols-3 gap-1.5" aria-label="Fleet upgrade summary">
-        <div><b>{player.ships.length}</b><span>Ships</span></div>
-        <div><b>{opened}/8</b><span>Cells open</span></div>
-        <div><b>L{player.flag.level}</b><span>Flagship</span></div>
+      {/* ---------------- the board ---------------- */}
+      <div className="yard-main">
+      <div className="yard-board" role="group" aria-label="Your fleet">
+        {offers.map((offer) => (
+          <CellButton
+            key={offer.cell}
+            offer={offer}
+            energy={energy}
+            selected={selected === offer.cell}
+            onSelect={() => setSelected(selected === offer.cell ? null : offer.cell)}
+          />
+        ))}
       </div>
 
-      <details className="shipyard-help rounded-xl border border-[--color-shield]/25 bg-[--color-shield]/[0.07] px-3 py-2">
-        <summary className="text-sm font-bold text-white">How upgrades work</summary>
-        <ol className="mt-2 list-decimal space-y-1 pl-5 text-[0.78rem] leading-snug c-dim">
-          <li>Spend Energy on any upgrades you can afford.</li>
-          <li>Open a cell before buying a ship when every open cell is full.</li>
-          <li>Upgrading a ship keeps it in the same cell. You may buy more than once.</li>
-        </ol>
-      </details>
-
-      {pickingFor && (
-        <Notice tone="info">
-          Tap the cell you want{pickingFor === "slot" ? " to open" : " to park it in"}.{" "}
-          <button
-            type="button"
-            className="underline underline-offset-2"
-            onClick={() => setPickingFor(null)}
-          >
-            Cancel
-          </button>
-        </Notice>
-      )}
-
-      <div className="scroll-y fade-edges -mx-1 min-h-0 flex-1 px-1">
-        {/* The board, so you can see what you are buying into. */}
-        <BoardPicker
-          player={player}
-          highlight={pickable}
-          onPick={pickable.length ? chooseSlot : undefined}
-        />
-
-        <Section title="1 · Strengthen a ship" note="One size bigger · same cell">
-          {player.ships.length === 0 ? (
-            <p className="text-sm c-dim">You have no ships to upgrade.</p>
-          ) : (
-            <div className="flex flex-col gap-2">
-              {player.ships
-                .slice()
-                .sort((a, b) => a.slot - b.slot)
-                .map((ship) => {
-                  const next = upgradeTarget(ship.sides);
-                  const cost = upgradeCost(ship.sides);
-                  const can = next !== null && cost !== null && energy >= cost;
-                  return (
-                    <button
-                      key={ship.id}
-                      type="button"
-                      disabled={!can || busy}
-                      onClick={() => onAction({ type: "shop", operation: "upgrade", shipId: ship.id })}
-                      className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2.5 text-left transition disabled:opacity-35 enabled:hover:bg-white/[0.07]"
-                    >
-                      <span className="t-num flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white/8 text-xs">
-                        {cellForSlot(ship.slot) + 1}
-                      </span>
-                      <span className="flex-1 text-[0.9rem]">
-                        <b className="t-num text-white">d{ship.sides}</b>
-                        {next ? (
-                          <>
-                            <span className="c-dim"> becomes </span>
-                            <b className="t-num text-white">d{next}</b>
-                          </>
-                        ) : (
-                          <span className="c-dim"> is already the biggest hull</span>
-                        )}
-                      </span>
-                      {cost !== null && <Stat kind="energy" value={cost} label="" size="sm" />}
-                      {!can && (
-                        <span className="shop-disabled-reason text-[0.66rem] c-dim">
-                          {next === null ? "Maximum" : cost !== null ? `Need ${Math.max(0, cost - energy)} more` : "Unavailable"}
-                        </span>
-                      )}
-                    </button>
-                  );
-                })}
-            </div>
-          )}
-        </Section>
-
-        <Section
-          title="2 · Make room"
-          note={opened >= 8 ? "Every cell is open" : `${opened} of 8 open`}
-        >
-          {slotCost === null ? (
-            <p className="text-sm c-dim">Your whole board is open.</p>
-          ) : (
-            <ShopCard
-              title="Open a locked cell"
-              cost={slotCost}
-              blurb="One more ship on the board, and one more way to line up a row or a column."
-              disabledReason={energy < slotCost ? `Need ${slotCost - energy} more Energy` : undefined}
-              disabled={energy < slotCost || busy}
-              onClick={openCell}
-              wide
-            />
-          )}
-        </Section>
-
-        <Section title="3 · Add a ship" note={empties.length ? `${empties.length} empty ${empties.length === 1 ? "cell" : "cells"}` : "Open a cell first"}>
-          {empties.length ? (
-            <div className="grid grid-cols-2 gap-2">
-              {HULLS.map((sides) => {
-                const cost = priceOf(sides);
-                const can = energy >= cost;
-                return (
-                  <ShopCard
-                    key={sides}
-                    title={`d${sides}`}
-                    cost={cost}
-                    blurb={HULL_BLURB[sides]}
-                    disabledReason={energy < cost ? `Need ${cost - energy} more Energy` : undefined}
-                    disabled={!can || busy}
-                    onClick={() => buy(sides)}
-                  />
-                );
-              })}
-            </div>
-          ) : (
-            <p className="rounded-xl border border-dashed border-white/10 px-3 py-2.5 text-sm c-dim">
-              Your four open cells are full. Open a cell above, then choose a new hull here.
-            </p>
-          )}
-        </Section>
-
-        <Section title="4 · Power up the flagship" note={`Level ${player.flag.level} of 3`}>
-          {flagCost === null ? (
-            <p className="text-sm c-dim">Your flagship is at level 3. It cannot go higher.</p>
-          ) : (
-            <ShopCard
-              title={`Flagship level ${player.flag.level + 1}`}
-              cost={flagCost}
-              blurb={`Every one of the six flagship faces gets stronger: bonuses go from ${TUNING.flagBonus[player.flag.level]} to ${TUNING.flagBonus[player.flag.level + 1]}.`}
-              disabledReason={energy < flagCost ? `Need ${flagCost - energy} more Energy` : undefined}
-              disabled={energy < flagCost || busy}
-              onClick={() => onAction({ type: "shop", operation: "flagship" })}
-              wide
-            />
-          )}
-        </Section>
+        <p className="yard-hint">
+          {anythingAffordable
+            ? "Tap a cell to spend Energy on it."
+            : "Not enough Energy for anything yet. Take the field and earn some."}
+        </p>
       </div>
 
-      <Button tone="primary" size="lg" full onClick={onDone} disabled={busy}>
-        Done upgrading · Take the field
-      </Button>
+      {/* ---------------- the drawer ---------------- */}
+      <div className="yard-drawer-wrap">
+        {selected !== null && (
+          <Drawer
+            offer={offers[selected]!}
+            energy={energy}
+            busy={busy}
+            onAct={act}
+            onClose={() => setSelected(null)}
+          />
+        )}
+      </div>
+
+      {/* ---------------- out ---------------- */}
+      <div className="yard-foot">
+        <Button tone="primary" size="lg" full onClick={onDone} disabled={busy}>
+          Take the field
+        </Button>
+      </div>
     </div>
   );
 }
 
 /* ------------------------------------------------------------------ */
+/* One cell                                                            */
+/* ------------------------------------------------------------------ */
 
-function Section({
-  title,
-  note,
-  children,
+function CellButton({
+  offer,
+  energy,
+  selected,
+  onSelect,
 }: {
-  title: string;
-  note?: string;
-  children: React.ReactNode;
+  offer: CellOffer;
+  energy: number;
+  selected: boolean;
+  onSelect(): void;
 }) {
-  return (
-    <section className="mt-4">
-      <div className="mb-2 flex items-baseline justify-between gap-2">
-        <h3 className="t-eyebrow">{title}</h3>
-        {note && <span className="text-[0.68rem] c-dim">{note}</span>}
-      </div>
-      {children}
-      <Rule className="mt-4" />
-    </section>
-  );
-}
+  let cost: number | null = null;
+  let affordable = false;
+  let state = "plain";
+  let body: React.ReactNode = null;
+  let label = "";
 
-function ShopCard({
-  title,
-  cost,
-  blurb,
-  disabled,
-  disabledReason,
-  onClick,
-  wide,
-}: {
-  title: string;
-  cost: number;
-  blurb: string;
-  disabled?: boolean;
-  disabledReason?: string;
-  onClick(): void;
-  wide?: boolean;
-}) {
+  if (offer.kind === "flagship") {
+    cost = offer.cost;
+    affordable = cost !== null && cost <= energy;
+    state = "flag";
+    label = `Flagship, level ${offer.level}`;
+    body = (
+      <>
+        <span className="yard-cell-art yard-cell-flag">★</span>
+        <span className="yard-cell-name">Flagship</span>
+        <span className="yard-cell-sub">
+          {cost === null ? "Level 3 · max" : `L${offer.level} → L${offer.level + 1}`}
+        </span>
+      </>
+    );
+  } else if (offer.kind === "ship") {
+    cost = offer.cost;
+    affordable = cost !== null && cost <= energy;
+    state = "ship";
+    label = `d${offer.ship.sides}${offer.next ? `, upgrade to d${offer.next}` : ", at maximum"}`;
+    body = (
+      <>
+        <span className="yard-cell-art">
+          <HullShape sides={offer.ship.sides} tone="live" />
+        </span>
+        <span className="yard-cell-name">d{offer.ship.sides}</span>
+        <span className="yard-cell-sub yard-cell-sub-plain">{offer.next ? `→ d${offer.next}` : "max hull"}</span>
+      </>
+    );
+  } else if (offer.kind === "empty") {
+    cost = offer.cheapest;
+    affordable = cost <= energy;
+    state = "empty";
+    label = "Empty cell";
+    body = (
+      <>
+        <span className="yard-cell-art yard-cell-empty-art">+</span>
+        <span className="yard-cell-name">Empty</span>
+        <span className="yard-cell-sub">buy a hull</span>
+      </>
+    );
+  } else {
+    cost = offer.cost;
+    affordable = cost !== null && cost <= energy;
+    state = "locked";
+    label = "Locked cell";
+    body = (
+      <>
+        <span className="yard-cell-art yard-cell-lock">▮</span>
+        <span className="yard-cell-name">Locked</span>
+        <span className="yard-cell-sub">
+          {offer.opensLines.length ? `opens a ${offer.opensLines[0]!.split(" ")[1]}` : "open it"}
+        </span>
+      </>
+    );
+  }
+
+  const dead = cost === null;
+
   return (
     <button
       type="button"
-      disabled={disabled}
-      onClick={onClick}
-      className={`flex flex-col gap-1.5 rounded-xl border border-white/10 bg-white/[0.03] p-3 text-left transition disabled:opacity-35 enabled:hover:bg-white/[0.07] enabled:active:scale-[0.985] ${
-        wide ? "w-full" : ""
-      }`}
+      onClick={onSelect}
+      aria-label={label}
+      aria-pressed={selected}
+      className={`yard-cell yard-cell-${state}`}
+      data-selected={selected || undefined}
+      data-affordable={!dead && affordable ? "" : undefined}
+      data-dead={dead ? "" : undefined}
     >
-      <span className="flex items-center justify-between gap-2">
-        <b className="t-display text-[1.05rem] text-white">{title}</b>
-        <Stat kind="energy" value={cost} label="" size="sm" />
-      </span>
-      <span className="text-[0.78rem] leading-snug c-dim">{blurb}</span>
-      {disabledReason && <span className="shop-card-status text-[0.68rem] font-semibold c-energy">{disabledReason}</span>}
+      {body}
+      {cost !== null && <Price cost={cost} affordable={affordable} />}
     </button>
   );
 }
 
-/** A small map of your board, used to pick a cell and to see the shape of it. */
-function BoardPicker({
-  player,
-  highlight,
-  onPick,
+/* ------------------------------------------------------------------ */
+/* The drawer under the board                                          */
+/* ------------------------------------------------------------------ */
+
+function Drawer({
+  offer,
+  energy,
+  busy,
+  onAct,
+  onClose,
 }: {
-  player: PlayerState;
-  highlight: number[];
-  onPick?: (slot: number) => void;
+  offer: CellOffer;
+  energy: number;
+  busy?: boolean;
+  onAct(action: MatchAction): void;
+  onClose(): void;
 }) {
-  const set = new Set(highlight);
-  return (
-    <div className="shipyard-board mx-auto grid w-full max-w-[16rem] grid-cols-3 gap-1.5">
-      {Array.from({ length: 9 }, (_, cell) => {
-        if (cell === 4) {
-          return (
-            <div
-              key={cell}
-              className="flex aspect-square flex-col items-center justify-center rounded-lg border border-[--color-energy]/40 bg-[--color-energy]/10"
+  const after = (cost: number) => `${energy - cost} left`;
+
+  if (offer.kind === "flagship") {
+    const cost = offer.cost;
+    return (
+      <section className="yard-drawer anim-rise">
+        <DrawerHead title="Your flagship" onClose={onClose} />
+        {cost === null ? (
+          <p className="yard-copy">
+            Level 3 is as far as it goes. Every face already adds{" "}
+            <b className="c-energy">{flagBonusSize(3)}</b>.
+          </p>
+        ) : (
+          <>
+            <p className="yard-copy">
+              Level {offer.level} → {offer.level + 1}. Every one of its six faces goes from adding{" "}
+              <b className="c-energy">{flagBonusSize(offer.level)}</b> to{" "}
+              <b className="c-energy">{flagBonusSize(offer.level + 1)}</b>. One purchase, all six
+              faces.
+            </p>
+            <Button
+              tone="energy"
+              full
+              disabled={busy || cost > energy}
+              onClick={() => onAct({ type: "shop", operation: "flagship" })}
             >
-              <span className="t-num text-[--color-energy] text-sm">L{player.flag.level}</span>
-              <span className="t-eyebrow text-[0.5rem] text-[--color-energy]/70">Flag</span>
+              Level up · {cost}⚡ {cost <= energy ? `· ${after(cost)}` : "· not enough"}
+            </Button>
+          </>
+        )}
+      </section>
+    );
+  }
+
+  if (offer.kind === "ship") {
+    const cost = offer.cost;
+    return (
+      <section className="yard-drawer anim-rise">
+        <DrawerHead title={`d${offer.ship.sides} in cell ${offer.cell + 1}`} onClose={onClose} />
+        {offer.next === null || cost === null ? (
+          <p className="yard-copy">A d10 is the biggest hull there is. Nothing left to buy here.</p>
+        ) : (
+          <>
+            <div className="yard-compare">
+              <div className="yard-compare-side">
+                <div className="yard-compare-art">
+                  <HullShape sides={offer.ship.sides} tone="ghost" />
+                </div>
+                <span className="t-num">d{offer.ship.sides}</span>
+                <span className="yard-compare-note">{HULL_FACES[offer.ship.sides]}</span>
+              </div>
+              <span className="yard-compare-arrow" aria-hidden="true">
+                →
+              </span>
+              <div className="yard-compare-side">
+                <div className="yard-compare-art">
+                  <HullShape sides={offer.next} tone="live" />
+                </div>
+                <span className="t-num">d{offer.next}</span>
+                <span className="yard-compare-note">{HULL_FACES[offer.next]}</span>
+              </div>
             </div>
-          );
-        }
-        const slot = cell < 4 ? cell : cell - 1;
-        const open = player.open[slot] ?? false;
-        const ship = shipInSlot(player, slot);
-        const pickable = set.has(slot);
-        return (
-          <button
-            key={cell}
-            type="button"
-            disabled={!pickable || !onPick}
-            onClick={() => onPick?.(slot)}
-            className={[
-              "flex aspect-square flex-col items-center justify-center rounded-lg border text-center transition",
-              open
-                ? "border-white/14 bg-white/[0.04]"
-                : "border-dashed border-white/10 bg-black/40",
-              pickable ? "!border-[--color-repair] bg-[--color-repair]/12" : "",
-            ].join(" ")}
-          >
-            {ship ? (
-              <span className="t-num text-white">d{ship.sides}</span>
-            ) : open ? (
-              <span className="text-[0.62rem] c-dim">empty</span>
-            ) : (
-              <span className="text-[0.62rem] text-[--color-hull-500]">locked</span>
-            )}
-          </button>
-        );
-      })}
+            <p className="yard-copy">{HULL_BLURB[offer.next]}</p>
+            <Button
+              tone="energy"
+              full
+              disabled={busy || cost > energy}
+              onClick={() => onAct({ type: "shop", operation: "upgrade", shipId: offer.ship.id })}
+            >
+              Upgrade · {cost}⚡ {cost <= energy ? `· ${after(cost)}` : "· not enough"}
+            </Button>
+          </>
+        )}
+      </section>
+    );
+  }
+
+  if (offer.kind === "empty") {
+    return (
+      <section className="yard-drawer anim-rise">
+        <DrawerHead title={`Empty cell ${offer.cell + 1}`} onClose={onClose} />
+        <div className="yard-hulls">
+          {HULLS.map((sides) => {
+            const cost = priceOf(sides);
+            const can = cost <= energy;
+            return (
+              <button
+                key={sides}
+                type="button"
+                className="yard-hull"
+                disabled={busy || !can}
+                onClick={() =>
+                  onAct({ type: "shop", operation: "buy", sides, slotIndex: offer.slot })
+                }
+              >
+                <span className="yard-hull-art">
+                  <HullShape sides={sides} tone={can ? "live" : "ghost"} />
+                </span>
+                <span className="yard-hull-name t-num">d{sides}</span>
+                <Price cost={cost} affordable={can} />
+                <span className="yard-hull-blurb">{HULL_BLURB[sides]}</span>
+              </button>
+            );
+          })}
+        </div>
+      </section>
+    );
+  }
+
+  const cost = offer.cost;
+  return (
+    <section className="yard-drawer anim-rise">
+      <DrawerHead title={`Locked cell ${offer.cell + 1}`} onClose={onClose} />
+      <p className="yard-copy">
+        Opening a cell gives you somewhere to park another ship.
+        {offer.opensLines.length > 0 && (
+          <>
+            {" "}
+            This one also completes the <b className="c-run">{offer.opensLines.join(" and the ")}</b>
+            {" "}— three matching numbers across a row pays{" "}
+            <b className="c-energy">{TUNING.lineAcrossEnergy} Energy</b>, and down a column pays{" "}
+            <b className="c-attack">{TUNING.lineDownAttack} Attack</b>.
+          </>
+        )}
+      </p>
+      {cost === null ? (
+        <p className="yard-copy">Every cell is already open.</p>
+      ) : (
+        <Button
+          tone="confirm"
+          full
+          disabled={busy || cost > energy}
+          onClick={() => onAct({ type: "shop", operation: "slot", slotIndex: offer.slot })}
+        >
+          Open this cell · {cost}⚡ {cost <= energy ? `· ${after(cost)}` : "· not enough"}
+        </Button>
+      )}
+    </section>
+  );
+}
+
+function DrawerHead({ title, onClose }: { title: string; onClose(): void }) {
+  return (
+    <div className="yard-drawer-head">
+      <h3 className="t-display text-base">{title}</h3>
+      <button type="button" className="yard-drawer-close" onClick={onClose} aria-label="Close">
+        ✕
+      </button>
     </div>
   );
 }
+
+/* ------------------------------------------------------------------ */
 
 export function ShipyardSummary({ player }: { player: PlayerState }) {
   const counts = player.ships.reduce<Record<number, number>>((acc, ship) => {
@@ -379,3 +543,6 @@ export function ShipyardSummary({ player }: { player: PlayerState }) {
     </div>
   );
 }
+
+// Kept so the cell numbering in the drawer matches what the board shows.
+void cellForSlot;

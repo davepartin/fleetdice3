@@ -477,7 +477,10 @@ export function MatchScreen({ controller, onExit, title, subtitle }: Props) {
               onSkip={() => setCinematic(null)}
             />
           ) : phase === "shop" ? (
-            <div className="panel panel-you flex max-h-[74dvh] flex-col p-4">
+            // The shipyard takes the whole screen. It is the only moment in a
+            // round where you are reading nine prices at once, and squeezing
+            // that into a dock under the board is what made it unreadable.
+            <div className="yard-portal">
               <Shipyard
                 player={you}
                 onAction={(action) => {

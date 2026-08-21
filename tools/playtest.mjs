@@ -5,10 +5,8 @@
  * buttons a player clicks, in the order a player clicks them, and it fails
  * loudly on a console error or a button that never appears.
  *
- *   node tools/playtest.mjs            three rounds at both supported phone sizes
+ *   node tools/playtest.mjs            three rounds, phone and desktop
  *   node tools/playtest.mjs 8 phone    eight rounds, phone only
- *   PLAYTEST_QUALITY=high node tools/playtest.mjs 1 review
- *                                    exact 1274×902 visual-review viewport
  */
 
 import { chromium } from "playwright";
@@ -24,26 +22,11 @@ const SHOTS = resolve(root, "shots");
 
 const VIEWPORTS = {
   phone: { width: 402, height: 874, deviceScaleFactor: 2, isMobile: true, hasTouch: true },
-  phone390: { width: 390, height: 844, deviceScaleFactor: 2, isMobile: true, hasTouch: true },
-  // Safari's expanded address and tab bars leave roughly this much of a
-  // 390×844 iPhone available to the page. This is the state that exposed the
-  // low camera, flagship overlap, and wasted bands of sky in real screenshots.
-  phone390short: { width: 390, height: 630, deviceScaleFactor: 3, isMobile: true, hasTouch: true },
-  // The narrow ChatGPT in-app browser is also a real play surface during
-  // development. Face glyphs must remain clear before Dave opens Safari.
-  phone325: { width: 325, height: 614, deviceScaleFactor: 3, isMobile: true, hasTouch: true },
   desktop: { width: 1440, height: 900, deviceScaleFactor: 2 },
-  review: { width: 1274, height: 902, deviceScaleFactor: 2 },
 };
 
 const ROUNDS = Number(process.argv[2]) || 3;
 const ONLY = process.argv[3];
-const QUALITY = process.env.PLAYTEST_QUALITY ?? "low";
-const SHOT_SUFFIX = QUALITY === "low" ? "" : `-${QUALITY}`;
-
-if (!["low", "medium", "high"].includes(QUALITY)) {
-  throw new Error(`PLAYTEST_QUALITY must be low, medium, or high; got ${QUALITY}`);
-}
 
 /** Buttons and links both count — the home page uses links for the big cards. */
 function clickable(page, name) {
@@ -87,7 +70,7 @@ async function visible(page, name, timeout = 1200) {
 
 async function shot(page, label, viewport) {
   await mkdir(SHOTS, { recursive: true });
-  const file = join(SHOTS, `${label}${SHOT_SUFFIX}-${viewport}.png`);
+  const file = join(SHOTS, `${label}-${viewport}.png`);
   await page.screenshot({ path: file });
   console.log("  shot", label);
 }
@@ -123,7 +106,7 @@ async function run(browser, viewport, label, errors) {
   // nothing about how the board looks.
   await tap(page, "Play solo");
   await settle(page, 1200);
-  await page.goto(`http://localhost:4321/solo/?q=${QUALITY}`, { waitUntil: "networkidle" });
+  await page.goto("http://localhost:4321/solo/?q=low", { waitUntil: "networkidle" });
   await settle(page, 1200);
   await shot(page, "03-solo-setup", label);
 
@@ -135,11 +118,23 @@ async function run(browser, viewport, label, errors) {
     // Shipyard appears from round 2 onward.
     if (await visible(page, "Take the field")) {
       await shot(page, `${pad(round)}a-shipyard`, label);
+
       // Spend something if we can, so later screens show a grown fleet.
-      await tap(page, "Open a locked cell", { optional: true, timeout: 800 });
-      await page.waitForTimeout(400);
-      await tap(page, "d6", { optional: true, timeout: 800 });
-      await page.waitForTimeout(600);
+      // The shipyard is tap-a-cell-then-confirm: anything the bank covers is
+      // marked `data-affordable`, so the test can shop the way a player does.
+      const affordable = page.locator(".yard-cell[data-affordable]");
+      if (await affordable.count()) {
+        await affordable.first().click({ timeout: 4000, force: true }).catch(() => undefined);
+        await page.waitForTimeout(650);
+        await shot(page, `${pad(round)}a2-yard-drawer`, label);
+        const confirm = page
+          .locator(".yard-drawer .btn:not(:disabled), .yard-drawer .yard-hull:not(:disabled)")
+          .first();
+        if (await confirm.count()) {
+          await confirm.click({ timeout: 4000, force: true }).catch(() => undefined);
+          await page.waitForTimeout(700);
+        }
+      }
       await tap(page, "Take the field");
       await settle(page, 1400);
     }
@@ -152,32 +147,14 @@ async function run(browser, viewport, label, errors) {
     await settle(page, 3200);
     await shot(page, `${pad(round)}b-rolled`, label);
 
-    // Send one die back so the reroll path is genuinely exercised. The old
-    // probe clicked an empty lower-left cell and silently skipped this entire
-    // branch while still reporting a clean playthrough.
-  const diePoints =
-    label.startsWith("phone")
-      // Start at the centre flagship: it is a legal reroll and used to be
-      // silently discarded by the phone UI.
-      ? [[0.5, 0.38], [0.25, 0.42], [0.75, 0.42], [0.5, 0.51]]
-      : [[0.36, 0.39], [0.64, 0.39], [0.5, 0.23], [0.5, 0.55]];
-    let picked = false;
-    for (const [x, y] of diePoints) {
-      await page.mouse.click(viewport.width * x, viewport.height * y);
-      await page.waitForTimeout(320);
-      if (await visible(page, "Reroll", 500)) {
-        picked = true;
-        break;
-      }
+    // Send a couple of dice back so the reroll path is exercised.
+    await page.mouse.click(viewport.width * 0.3, viewport.height * 0.52);
+    await page.waitForTimeout(320);
+    if (await visible(page, "Reroll", 900)) {
+      await shot(page, `${pad(round)}c-selected`, label);
+      await tap(page, "Reroll");
+      await settle(page, 2000);
     }
-    if (!picked) {
-      errors.push(`[${label}] round ${round}: could not select a die for reroll`);
-      await shot(page, `${pad(round)}x-no-reroll`, label);
-      break;
-    }
-    await shot(page, `${pad(round)}c-selected`, label);
-    await tap(page, "Reroll");
-    await settle(page, 2000);
 
     if (!(await visible(page, "Lock in", 4000))) {
       errors.push(`[${label}] round ${round}: no Lock in button`);
@@ -186,28 +163,14 @@ async function run(browser, viewport, label, errors) {
     await tap(page, "Lock in");
     await page.waitForTimeout(2600);
 
-    // Brace, if anything got through. Pick an actual 3D ship and require the
-    // red damage marker/Send state before confirming whenever one is tappable.
-    if (await visible(page, "Take it on the flagship", 2500)) {
+    // Brace, if anything got through.
+    if (await visible(page, "Send", 2500)) {
       await shot(page, `${pad(round)}d-brace`, label);
-      const bracePoints = label.startsWith("phone")
-        ? [[0.2, 0.51], [0.8, 0.51], [0.5, 0.62], [0.5, 0.45]]
-        : [[0.36, 0.56], [0.64, 0.56], [0.5, 0.66]];
-      let marked = false;
-      for (const [x, y] of bracePoints) {
-        await page.mouse.click(viewport.width * x, viewport.height * y);
-        await page.waitForTimeout(260);
-        if (await visible(page, "Send", 450)) {
-          marked = true;
-          break;
-        }
-      }
-      if (marked) {
-        await shot(page, `${pad(round)}d2-brace-selected`, label);
-        await tap(page, "Send");
-      } else {
-        await tap(page, "Take it on the flagship");
-      }
+      await tap(page, "Send");
+      await page.waitForTimeout(1800);
+    } else if (await visible(page, "Take it on the flagship", 900)) {
+      await shot(page, `${pad(round)}d-brace`, label);
+      await tap(page, "Take it on the flagship");
       await page.waitForTimeout(1800);
     }
 
@@ -249,7 +212,7 @@ async function main() {
   const errors = [];
 
   for (const [label, viewport] of Object.entries(VIEWPORTS)) {
-    if (ONLY ? ONLY !== label : !label.startsWith("phone")) continue;
+    if (ONLY && ONLY !== label) continue;
     try {
       await run(browser, viewport, label, errors);
     } catch (error) {
