@@ -173,7 +173,10 @@ export type ThrowOptions = {
  * off the deck.
  */
 const FACE_LEAN = 0.66;
-const PHONE_FACE_LEAN = 0.96;
+// Match the solo command camera's 70 degree pitch. When the resolved face is
+// square to the lens, neighbouring facets do not leak into the information
+// face and the number/marks receive the maximum possible phone pixels.
+const PHONE_FACE_LEAN = 1.22;
 
 export function createDie(kind: DieKind, font: string, scale = 1): Die {
   const shared = sharedFor(kind, font);
