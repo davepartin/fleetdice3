@@ -29,6 +29,9 @@ const VIEWPORTS = {
   // 390×844 iPhone available to the page. This is the state that exposed the
   // low camera, flagship overlap, and wasted bands of sky in real screenshots.
   phone390short: { width: 390, height: 630, deviceScaleFactor: 3, isMobile: true, hasTouch: true },
+  // The narrow ChatGPT in-app browser is also a real play surface during
+  // development. Face glyphs must remain clear before Dave opens Safari.
+  phone325: { width: 325, height: 614, deviceScaleFactor: 3, isMobile: true, hasTouch: true },
   desktop: { width: 1440, height: 900, deviceScaleFactor: 2 },
   review: { width: 1274, height: 902, deviceScaleFactor: 2 },
 };

@@ -15,9 +15,9 @@ export const MARK_COLOR: Record<MarkKind, string> = {
   // These stay intentionally lighter than their matching HUD colours. Tiny
   // marks are viewed on a steeply projected face, so the symbol needs a bright
   // core and a dark keyline to survive at real iPhone size.
-  energy: "#ffe45c",
-  repair: "#77f2ad",
-  direct: "#d7baff",
+  energy: "#fff06a",
+  repair: "#8dffc0",
+  direct: "#eadcff",
 };
 
 export type FaceSpec = {
@@ -54,7 +54,9 @@ export const FLAG_FACE_PALETTE: Record<
 /* ------------------------------------------------------------------ */
 
 function drawBolt(ctx: CanvasRenderingContext2D, x: number, y: number, size: number) {
-  const w = size * 0.58;
+  // Wide enough to remain a lightning bolt after the face is reduced to a
+  // handful of phone pixels. The previous narrow zigzag collapsed to a line.
+  const w = size * 0.84;
   const h = size;
   ctx.beginPath();
   ctx.moveTo(x + w * 0.28, y - h * 0.5);
@@ -77,18 +79,20 @@ function drawCross(ctx: CanvasRenderingContext2D, x: number, y: number, size: nu
 }
 
 function drawChevron(ctx: CanvasRenderingContext2D, x: number, y: number, size: number) {
-  // A bold forward chevron reads as an armor-piercing shot at a glance. The
-  // previous upward outline became a pair of tiny carets after projection.
-  const w = size * 0.58;
-  const h = size * 0.7;
-  const thick = size * 0.22;
+  // A solid forward dart reads at six pixels where an outlined chevron does
+  // not. Repeated darts still preserve the exact Direct count printed by the
+  // physical die.
+  const w = size * 0.82;
+  const h = size * 0.78;
+  const tail = size * 0.2;
   ctx.beginPath();
-  ctx.moveTo(x - w / 2, y - h / 2);
+  ctx.moveTo(x - w / 2, y - tail);
+  ctx.lineTo(x + w * 0.04, y - tail);
+  ctx.lineTo(x + w * 0.04, y - h / 2);
   ctx.lineTo(x + w / 2, y);
-  ctx.lineTo(x - w / 2, y + h / 2);
-  ctx.lineTo(x - w / 2 + thick, y + h / 2);
-  ctx.lineTo(x + w / 2 + thick * 0.08, y);
-  ctx.lineTo(x - w / 2 + thick, y - h / 2);
+  ctx.lineTo(x + w * 0.04, y + h / 2);
+  ctx.lineTo(x + w * 0.04, y + tail);
+  ctx.lineTo(x - w / 2, y + tail);
   ctx.closePath();
   ctx.fill();
 }
@@ -216,10 +220,10 @@ function paintFace(
     for (const mark of spec.marks) {
       for (let i = 0; i < mark.count; i += 1) glyphs.push(mark.kind);
     }
-    const markSize = size * (glyphs.length > 2 ? 0.225 : 0.265);
-    const gap = markSize * 1.12;
+    const markSize = size * (glyphs.length === 1 ? 0.34 : glyphs.length === 2 ? 0.3 : 0.225);
+    const gap = markSize * (glyphs.length > 2 ? 1.05 : 1.02);
     const startX = cx - ((glyphs.length - 1) * gap) / 2;
-    const markY = size * 0.79;
+    const markY = size * 0.785;
 
     ctx.save();
     glyphs.forEach((kind, index) => {

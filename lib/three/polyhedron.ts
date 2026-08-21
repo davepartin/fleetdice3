@@ -263,8 +263,16 @@ export function buildDie(sides: number, radius: number, columns: number, rows: n
 
     const uvFor = (point: THREE.Vector3) => {
       const offset = new THREE.Vector3().subVectors(point, centre);
-      const u = offset.dot(tangent) / span + 0.5;
-      const v = offset.dot(bitangent) / span + 0.5;
+      const rawU = offset.dot(tangent) / span + 0.5;
+      const rawV = offset.dot(bitangent) / span + 0.5;
+      // A triangle's corners reach roughly twice as far as its inscribed
+      // circle. Their old UVs therefore crossed into the *next atlas cell*,
+      // pulling another face's red or blue pixels into the visible corners.
+      // Keep every polygon inside its own padded cell; the centre art remains
+      // undistorted while mipmaps and anisotropic filtering get a safe gutter.
+      const gutter = 0.025;
+      const u = THREE.MathUtils.clamp(rawU, gutter, 1 - gutter);
+      const v = THREE.MathUtils.clamp(rawV, gutter, 1 - gutter);
       // Atlas rows count from the top of the canvas.
       return [(column + u) * cellW, 1 - (row + 1 - v) * cellH];
     };
