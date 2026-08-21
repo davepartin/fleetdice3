@@ -38,8 +38,8 @@ export type DieState = {
   facedown?: boolean;
 };
 
-const HULL_COLOR = 0xf2f5ff;
-const HULL_ENEMY = 0xffd9d9;
+const HULL_COLOR = 0xffffff;
+const HULL_ENEMY = 0xfff2f2;
 
 /* ------------------------------------------------------------------ */
 /* Shared, cached across every die of a size                           */
@@ -68,25 +68,27 @@ function sharedFor(kind: DieKind, font: string): Shared {
       ? Array.from({ length: 6 }, (_, index) => flagFaceSpec(index + 1))
       : Array.from({ length: sides }, (_, index) => faceSpec(index + 1));
 
-  const atlas = buildAtlas(specs, sides, 256, font);
+  // 384px per face keeps glyph edges clean after the steep phone-camera
+  // projection without the large memory jump of a 512px d10 atlas.
+  const atlas = buildAtlas(specs, sides, 384, font);
   const built = buildDie(sides, 1, atlas.columns, atlas.rows);
 
   const material = new THREE.MeshPhysicalMaterial({
     map: atlas.map,
     emissiveMap: atlas.emissive,
     emissive: new THREE.Color(0xffffff),
-    emissiveIntensity: kind === "flag" ? 0.12 : 0.22,
+    emissiveIntensity: kind === "flag" ? 0.04 : 0.14,
     color: new THREE.Color(HULL_COLOR),
     // Gaming dice are resin, not chrome. A metal die in a dark room is a black
     // die: the colour of metal comes entirely from what it reflects, and space
     // has nothing to reflect. Low metalness plus a hard clearcoat gives the
     // polished-resin look these want, and keeps red reading red.
-    metalness: 0.08,
-    roughness: 0.52,
-    clearcoat: 0.58,
-    clearcoatRoughness: 0.28,
-    reflectivity: 0.4,
-    envMapIntensity: 0.8,
+    metalness: 0.04,
+    roughness: 0.48,
+    clearcoat: 0.42,
+    clearcoatRoughness: 0.34,
+    reflectivity: 0.32,
+    envMapIntensity: 0.66,
   });
 
   // A slightly larger shell drawn from the inside gives a clean dark rim, which
@@ -358,7 +360,9 @@ export function createDie(kind: DieKind, font: string, scale = 1): Die {
     const even = value % 2 === 0;
     const accent = kind === "flag" ? 0xffd23d : even ? 0xff4d4d : 0x4db4ff;
     glowMaterial.color.setHex(accent);
-    material.color.setHex(kind === "flag" ? 0xffdfa1 : state.enemy ? HULL_ENEMY : HULL_COLOR);
+    // Keep the authored face colours intact. The old peach multiplier on the
+    // flagship turned yellow into muddy brown and purple into grey on Safari.
+    material.color.setHex(state.enemy ? HULL_ENEMY : HULL_COLOR);
 
     if (state.disabled) {
       material.emissiveIntensity = 0.05;
@@ -367,13 +371,13 @@ export function createDie(kind: DieKind, font: string, scale = 1): Die {
       material.metalness = 0.02;
       glowMaterial.opacity = 0;
     } else {
-      material.roughness = 0.52;
-      material.metalness = 0.08;
+      material.roughness = 0.48;
+      material.metalness = 0.04;
       material.emissiveIntensity = state.selected
-        ? kind === "flag" ? 0.2 : 0.34
+        ? kind === "flag" ? 0.07 : 0.2
         : state.enemy
-          ? 0.16
-          : kind === "flag" ? 0.12 : 0.22;
+          ? 0.1
+          : kind === "flag" ? 0.04 : 0.14;
       glowMaterial.opacity = state.selected ? 0.34 : 0.08;
     }
     selectionMaterial.opacity = !state.disabled && state.selected && !state.damageSelected ? 0.72 : 0;
@@ -509,8 +513,8 @@ export function createDie(kind: DieKind, font: string, scale = 1): Die {
       if (state.selected) {
         const pulse = 0.36 + Math.sin(time * 7) * 0.16;
         glowMaterial.opacity = pulse;
-        const base = kind === "flag" ? 0.18 : 0.3;
-        material.emissiveIntensity = base + Math.sin(time * 7) * 0.06;
+        const base = kind === "flag" ? 0.05 : 0.17;
+        material.emissiveIntensity = base + Math.sin(time * 7) * 0.025;
         selectionMaterial.opacity = 0.6 + Math.sin(time * 7) * 0.1;
       }
       if (state.inRun) {

@@ -326,9 +326,12 @@ const QUALITY_SETTINGS: Record<
   Quality,
   { dpr: number; bloom: number; shadows: boolean; grade: boolean; stars: boolean; nebula: boolean }
 > = {
-  low: { dpr: 1, bloom: 0, shadows: false, grade: false, stars: true, nebula: false },
-  medium: { dpr: 1.4, bloom: 0.13, shadows: true, grade: true, stars: true, nebula: true },
-  high: { dpr: 2, bloom: 0.18, shadows: true, grade: true, stars: true, nebula: true },
+  // A low effects tier must not also mean low-resolution game information.
+  // Safari commonly chooses medium and has a 3× display; the old 1.4 cap was
+  // then enlarged by iOS and made every face look soft in a real screenshot.
+  low: { dpr: 1.75, bloom: 0, shadows: false, grade: false, stars: true, nebula: false },
+  medium: { dpr: 2, bloom: 0.13, shadows: true, grade: true, stars: true, nebula: true },
+  high: { dpr: 2.5, bloom: 0.18, shadows: true, grade: true, stars: true, nebula: true },
 };
 
 /** Where the camera rests when nothing dramatic is happening. */
@@ -487,12 +490,20 @@ export function createStage(canvas: HTMLCanvasElement, initial?: Quality): Stage
 
   function applyQuality() {
     settings = QUALITY_SETTINGS[quality];
+    const phone = Math.min(window.innerWidth, window.innerHeight) <= 640;
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, settings.dpr));
     renderer.shadowMap.enabled = settings.shadows;
     key.castShadow = settings.shadows;
     bloomPass.enabled = settings.bloom > 0;
-    bloomPass.strength = settings.bloom;
+    // On a phone, bloom and lens artifacts compete with glyph pixels. Keep the
+    // cinematic treatment in the sky/VFX and give dice faces a clean path.
+    bloomPass.strength = phone ? settings.bloom * 0.35 : settings.bloom;
+    bloomPass.threshold = phone ? 1.22 : 1.08;
+    bloomPass.radius = phone ? 0.16 : 0.28;
     gradePass.enabled = settings.grade;
+    gradePass.uniforms.uGrain.value = phone ? 0 : 0.007;
+    gradePass.uniforms.uAberration.value = phone ? 0 : 0.00055;
+    gradePass.uniforms.uVignette.value = phone ? 0.35 : 0.92;
     stars.visible = settings.stars;
     nebula.visible = settings.nebula;
     scene.traverse((object) => {
