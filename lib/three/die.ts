@@ -24,6 +24,10 @@ export type DieState = {
   disabled?: boolean;
   /** Ringed by the flagship's face bonus. */
   flagRing?: boolean;
+  /** Fleet Dice 1 semantic colour for the current flagship bonus. */
+  flagRingColor?: number;
+  /** Chosen to absorb the incoming volley. */
+  damageSelected?: boolean;
   /** Dimmed because it belongs to the other commander. */
   enemy?: boolean;
   /**
@@ -277,6 +281,36 @@ export function createDie(kind: DieKind, font: string, scale = 1): Die {
   selectionRing.position.y = -shared.built.seatHeight * 0.95;
   object.add(selectionRing);
 
+  // Bracing is deliberately not the same cyan reroll state. A steady red
+  // target and X beneath the die makes "this ship will take damage" readable
+  // without relying on motion, glow, or the dock copy.
+  const damageMaterial = new THREE.MeshBasicMaterial({
+    color: 0xff4056,
+    transparent: true,
+    opacity: 0,
+    depthWrite: false,
+    side: THREE.DoubleSide,
+  });
+  const damageRing = new THREE.Mesh(
+    new THREE.RingGeometry(shared.built.radius * 1.18, shared.built.radius * 1.38, 48),
+    damageMaterial,
+  );
+  damageRing.rotation.x = -Math.PI / 2;
+  damageRing.position.y = -shared.built.seatHeight * 0.94;
+  object.add(damageRing);
+
+  const damageBars: THREE.Mesh[] = [];
+  for (const angle of [Math.PI / 4, -Math.PI / 4]) {
+    const bar = new THREE.Mesh(
+      new THREE.PlaneGeometry(shared.built.radius * 1.55, shared.built.radius * 0.16),
+      damageMaterial.clone(),
+    );
+    bar.rotation.set(-Math.PI / 2, 0, angle);
+    bar.position.y = -shared.built.seatHeight * 0.93;
+    object.add(bar);
+    damageBars.push(bar);
+  }
+
   object.scale.setScalar(scale);
 
   const home = new THREE.Vector3();
@@ -315,6 +349,10 @@ export function createDie(kind: DieKind, font: string, scale = 1): Die {
       barMaterial.opacity = 0;
       ringMaterial.opacity = 0;
       selectionMaterial.opacity = 0;
+      damageMaterial.opacity = 0;
+      for (const damageBar of damageBars) {
+        (damageBar.material as THREE.MeshBasicMaterial).opacity = 0;
+      }
       return;
     }
     const even = value % 2 === 0;
@@ -338,14 +376,18 @@ export function createDie(kind: DieKind, font: string, scale = 1): Die {
           : kind === "flag" ? 0.12 : 0.22;
       glowMaterial.opacity = state.selected ? 0.34 : 0.08;
     }
-    selectionMaterial.opacity = !state.disabled && state.selected ? 0.72 : 0;
+    selectionMaterial.opacity = !state.disabled && state.selected && !state.damageSelected ? 0.72 : 0;
+    damageMaterial.opacity = !state.disabled && state.damageSelected ? 0.94 : 0;
+    for (const damageBar of damageBars) {
+      (damageBar.material as THREE.MeshBasicMaterial).opacity = damageMaterial.opacity;
+    }
     barMaterial.opacity = state.inRun ? 0.95 : 0;
     if (state.inLine) {
       ringMaterial.color.setHex(state.inLine === "col" ? 0xff4d4d : 0xffd23d);
       ringMaterial.opacity = 0.85;
     } else if (state.flagRing) {
-      ringMaterial.color.setHex(0xffd23d);
-      ringMaterial.opacity = 0.6;
+      ringMaterial.color.setHex(state.flagRingColor ?? 0xffd23d);
+      ringMaterial.opacity = 0.82;
     } else {
       ringMaterial.opacity = 0;
     }
@@ -406,7 +448,7 @@ export function createDie(kind: DieKind, font: string, scale = 1): Die {
     },
     update(dt, time) {
       frameCount += 1;
-      const lift = state.selected && !rolling ? 0.42 : 0;
+      const lift = (state.selected || state.damageSelected) && !rolling ? 0.42 : 0;
       const idle = state.disabled ? 0 : Math.sin(time * 1.15 + idleSeed) * 0.055;
 
       if (rolling) {
@@ -493,6 +535,12 @@ export function createDie(kind: DieKind, font: string, scale = 1): Die {
       ring.geometry.dispose();
       selectionMaterial.dispose();
       selectionRing.geometry.dispose();
+      damageMaterial.dispose();
+      damageRing.geometry.dispose();
+      for (const damageBar of damageBars) {
+        damageBar.geometry.dispose();
+        (damageBar.material as THREE.Material).dispose();
+      }
       object.removeFromParent();
     },
   } as Die;

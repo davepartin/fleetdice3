@@ -45,6 +45,7 @@ export function MatchScreen({ controller, onExit, title, subtitle }: Props) {
   const arenaRef = useRef<Arena | null>(null);
   const [arenaReady, setArenaReady] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [braceShips, setBraceShips] = useState<Set<string>>(new Set());
   const [helpOpen, setHelpOpen] = useState(false);
   const [muted, setMuted] = useState(false);
   const [shake, setShake] = useState(false);
@@ -66,7 +67,6 @@ export function MatchScreen({ controller, onExit, title, subtitle }: Props) {
   /* --------------------------------------------------------------- */
 
   const toggleDie = useCallback((shipId: string) => {
-    if (shipId === "flag") return;
     setSelected((current) => {
       const next = new Set(current);
       if (next.has(shipId)) {
@@ -163,12 +163,13 @@ export function MatchScreen({ controller, onExit, title, subtitle }: Props) {
     arena.sync(state, controller.side, {
       instant: firstSyncRef.current,
       selected,
+      damageSelected: phase === "brace" ? braceShips : undefined,
       revealEnemy: phase === "brace" || phase === "report" || phase === "over",
       thrown: thrownRef.current,
     });
     thrownRef.current = new Set();
     firstSyncRef.current = false;
-  }, [state, selected, phase, controller.side, arenaReady]);
+  }, [state, selected, braceShips, phase, controller.side, arenaReady]);
 
   /* Point the camera at whatever matters right now ------------------- */
 
@@ -333,8 +334,12 @@ export function MatchScreen({ controller, onExit, title, subtitle }: Props) {
     send({ type: "roll", dice: ids });
   };
 
-  const [braceShips, setBraceShips] = useState<Set<string>>(new Set());
   braceRef.current = (shipId: string) => {
+    if (shipId === "flag") return;
+    if (!you || !activeShips(you, you.round).some((ship) => ship.id === shipId)) {
+      audio.play("dice-deselect");
+      return;
+    }
     setBraceShips((current) => {
       const next = new Set(current);
       if (next.has(shipId)) next.delete(shipId);
@@ -557,7 +562,7 @@ export function MatchScreen({ controller, onExit, title, subtitle }: Props) {
 
 function TallyStrip({ tally }: { tally: ReturnType<typeof previewTally> | null }) {
   return (
-    <div className="tally-strip grid grid-cols-4 gap-1">
+    <div className="tally-strip grid grid-cols-5 gap-1">
       <div className="tally-cell tally-cell-attack">
         <Stat kind="attack" value={tally?.attack ?? 0} label="Attack" />
       </div>
@@ -569,6 +574,9 @@ function TallyStrip({ tally }: { tally: ReturnType<typeof previewTally> | null }
       </div>
       <div className="tally-cell tally-cell-repair">
         <Stat kind="repair" value={tally?.heal ?? 0} label="Repair" />
+      </div>
+      <div className="tally-cell tally-cell-energy">
+        <Stat kind="energy" value={tally?.energy ?? 0} label="Energy" />
       </div>
     </div>
   );
@@ -624,6 +632,7 @@ function RollDock({
   onToken(direction: -1 | 1): void;
   onClearSelection(): void;
 }) {
+  const [tokenOpen, setTokenOpen] = useState(false);
   const notRolled = you.phase === "ready";
   const run = you.dice.length ? bestRun(you.dice) : null;
   const tiers = run
@@ -636,7 +645,7 @@ function RollDock({
   const canAffordReroll = rerollCost === 0 || you.energy >= rerollCost;
 
   return (
-    <div className="roll-dock panel panel-you flex flex-col gap-2.5 p-3.5">
+    <div className="roll-dock panel panel-you relative flex flex-col gap-2.5 p-3.5">
       <YourHealth you={you} />
       <TallyStrip tally={tally} />
 
@@ -687,16 +696,35 @@ function RollDock({
         <FlagshipLine you={you} />
 
         {you.flag.token && you.phase === "rolling" && (
-          <div className="flagship-token-controls flex shrink-0 items-center gap-1.5" aria-label="Flagship token">
-            <Button tone="ghost" size="sm" onClick={() => onToken(-1)} disabled={busy} ariaLabel="Lower flagship face">
-              −1
-            </Button>
-            <Button tone="ghost" size="sm" onClick={() => onToken(1)} disabled={busy} ariaLabel="Raise flagship face">
-              +1
-            </Button>
-          </div>
+          <Button
+            tone="energy"
+            size="sm"
+            onClick={() => setTokenOpen(true)}
+            disabled={busy}
+            ariaLabel="Use flagship weapon"
+          >
+            Flagship weapon
+          </Button>
         )}
       </div>
+
+      {tokenOpen && you.flag.token && you.phase === "rolling" && (
+        <div className="flagship-token-popover panel" role="dialog" aria-label="Flagship weapon controls">
+          <p className="t-eyebrow c-energy">Flagship weapon · once per match</p>
+          <p className="mt-1 text-sm text-white">Turn the flagship one face.</p>
+          <div className="mt-3 grid grid-cols-3 gap-2">
+            <Button tone="ghost" size="lg" onClick={() => { onToken(-1); setTokenOpen(false); }} disabled={busy}>
+              −1 face
+            </Button>
+            <Button tone="ghost" size="lg" onClick={() => setTokenOpen(false)}>
+              Cancel
+            </Button>
+            <Button tone="energy" size="lg" onClick={() => { onToken(1); setTokenOpen(false); }} disabled={busy}>
+              +1 face
+            </Button>
+          </div>
+        </div>
+      )}
 
       {waiting ? (
         <div className="flex items-center justify-center gap-3 py-2">
@@ -737,7 +765,7 @@ function RollDock({
 
       {you.phase === "rolling" && selected.size === 0 && (
         <p className="roll-instruction text-center text-[0.76rem] c-dim">
-          Tap any ship die to send it back.{" "}
+          Tap any ship or flagship die to reroll it.{" "}
           {rollsLeft > 0
             ? `${rollsLeft} free ${rollsLeft === 1 ? "roll" : "rolls"} left.`
             : "Extra rolls cost 1 Energy a die."}
@@ -765,7 +793,7 @@ function BraceDock({
     .filter((ship) => chosen.has(ship.id))
     .reduce((sum, ship) => sum + ship.sides, 0);
   const landing = Math.max(0, you.incoming - soak) + you.directIncoming;
-  const after = you.hp - landing + (you.tally?.heal ?? 0);
+  const after = Math.min(you.maxHp, you.hp - landing + (you.tally?.heal ?? 0));
   const fatal = after <= 0;
 
   return (
@@ -786,6 +814,9 @@ function BraceDock({
         <p className="brace-explanation mt-1 text-[0.84rem] leading-snug c-dim">
           Throw ships in front of it. Each one soaks its own size and sits out the next round.
           Nothing stops Direct.
+        </p>
+        <p className="brace-mobile-guide mt-1 text-[0.78rem] font-semibold c-attack">
+          Tap a ship die. A red damage target means it will take the hit.
         </p>
       </div>
 

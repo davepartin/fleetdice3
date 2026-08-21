@@ -150,7 +150,9 @@ async function run(browser, viewport, label, errors) {
     // branch while still reporting a clean playthrough.
   const diePoints =
     label.startsWith("phone")
-      ? [[0.25, 0.42], [0.5, 0.34], [0.75, 0.42], [0.5, 0.51]]
+      // Start at the centre flagship: it is a legal reroll and used to be
+      // silently discarded by the phone UI.
+      ? [[0.5, 0.38], [0.25, 0.42], [0.75, 0.42], [0.5, 0.51]]
       : [[0.36, 0.39], [0.64, 0.39], [0.5, 0.23], [0.5, 0.55]];
     let picked = false;
     for (const [x, y] of diePoints) {
@@ -177,14 +179,28 @@ async function run(browser, viewport, label, errors) {
     await tap(page, "Lock in");
     await page.waitForTimeout(2600);
 
-    // Brace, if anything got through.
-    if (await visible(page, "Send", 2500)) {
+    // Brace, if anything got through. Pick an actual 3D ship and require the
+    // red damage marker/Send state before confirming whenever one is tappable.
+    if (await visible(page, "Take it on the flagship", 2500)) {
       await shot(page, `${pad(round)}d-brace`, label);
-      await tap(page, "Send");
-      await page.waitForTimeout(1800);
-    } else if (await visible(page, "Take it on the flagship", 900)) {
-      await shot(page, `${pad(round)}d-brace`, label);
-      await tap(page, "Take it on the flagship");
+      const bracePoints = label.startsWith("phone")
+        ? [[0.2, 0.51], [0.8, 0.51], [0.5, 0.62], [0.5, 0.45]]
+        : [[0.36, 0.56], [0.64, 0.56], [0.5, 0.66]];
+      let marked = false;
+      for (const [x, y] of bracePoints) {
+        await page.mouse.click(viewport.width * x, viewport.height * y);
+        await page.waitForTimeout(260);
+        if (await visible(page, "Send", 450)) {
+          marked = true;
+          break;
+        }
+      }
+      if (marked) {
+        await shot(page, `${pad(round)}d2-brace-selected`, label);
+        await tap(page, "Send");
+      } else {
+        await tap(page, "Take it on the flagship");
+      }
       await page.waitForTimeout(1800);
     }
 
