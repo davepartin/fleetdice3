@@ -29,7 +29,22 @@ export type FaceSpec = {
 
 const HIT = { ink: "#fff6f4", glow: "#ff7a6a", deep: "#63101c" };
 const BLOCK = { ink: "#f4fbff", glow: "#8ed2ff", deep: "#0b3a6b" };
-const FLAG = { ink: "#fff9df", glow: "#f6c84d", deep: "#2a1902" };
+
+/**
+ * Fleet Dice 1's flagship language, rebuilt as polished 3D resin. Each face
+ * has a semantic colour, so the die itself teaches which fleet dice it boosts.
+ */
+export const FLAG_FACE_PALETTE: Record<
+  number,
+  { fill: string; mid: string; deep: string; ink: string; ring: number }
+> = {
+  1: { fill: "#ffe81f", mid: "#897b0e", deep: "#292405", ink: "#211a02", ring: 0xffe81f },
+  2: { fill: "#b98bff", mid: "#644a8b", deep: "#1c102b", ink: "#1e1233", ring: 0xb98bff },
+  3: { fill: "#72efa6", mid: "#347c52", deep: "#071f15", ink: "#06291b", ring: 0x72efa6 },
+  4: { fill: "#ffe81f", mid: "#897b0e", deep: "#292405", ink: "#211a02", ring: 0xffe81f },
+  5: { fill: "#45b6ff", mid: "#23658f", deep: "#051e31", ink: "#062a47", ring: 0x45b6ff },
+  6: { fill: "#ff5569", mid: "#872c39", deep: "#2e070e", ink: "#3d0812", ring: 0xff5569 },
+};
 
 /* ------------------------------------------------------------------ */
 /* Glyphs                                                              */
@@ -98,16 +113,19 @@ function paintFace(
   numberFont: string,
 ) {
   const isFlag = spec.role === "flag";
-  const palette = isFlag ? FLAG : spec.fights === "hits" ? HIT : BLOCK;
+  const flagPalette = FLAG_FACE_PALETTE[spec.value] ?? FLAG_FACE_PALETTE[1]!;
+  const palette = isFlag
+    ? { ink: flagPalette.ink, glow: flagPalette.fill, deep: flagPalette.deep }
+    : spec.fights === "hits" ? HIT : BLOCK;
   const glow = palette.glow;
   const cx = size / 2;
 
   if (mode === "albedo") {
     // Brushed plate with a hint of the face's colour bleeding from the centre.
     const plate = ctx.createRadialGradient(cx, size * 0.42, size * 0.04, cx, cx, size * 0.72);
-    plate.addColorStop(0, isFlag ? "#d29a28" : spec.fights === "hits" ? "#d4354a" : "#2b7fca");
-    plate.addColorStop(0.62, isFlag ? "#785116" : spec.fights === "hits" ? "#7b192c" : "#173f70");
-    plate.addColorStop(1, isFlag ? "#271805" : spec.fights === "hits" ? "#310a15" : "#091c36");
+    plate.addColorStop(0, isFlag ? flagPalette.fill : spec.fights === "hits" ? "#d4354a" : "#2b7fca");
+    plate.addColorStop(0.62, isFlag ? flagPalette.mid : spec.fights === "hits" ? "#7b192c" : "#173f70");
+    plate.addColorStop(1, isFlag ? flagPalette.deep : spec.fights === "hits" ? "#310a15" : "#091c36");
     ctx.fillStyle = plate;
     ctx.fillRect(0, 0, size, size);
 
@@ -129,7 +147,7 @@ function paintFace(
     // rectangular sticker had been pasted across the hull.
     if (sides === 6) {
       ctx.save();
-      ctx.globalAlpha = isFlag ? 0.5 : 0.34;
+      ctx.globalAlpha = isFlag ? 0.72 : 0.34;
       ctx.strokeStyle = glow;
       ctx.lineWidth = size * 0.016;
       ctx.beginPath();
@@ -140,7 +158,7 @@ function paintFace(
   } else {
     ctx.fillStyle = "#000000";
     ctx.fillRect(0, 0, size, size);
-    if (sides === 6) {
+    if (sides === 6 && !isFlag) {
       // The d6 bevel ring glows faintly too.
       ctx.save();
       ctx.globalAlpha = 0.2;
@@ -154,8 +172,8 @@ function paintFace(
   }
 
   const hasMarks = spec.marks.length > 0 || Boolean(spec.caption);
-  const numberY = hasMarks ? size * 0.43 : size * 0.5;
-  const numberSize = hasMarks ? size * 0.5 : size * 0.58;
+  const numberY = hasMarks ? size * 0.405 : size * 0.5;
+  const numberSize = hasMarks ? size * (isFlag ? 0.57 : 0.56) : size * 0.66;
 
   ctx.save();
   ctx.textAlign = "center";
@@ -163,7 +181,7 @@ function paintFace(
   ctx.font = `900 ${numberSize}px ${numberFont}`;
   if (mode === "albedo") {
     ctx.shadowColor = palette.deep;
-    ctx.shadowBlur = size * 0.035;
+    ctx.shadowBlur = size * 0.02;
     ctx.strokeStyle = palette.deep;
     ctx.lineWidth = size * 0.032;
     ctx.lineJoin = "round";
@@ -172,7 +190,9 @@ function paintFace(
   } else {
     ctx.shadowColor = "#000000";
     ctx.shadowBlur = 0;
-    ctx.fillStyle = "#aebed1";
+    // The Fleet Dice 1 flagship uses a bright plate with a dark number. Do not
+    // put that dark core into bloom; it stays razor sharp over the coloured face.
+    ctx.fillStyle = isFlag ? "#000000" : "#d9e9f7";
   }
   ctx.fillText(String(spec.value), cx, numberY);
   ctx.restore();
@@ -181,9 +201,9 @@ function paintFace(
     ctx.save();
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    ctx.font = `800 ${size * 0.135}px ${numberFont}`;
+    ctx.font = `900 ${size * 0.145}px ${numberFont}`;
     ctx.letterSpacing = `${size * 0.018}px`;
-    ctx.fillStyle = mode === "albedo" ? palette.ink : "#aebed1";
+    ctx.fillStyle = mode === "albedo" ? palette.ink : isFlag ? "#000000" : "#d9e9f7";
     ctx.shadowColor = mode === "albedo" ? palette.deep : "#000000";
     ctx.shadowBlur = mode === "albedo" ? size * 0.025 : 0;
     if (mode === "albedo") {
@@ -201,8 +221,8 @@ function paintFace(
     for (const mark of spec.marks) {
       for (let i = 0; i < mark.count; i += 1) glyphs.push(mark.kind);
     }
-    const markSize = size * (glyphs.length > 2 ? 0.15 : 0.175);
-    const gap = markSize * 1.24;
+    const markSize = size * (glyphs.length > 2 ? 0.18 : 0.21);
+    const gap = markSize * 1.18;
     const startX = cx - ((glyphs.length - 1) * gap) / 2;
     const markY = size * 0.775;
 

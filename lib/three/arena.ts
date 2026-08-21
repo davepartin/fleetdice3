@@ -12,6 +12,7 @@ import { activeShips, cellForSlot, opponentOf } from "../engine";
 import { createStage, type Quality, type Stage } from "./stage";
 import { createBoard, cellCentre, type Board } from "./board";
 import { createDie, type Die, type DieKind } from "./die";
+import { FLAG_FACE_PALETTE } from "./faceArt";
 import { createVfx, type Vfx } from "./vfx";
 import { displayFontFamily } from "./fonts";
 
@@ -51,7 +52,7 @@ function frameFor(focus: Focus, soloPhone = false) {
     return {
       ...base,
       pitch: 54,
-      fitWidth: 9.4,
+      fitWidth: 9.7,
       fitDepth: 12.8,
       target: new THREE.Vector3(0, 0, 5.2),
       parallax: 0.22,
@@ -73,6 +74,8 @@ export type SyncOptions = {
   instant?: boolean;
   /** Ship ids currently picked for a reroll. */
   selected?: Set<string>;
+  /** Ship ids currently committed to taking the incoming volley. */
+  damageSelected?: Set<string>;
   /** Show the enemy's dice. False until both commanders have locked in. */
   revealEnemy?: boolean;
   /**
@@ -228,7 +231,9 @@ export function createArena(canvas: HTMLCanvasElement, options: ArenaOptions = {
         die = undefined;
       }
       if (!die) {
-        die = createDie(spec.kind, font, 1.14);
+        // On a phone the face, not the board decoration, is the product. This
+        // raises linear size by a third and nearly doubles visible face area.
+        die = createDie(spec.kind, font, isSoloPhone() ? 1.52 : 1.14);
         die.object.userData.shipId = id;
         die.object.traverse((node) => {
           node.userData.shipId = id;
@@ -271,6 +276,7 @@ export function createArena(canvas: HTMLCanvasElement, options: ArenaOptions = {
 
       die.setState({
         selected: deckKey === "you" && (opts.selected?.has(id) ?? false),
+        damageSelected: deckKey === "you" && (opts.damageSelected?.has(id) ?? false),
         disabled: spec.disabled,
         enemy: deckKey === "enemy",
       });
@@ -326,6 +332,7 @@ export function createArena(canvas: HTMLCanvasElement, options: ArenaOptions = {
         inRun,
         inLine: cell >= 0 ? (lineCells.get(cell) ?? null) : null,
         flagRing,
+        flagRingColor: FLAG_FACE_PALETTE[face]?.ring ?? 0xffd23d,
       });
     }
     deck.board.setRunCells(runCells);

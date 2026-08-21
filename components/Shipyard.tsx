@@ -85,15 +85,30 @@ export function Shipyard({ player, onAction, onDone, busy }: Props) {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-3">
-      <div className="flex items-center justify-between gap-3">
+      <div className="shipyard-header flex items-center justify-between gap-3">
         <div>
           <p className="t-eyebrow">Shipyard</p>
-          <h2 className="t-display text-2xl">Round {player.round}</h2>
+          <h2 className="t-display text-2xl">Build for round {player.round}</h2>
         </div>
         <div className="flex items-center gap-2">
           <Stat kind="energy" value={energy} label="in the bank" />
         </div>
       </div>
+
+      <div className="shipyard-overview grid grid-cols-3 gap-1.5" aria-label="Fleet upgrade summary">
+        <div><b>{player.ships.length}</b><span>Ships</span></div>
+        <div><b>{opened}/8</b><span>Cells open</span></div>
+        <div><b>L{player.flag.level}</b><span>Flagship</span></div>
+      </div>
+
+      <details className="shipyard-help rounded-xl border border-[--color-shield]/25 bg-[--color-shield]/[0.07] px-3 py-2">
+        <summary className="text-sm font-bold text-white">How upgrades work</summary>
+        <ol className="mt-2 list-decimal space-y-1 pl-5 text-[0.78rem] leading-snug c-dim">
+          <li>Spend Energy on any upgrades you can afford.</li>
+          <li>Open a cell before buying a ship when every open cell is full.</li>
+          <li>Upgrading a ship keeps it in the same cell. You may buy more than once.</li>
+        </ol>
+      </details>
 
       {pickingFor && (
         <Notice tone="info">
@@ -116,26 +131,7 @@ export function Shipyard({ player, onAction, onDone, busy }: Props) {
           onPick={pickable.length ? chooseSlot : undefined}
         />
 
-        <Section title="Buy a ship" note={empties.length ? `${empties.length} empty ${empties.length === 1 ? "cell" : "cells"}` : "No empty cells"}>
-          <div className="grid grid-cols-2 gap-2">
-            {HULLS.map((sides) => {
-              const cost = priceOf(sides);
-              const can = energy >= cost && empties.length > 0;
-              return (
-                <ShopCard
-                  key={sides}
-                  title={`d${sides}`}
-                  cost={cost}
-                  blurb={HULL_BLURB[sides]}
-                  disabled={!can || busy}
-                  onClick={() => buy(sides)}
-                />
-              );
-            })}
-          </div>
-        </Section>
-
-        <Section title="Upgrade a ship" note="One size bigger, keeps its cell">
+        <Section title="1 · Strengthen a ship" note="One size bigger · same cell">
           {player.ships.length === 0 ? (
             <p className="text-sm c-dim">You have no ships to upgrade.</p>
           ) : (
@@ -170,6 +166,11 @@ export function Shipyard({ player, onAction, onDone, busy }: Props) {
                         )}
                       </span>
                       {cost !== null && <Stat kind="energy" value={cost} label="" size="sm" />}
+                      {!can && (
+                        <span className="shop-disabled-reason text-[0.66rem] c-dim">
+                          {next === null ? "Maximum" : cost !== null ? `Need ${Math.max(0, cost - energy)} more` : "Unavailable"}
+                        </span>
+                      )}
                     </button>
                   );
                 })}
@@ -178,7 +179,7 @@ export function Shipyard({ player, onAction, onDone, busy }: Props) {
         </Section>
 
         <Section
-          title="Open a cell"
+          title="2 · Make room"
           note={opened >= 8 ? "Every cell is open" : `${opened} of 8 open`}
         >
           {slotCost === null ? (
@@ -188,6 +189,7 @@ export function Shipyard({ player, onAction, onDone, busy }: Props) {
               title="Open a locked cell"
               cost={slotCost}
               blurb="One more ship on the board, and one more way to line up a row or a column."
+              disabledReason={energy < slotCost ? `Need ${slotCost - energy} more Energy` : undefined}
               disabled={energy < slotCost || busy}
               onClick={openCell}
               wide
@@ -195,7 +197,33 @@ export function Shipyard({ player, onAction, onDone, busy }: Props) {
           )}
         </Section>
 
-        <Section title="Level the flagship" note={`Level ${player.flag.level} of 3`}>
+        <Section title="3 · Add a ship" note={empties.length ? `${empties.length} empty ${empties.length === 1 ? "cell" : "cells"}` : "Open a cell first"}>
+          {empties.length ? (
+            <div className="grid grid-cols-2 gap-2">
+              {HULLS.map((sides) => {
+                const cost = priceOf(sides);
+                const can = energy >= cost;
+                return (
+                  <ShopCard
+                    key={sides}
+                    title={`d${sides}`}
+                    cost={cost}
+                    blurb={HULL_BLURB[sides]}
+                    disabledReason={energy < cost ? `Need ${cost - energy} more Energy` : undefined}
+                    disabled={!can || busy}
+                    onClick={() => buy(sides)}
+                  />
+                );
+              })}
+            </div>
+          ) : (
+            <p className="rounded-xl border border-dashed border-white/10 px-3 py-2.5 text-sm c-dim">
+              Your four open cells are full. Open a cell above, then choose a new hull here.
+            </p>
+          )}
+        </Section>
+
+        <Section title="4 · Power up the flagship" note={`Level ${player.flag.level} of 3`}>
           {flagCost === null ? (
             <p className="text-sm c-dim">Your flagship is at level 3. It cannot go higher.</p>
           ) : (
@@ -203,6 +231,7 @@ export function Shipyard({ player, onAction, onDone, busy }: Props) {
               title={`Flagship level ${player.flag.level + 1}`}
               cost={flagCost}
               blurb={`Every one of the six flagship faces gets stronger: bonuses go from ${TUNING.flagBonus[player.flag.level]} to ${TUNING.flagBonus[player.flag.level + 1]}.`}
+              disabledReason={energy < flagCost ? `Need ${flagCost - energy} more Energy` : undefined}
               disabled={energy < flagCost || busy}
               onClick={() => onAction({ type: "shop", operation: "flagship" })}
               wide
@@ -212,7 +241,7 @@ export function Shipyard({ player, onAction, onDone, busy }: Props) {
       </div>
 
       <Button tone="primary" size="lg" full onClick={onDone} disabled={busy}>
-        Take the field
+        Done upgrading · Take the field
       </Button>
     </div>
   );
@@ -246,6 +275,7 @@ function ShopCard({
   cost,
   blurb,
   disabled,
+  disabledReason,
   onClick,
   wide,
 }: {
@@ -253,6 +283,7 @@ function ShopCard({
   cost: number;
   blurb: string;
   disabled?: boolean;
+  disabledReason?: string;
   onClick(): void;
   wide?: boolean;
 }) {
@@ -270,6 +301,7 @@ function ShopCard({
         <Stat kind="energy" value={cost} label="" size="sm" />
       </span>
       <span className="text-[0.78rem] leading-snug c-dim">{blurb}</span>
+      {disabledReason && <span className="shop-card-status text-[0.68rem] font-semibold c-energy">{disabledReason}</span>}
     </button>
   );
 }
@@ -286,7 +318,7 @@ function BoardPicker({
 }) {
   const set = new Set(highlight);
   return (
-    <div className="mx-auto grid w-full max-w-[16rem] grid-cols-3 gap-1.5">
+    <div className="shipyard-board mx-auto grid w-full max-w-[16rem] grid-cols-3 gap-1.5">
       {Array.from({ length: 9 }, (_, cell) => {
         if (cell === 4) {
           return (

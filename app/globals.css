@@ -479,9 +479,54 @@ button {
 .tally-cell-shield { background: rgb(77 180 255 / 0.07); }
 .tally-cell-direct { background: rgb(176 125 255 / 0.07); }
 .tally-cell-repair { background: rgb(69 224 139 / 0.07); }
+.tally-cell-energy { background: rgb(255 210 61 / 0.08); }
+
+.brace-mobile-guide {
+  display: none;
+}
+
+.flagship-token-popover {
+  position: absolute;
+  right: 0.75rem;
+  bottom: 4.75rem;
+  left: 0.75rem;
+  z-index: 35;
+  padding: 0.9rem;
+  border-color: rgb(255 210 61 / 0.42);
+  background: rgb(5 9 18 / 0.97);
+  box-shadow: 0 18px 45px rgb(0 0 0 / 0.62), 0 0 28px rgb(255 210 61 / 0.1);
+}
 
 .round-report-mobile-summary {
   display: none;
+}
+
+.shipyard-overview > div {
+  display: flex;
+  min-height: 52px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgb(255 255 255 / 0.09);
+  border-radius: 11px;
+  background: rgb(255 255 255 / 0.035);
+}
+.shipyard-overview b {
+  color: white;
+  font-family: var(--font-display);
+  font-size: 1rem;
+}
+.shipyard-overview span {
+  color: var(--color-hull-400);
+  font-size: 0.58rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.shipyard-help > summary {
+  min-height: 30px;
+  cursor: pointer;
+  list-style-position: inside;
 }
 
 .round-report-disclosure > summary {
@@ -598,11 +643,11 @@ button {
     padding: 0.35rem 0.1rem 0.3rem;
   }
   .match-hud-solo .tally-cell .t-num {
-    font-size: 1.28rem;
+    font-size: 1.15rem;
   }
   .match-hud-solo .tally-cell .t-eyebrow {
-    font-size: 0.6rem;
-    letter-spacing: 0.1em;
+    font-size: 0.52rem;
+    letter-spacing: 0.07em;
   }
 
   .match-hud-solo .roll-hint {
@@ -633,6 +678,20 @@ button {
     padding: 0.4rem 0.55rem;
   }
 
+  .match-hud-solo .flagship-control-row > .btn {
+    min-height: 40px;
+    max-width: 112px;
+    padding-inline: 0.55rem;
+    font-size: 0.64rem;
+    line-height: 1.05;
+  }
+
+  .match-hud-solo .flagship-token-popover .btn-lg {
+    min-height: 48px;
+    padding-inline: 0.35rem;
+    font-size: 0.78rem;
+  }
+
   .match-hud-solo .roll-dock .btn-lg {
     min-height: 56px;
     padding: 0.78rem 1rem;
@@ -659,6 +718,9 @@ button {
   .match-hud-solo .brace-explanation,
   .match-hud-solo .brace-ship-list {
     display: none;
+  }
+  .match-hud-solo .brace-mobile-guide {
+    display: block;
   }
   .match-hud-solo .brace-summary {
     min-height: 44px;
@@ -719,6 +781,33 @@ button {
     min-height: 56px;
     padding: 0.75rem 0.8rem;
     font-size: 0.92rem;
+  }
+
+  .match-hud-solo .shipyard-header h2 {
+    font-size: 1.35rem;
+  }
+
+  .match-hud-solo .shipyard-help {
+    flex: 0 0 auto;
+  }
+
+  .match-hud-solo .shipyard-overview > div {
+    min-height: 44px;
+  }
+
+  .match-hud-solo .shipyard-board {
+    max-width: 11.5rem;
+    gap: 0.25rem;
+  }
+
+  .match-hud-solo .shipyard-board button,
+  .match-hud-solo .shipyard-board > div {
+    border-radius: 7px;
+  }
+
+  .match-hud-solo .shop-disabled-reason {
+    max-width: 58px;
+    text-align: right;
   }
 }
 
