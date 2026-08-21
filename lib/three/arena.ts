@@ -45,14 +45,25 @@ const LANDSCAPE_DEPTH: Record<Focus, number> = {
   wide: 26,
 };
 
-function frameFor(focus: Focus) {
+function frameFor(focus: Focus, soloPhone = false) {
   const base = FRAMES[focus];
+  if (soloPhone && focus === "fleet") {
+    return {
+      ...base,
+      pitch: 54,
+      fitWidth: 9.4,
+      fitDepth: 12.8,
+      target: new THREE.Vector3(0, 0, 5.2),
+      parallax: 0.22,
+    };
+  }
   const landscape = window.innerWidth >= 900 && window.innerWidth > window.innerHeight;
   return landscape ? { ...base, fitDepth: LANDSCAPE_DEPTH[focus] } : base;
 }
 
 export type ArenaOptions = {
   quality?: Quality;
+  mode?: "solo" | "versus";
   /** Called when a die on your own deck is tapped. */
   onTapDie?: (shipId: string) => void;
 };
@@ -100,6 +111,8 @@ export function createArena(canvas: HTMLCanvasElement, options: ArenaOptions = {
     you: makeDeck("you", YOUR_DECK, font, stage),
     enemy: makeDeck("enemy", ENEMY_DECK, font, stage),
   };
+  const isPhone = () => window.innerWidth <= 640;
+  const isSoloPhone = () => options.mode === "solo" && window.innerWidth <= 640;
 
   /* Tapping ---------------------------------------------------------- */
 
@@ -160,7 +173,7 @@ export function createArena(canvas: HTMLCanvasElement, options: ArenaOptions = {
   // Apply the responsive frame on first paint too. Calling setFocus("fleet")
   // immediately afterward is intentionally a no-op, so using the raw phone
   // frame here meant desktop never received its safe framing until a resize.
-  stage.setFrame(frameFor("fleet"), true);
+  stage.setFrame(frameFor("fleet", isPhone()), true);
   stage.start();
 
   /* Reconciling ------------------------------------------------------ */
@@ -319,7 +332,7 @@ export function createArena(canvas: HTMLCanvasElement, options: ArenaOptions = {
   }
 
   let lastFocus: Focus = "fleet";
-  const refreshFrame = () => stage.setFrame(frameFor(lastFocus), true);
+  const refreshFrame = () => stage.setFrame(frameFor(lastFocus, isPhone()), true);
   window.addEventListener("resize", refreshFrame);
 
   const arena: Arena = {
@@ -332,12 +345,13 @@ export function createArena(canvas: HTMLCanvasElement, options: ArenaOptions = {
       if (them) {
         const reveal = opts.revealEnemy ?? them.dice.length > 0;
         syncDeck("enemy", them, reveal, opts);
+        decks.enemy.root.visible = reveal || !isSoloPhone();
       }
     },
     setFocus(focus, immediate) {
       if (focus === lastFocus && !immediate) return;
       lastFocus = focus;
-      stage.setFrame(frameFor(focus), immediate);
+      stage.setFrame(frameFor(focus, isPhone()), immediate);
     },
     cellWorld(side, cell) {
       const local = cellCentre(cell);

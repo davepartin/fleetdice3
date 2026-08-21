@@ -63,6 +63,7 @@
 html,
 body {
   height: 100%;
+  height: 100dvh;
   margin: 0;
   background: var(--color-void);
   color: var(--color-hull-100);
@@ -438,6 +439,7 @@ button {
   inset: 0;
   width: 100%;
   height: 100%;
+  height: 100dvh;
   display: block;
   z-index: 0;
 }
@@ -446,6 +448,7 @@ button {
   position: relative;
   z-index: 10;
   height: 100%;
+  height: 100dvh;
   display: flex;
   flex-direction: column;
   padding-top: var(--hud-safe-top);
@@ -459,6 +462,264 @@ button {
    controls apart. It must let taps fall through to the WebGL dice beneath. */
 .hud > .hud-pass-through {
   pointer-events: none;
+}
+
+.match-mobile-menu,
+.flagship-compact,
+.commander-name-mobile {
+  display: none;
+}
+
+.tally-cell {
+  border: 1px solid rgb(255 255 255 / 0.08);
+  border-radius: 12px;
+  padding: 0.48rem 0.2rem 0.42rem;
+}
+.tally-cell-attack { background: rgb(255 77 77 / 0.07); }
+.tally-cell-shield { background: rgb(77 180 255 / 0.07); }
+.tally-cell-direct { background: rgb(176 125 255 / 0.07); }
+.tally-cell-repair { background: rgb(69 224 139 / 0.07); }
+
+.round-report-mobile-summary {
+  display: none;
+}
+
+.round-report-disclosure > summary {
+  cursor: pointer;
+}
+
+@media (min-width: 641px) {
+  .round-report-disclosure > summary {
+    display: none;
+  }
+  .round-report-disclosure > :not(summary) {
+    display: block !important;
+  }
+}
+
+@media (max-width: 640px) {
+  .match-hud-solo .match-header {
+    align-items: flex-start;
+    gap: 0.4rem;
+    padding: max(0.45rem, var(--hud-safe-top)) 0.45rem 0;
+  }
+
+  .match-hud-solo .match-header > .btn {
+    min-width: 44px;
+    min-height: 44px;
+    padding-inline: 0.65rem;
+  }
+
+  .match-hud-solo .match-header .panel-enemy {
+    min-height: 58px;
+    padding: 0.55rem 0.7rem;
+  }
+
+  .match-hud-solo .match-desktop-utilities {
+    display: none;
+  }
+
+  .match-hud-solo .match-mobile-menu {
+    position: relative;
+    display: block;
+    flex: 0 0 auto;
+  }
+
+  .match-mobile-menu > summary {
+    min-width: 44px;
+    min-height: 44px;
+    list-style: none;
+    cursor: pointer;
+  }
+  .match-mobile-menu > summary::-webkit-details-marker { display: none; }
+
+  .match-mobile-menu-popover {
+    position: absolute;
+    top: calc(100% + 0.4rem);
+    right: 0;
+    z-index: 40;
+    width: 148px;
+    overflow: hidden;
+    padding: 0.3rem;
+  }
+  .match-mobile-menu-popover button {
+    display: flex;
+    width: 100%;
+    min-height: 44px;
+    align-items: center;
+    gap: 0.55rem;
+    border-radius: 10px;
+    padding: 0.55rem 0.7rem;
+    color: var(--color-hull-100);
+    font-size: 0.8rem;
+    font-weight: 700;
+    text-align: left;
+  }
+
+  .match-hud-solo .match-bottom {
+    padding: 0 0.45rem max(0.4rem, var(--hud-safe-bottom));
+  }
+
+  .match-hud-solo .roll-dock {
+    gap: 0.42rem;
+    max-height: calc(250px + var(--hud-safe-bottom));
+    padding: 0.65rem;
+    border-radius: 20px;
+  }
+
+  .match-hud-solo .commander-rail {
+    min-height: 22px;
+    gap: 0.45rem;
+  }
+  .match-hud-solo .commander-rail .t-eyebrow {
+    max-width: none;
+  }
+  .match-hud-solo .commander-name-full { display: none; }
+  .match-hud-solo .commander-name-mobile { display: inline; }
+  .match-hud-solo .commander-hpbar {
+    height: 8px;
+  }
+  .commander-bank {
+    display: inline-flex;
+    min-height: 28px;
+    align-items: center;
+    border: 1px solid rgb(255 210 61 / 0.22);
+    border-radius: 9px;
+    background: rgb(255 210 61 / 0.08);
+    padding: 0 0.48rem;
+    font-size: 0.78rem;
+  }
+
+  .match-hud-solo .tally-strip {
+    gap: 0.32rem;
+  }
+  .match-hud-solo .tally-cell {
+    min-height: 48px;
+    padding: 0.35rem 0.1rem 0.3rem;
+  }
+  .match-hud-solo .tally-cell .t-num {
+    font-size: 1.28rem;
+  }
+  .match-hud-solo .tally-cell .t-eyebrow {
+    font-size: 0.6rem;
+    letter-spacing: 0.1em;
+  }
+
+  .match-hud-solo .roll-hint {
+    display: none;
+  }
+
+  .match-hud-solo .flagship-control-row {
+    gap: 0.38rem;
+  }
+  .match-hud-solo .flagship-line {
+    min-height: 40px;
+    padding: 0.4rem 0.5rem;
+  }
+  .match-hud-solo .flagship-line > .t-num {
+    padding-inline: 0.42rem;
+  }
+  .match-hud-solo .flagship-line > span:last-child {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.72rem;
+  }
+  .match-hud-solo .flagship-long { display: none; }
+  .match-hud-solo .flagship-compact { display: inline; }
+  .match-hud-solo .flagship-token-controls .btn {
+    min-width: 40px;
+    min-height: 40px;
+    padding: 0.4rem 0.55rem;
+  }
+
+  .match-hud-solo .roll-dock .btn-lg {
+    min-height: 56px;
+    padding: 0.78rem 1rem;
+    font-size: 0.96rem;
+  }
+
+  .match-hud-solo .roll-instruction {
+    min-height: 16px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.68rem;
+    line-height: 1.1;
+  }
+
+  .match-hud-solo .brace-dock {
+    gap: 0.55rem;
+    max-height: calc(220px + var(--hud-safe-bottom));
+    padding: 0.7rem;
+  }
+  .match-hud-solo .brace-dock h2 {
+    font-size: 1.25rem;
+  }
+  .match-hud-solo .brace-explanation,
+  .match-hud-solo .brace-ship-list {
+    display: none;
+  }
+  .match-hud-solo .brace-summary {
+    min-height: 44px;
+    padding-block: 0.45rem;
+  }
+  .match-hud-solo .brace-dock .btn-lg {
+    min-height: 56px;
+    padding: 0.75rem 0.8rem;
+    font-size: 0.92rem;
+  }
+
+  .match-hud-solo .round-report-panel {
+    max-height: calc(270px + var(--hud-safe-bottom));
+    padding: 0.7rem;
+  }
+  .match-hud-solo .round-report {
+    gap: 0.5rem;
+  }
+  .match-hud-solo .round-report > div:first-child h2 {
+    font-size: 1.35rem;
+  }
+  .match-hud-solo .round-report-mobile-summary {
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+    border: 1px solid rgb(255 255 255 / 0.09);
+    border-radius: 13px;
+    background: rgb(0 0 0 / 0.22);
+    padding: 0.55rem;
+  }
+  .match-hud-solo .round-report-mobile-summary .t-num {
+    font-size: 1rem;
+  }
+  .match-hud-solo .round-report-mobile-hp .hpbar {
+    height: 8px;
+  }
+  .match-hud-solo .round-report-disclosure {
+    flex: 0 1 auto;
+    overflow: hidden;
+  }
+  .match-hud-solo .round-report-disclosure-button {
+    min-height: 36px;
+    border: 1px solid rgb(255 255 255 / 0.12);
+    border-radius: 10px;
+    padding: 0.48rem 0.7rem;
+    color: var(--color-hull-200);
+    font-family: var(--font-display);
+    font-size: 0.68rem;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+    list-style-position: inside;
+    text-transform: uppercase;
+  }
+  .match-hud-solo .round-report-disclosure[open] {
+    overflow-y: auto;
+  }
+  .match-hud-solo .round-report .btn-lg {
+    min-height: 56px;
+    padding: 0.75rem 0.8rem;
+    font-size: 0.92rem;
+  }
 }
 
 .scroll-y {

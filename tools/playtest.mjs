@@ -5,7 +5,7 @@
  * buttons a player clicks, in the order a player clicks them, and it fails
  * loudly on a console error or a button that never appears.
  *
- *   node tools/playtest.mjs            three rounds, phone and desktop
+ *   node tools/playtest.mjs            three rounds at both supported phone sizes
  *   node tools/playtest.mjs 8 phone    eight rounds, phone only
  *   PLAYTEST_QUALITY=high node tools/playtest.mjs 1 review
  *                                    exact 1274×902 visual-review viewport
@@ -24,6 +24,7 @@ const SHOTS = resolve(root, "shots");
 
 const VIEWPORTS = {
   phone: { width: 402, height: 874, deviceScaleFactor: 2, isMobile: true, hasTouch: true },
+  phone390: { width: 390, height: 844, deviceScaleFactor: 2, isMobile: true, hasTouch: true },
   desktop: { width: 1440, height: 900, deviceScaleFactor: 2 },
   review: { width: 1274, height: 902, deviceScaleFactor: 2 },
 };
@@ -148,7 +149,7 @@ async function run(browser, viewport, label, errors) {
     // probe clicked an empty lower-left cell and silently skipped this entire
     // branch while still reporting a clean playthrough.
   const diePoints =
-    label === "phone"
+    label.startsWith("phone")
       ? [[0.25, 0.42], [0.5, 0.34], [0.75, 0.42], [0.5, 0.51]]
       : [[0.36, 0.39], [0.64, 0.39], [0.5, 0.23], [0.5, 0.55]];
     let picked = false;
@@ -225,8 +226,7 @@ async function main() {
   const errors = [];
 
   for (const [label, viewport] of Object.entries(VIEWPORTS)) {
-    if (!ONLY && label === "review") continue;
-    if (ONLY && ONLY !== label) continue;
+    if (ONLY ? ONLY !== label : !label.startsWith("phone")) continue;
     try {
       await run(browser, viewport, label, errors);
     } catch (error) {
