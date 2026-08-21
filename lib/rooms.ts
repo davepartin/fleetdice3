@@ -194,6 +194,9 @@ const CODE_NOT_FOUND_MESSAGE =
 const CODES_EXHAUSTED_MESSAGE =
   "Every room code was busy just then. Tap Create game once more.";
 
+const RULES_NOT_DEPLOYED_MESSAGE =
+  "Two-player games are not switched on in the database yet. The site can sign you in, but it cannot open a room until the Fleet Dice 3 rules are published. On a computer signed into the space-tribes Google account, run: npx -y firebase-tools@latest deploy --only firestore:rules --project space-tribes";
+
 /* ------------------------------------------------------------------ */
 /* Creating, joining, entering                                         */
 /* ------------------------------------------------------------------ */
@@ -260,6 +263,7 @@ export async function createRoom(name: string): Promise<CreatedRoom> {
       );
     } catch (error) {
       if (error instanceof CodeCollisionError) continue;
+      if (isPermissionDenied(error)) throw new Error(RULES_NOT_DEPLOYED_MESSAGE);
       throw friendlyRoomError(error);
     }
 
@@ -390,6 +394,7 @@ export async function joinRoomByCode(code: string, name: string): Promise<LiveRo
       "Looking up that code",
     );
   } catch (error) {
+    if (isPermissionDenied(error)) throw new Error(RULES_NOT_DEPLOYED_MESSAGE);
     throw friendlyRoomError(error);
   }
   if (!codeSnapshot.exists()) throw new Error(CODE_NOT_FOUND_MESSAGE);
@@ -946,6 +951,12 @@ function errorCode(error: unknown): string {
   return "";
 }
 
+function isPermissionDenied(error: unknown): boolean {
+  const code = errorCode(error);
+  const message = error instanceof Error ? error.message : String(error);
+  return code.includes("permission-denied") || /insufficient permissions/i.test(message);
+}
+
 /**
  * Never let a raw Firebase error reach a player.
  *
@@ -959,7 +970,7 @@ export function friendlyRoomError(error: unknown): Error {
   const code = errorCode(error);
   const message = error instanceof Error ? error.message : String(error);
 
-  if (code.includes("permission-denied") || /insufficient permissions/i.test(message)) {
+  if (isPermissionDenied(error)) {
     return new Error(ROOM_FULL_MESSAGE);
   }
   if (code.includes("not-found")) return new Error(ROOM_GONE_MESSAGE);
