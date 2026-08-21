@@ -346,11 +346,6 @@ button {
 .hpbar-fill[data-state="critical"] {
   background: linear-gradient(90deg, #a30f22 0%, #ff4d4d 62%, #ff8a7a 100%);
   box-shadow: 0 0 16px rgb(255 77 77 / 0.75);
-  animation: hp-pulse 1.15s ease-in-out infinite;
-}
-@keyframes hp-pulse {
-  0%, 100% { filter: brightness(1); }
-  50% { filter: brightness(1.35); }
 }
 
 /* ==================================================================
@@ -398,12 +393,8 @@ button {
   animation: shimmer 1.5s ease-in-out infinite;
 }
 
-@keyframes breathe {
-  0%, 100% { opacity: 0.55; }
-  50% { opacity: 1; }
-}
 .anim-breathe {
-  animation: breathe 2.1s ease-in-out infinite;
+  opacity: 1;
 }
 
 /* The whole screen kicks when a volley lands. */
