@@ -116,7 +116,7 @@ async function run(browser, viewport, label, errors) {
 
   for (let round = 1; round <= ROUNDS; round += 1) {
     // Shipyard appears from round 2 onward.
-    if (await visible(page, "Take the field")) {
+    if (await visible(page, "Return to battle")) {
       await shot(page, `${pad(round)}a-shipyard`, label);
 
       // Spend something if we can, so later screens show a grown fleet.
@@ -135,15 +135,15 @@ async function run(browser, viewport, label, errors) {
           await page.waitForTimeout(700);
         }
       }
-      await tap(page, "Take the field");
+      await tap(page, "Return to battle");
       await settle(page, 1400);
     }
 
-    if (!(await visible(page, "Roll your fleet", 4000))) {
+    if (!(await visible(page, "Roll Fleet", 4000))) {
       errors.push(`[${label}] round ${round}: no Roll button`);
       break;
     }
-    await tap(page, "Roll your fleet");
+    await tap(page, "Roll Fleet");
     await settle(page, 3200);
     await shot(page, `${pad(round)}b-rolled`, label);
 
@@ -177,6 +177,32 @@ async function run(browser, viewport, label, errors) {
     await settle(page, 1800);
     if (await visible(page, "To the shipyard", 4000)) {
       await shot(page, `${pad(round)}e-report`, label);
+      if (viewport.isMobile && (await visible(page, "Battle details", 900))) {
+        await tap(page, "Battle details");
+        await page.waitForTimeout(500);
+        const scrolling = await page.locator(".round-report-details-body").evaluate((element) => {
+          const style = getComputedStyle(element);
+          const overflowY = style.overflowY;
+          const canScroll = element.scrollHeight - element.clientHeight > 8;
+          if (canScroll) element.scrollTop = Math.min(80, element.scrollHeight);
+          return {
+            overflowY,
+            canScroll,
+            scrolled: element.scrollTop > 0,
+            clientHeight: Math.round(element.clientHeight),
+            scrollHeight: Math.round(element.scrollHeight),
+          };
+        });
+        if (scrolling.overflowY !== "scroll" && scrolling.overflowY !== "auto") {
+          errors.push(`[${label}] round ${round}: battle details overflow is ${scrolling.overflowY}`);
+        }
+        if (scrolling.canScroll && !scrolling.scrolled) {
+          errors.push(`[${label}] round ${round}: battle details did not move when scrolled`);
+        }
+        await shot(page, `${pad(round)}e2-report-details`, label);
+        await tap(page, "Battle details");
+        await page.waitForTimeout(250);
+      }
       await tap(page, "To the shipyard");
       await settle(page, 1200);
     } else if (await visible(page, "See the result", 1200)) {
