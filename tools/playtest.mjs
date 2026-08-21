@@ -7,6 +7,8 @@
  *
  *   node tools/playtest.mjs            three rounds, phone and desktop
  *   node tools/playtest.mjs 8 phone    eight rounds, phone only
+ *   PLAYTEST_QUALITY=high node tools/playtest.mjs 1 review
+ *                                    exact 1274×902 visual-review viewport
  */
 
 import { chromium } from "playwright";
@@ -23,10 +25,17 @@ const SHOTS = resolve(root, "shots");
 const VIEWPORTS = {
   phone: { width: 402, height: 874, deviceScaleFactor: 2, isMobile: true, hasTouch: true },
   desktop: { width: 1440, height: 900, deviceScaleFactor: 2 },
+  review: { width: 1274, height: 902, deviceScaleFactor: 2 },
 };
 
 const ROUNDS = Number(process.argv[2]) || 3;
 const ONLY = process.argv[3];
+const QUALITY = process.env.PLAYTEST_QUALITY ?? "low";
+const SHOT_SUFFIX = QUALITY === "low" ? "" : `-${QUALITY}`;
+
+if (!["low", "medium", "high"].includes(QUALITY)) {
+  throw new Error(`PLAYTEST_QUALITY must be low, medium, or high; got ${QUALITY}`);
+}
 
 /** Buttons and links both count — the home page uses links for the big cards. */
 function clickable(page, name) {
@@ -70,7 +79,7 @@ async function visible(page, name, timeout = 1200) {
 
 async function shot(page, label, viewport) {
   await mkdir(SHOTS, { recursive: true });
-  const file = join(SHOTS, `${label}-${viewport}.png`);
+  const file = join(SHOTS, `${label}${SHOT_SUFFIX}-${viewport}.png`);
   await page.screenshot({ path: file });
   console.log("  shot", label);
 }
@@ -106,7 +115,7 @@ async function run(browser, viewport, label, errors) {
   // nothing about how the board looks.
   await tap(page, "Play solo");
   await settle(page, 1200);
-  await page.goto("http://localhost:4321/solo/?q=low", { waitUntil: "networkidle" });
+  await page.goto(`http://localhost:4321/solo/?q=${QUALITY}`, { waitUntil: "networkidle" });
   await settle(page, 1200);
   await shot(page, "03-solo-setup", label);
 
@@ -138,10 +147,10 @@ async function run(browser, viewport, label, errors) {
     // Send one die back so the reroll path is genuinely exercised. The old
     // probe clicked an empty lower-left cell and silently skipped this entire
     // branch while still reporting a clean playthrough.
-    const diePoints =
-      label === "phone"
-        ? [[0.25, 0.42], [0.5, 0.34], [0.75, 0.42], [0.5, 0.51]]
-        : [[0.275, 0.25], [0.5, 0.18], [0.725, 0.25], [0.5, 0.43]];
+  const diePoints =
+    label === "phone"
+      ? [[0.25, 0.42], [0.5, 0.34], [0.75, 0.42], [0.5, 0.51]]
+      : [[0.36, 0.39], [0.64, 0.39], [0.5, 0.23], [0.5, 0.55]];
     let picked = false;
     for (const [x, y] of diePoints) {
       await page.mouse.click(viewport.width * x, viewport.height * y);
@@ -216,6 +225,7 @@ async function main() {
   const errors = [];
 
   for (const [label, viewport] of Object.entries(VIEWPORTS)) {
+    if (!ONLY && label === "review") continue;
     if (ONLY && ONLY !== label) continue;
     try {
       await run(browser, viewport, label, errors);

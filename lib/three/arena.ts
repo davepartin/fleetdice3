@@ -37,7 +37,9 @@ const FRAMES: Record<Focus, { pitch: number; fitWidth: number; fitDepth: number;
  * under the controls and off both edges of the screen.
  */
 const LANDSCAPE_DEPTH: Record<Focus, number> = {
-  fleet: 17.5,
+  // Leave a guaranteed band above the action dock and below the header. At
+  // 1274×902 the old frame hid the far ship under the enemy health rail.
+  fleet: 21,
   both: 29,
   enemy: 17.5,
   wide: 26,
@@ -155,7 +157,10 @@ export function createArena(canvas: HTMLCanvasElement, options: ArenaOptions = {
     vfx.update(dt, time);
   });
 
-  stage.setFrame(FRAMES.fleet, true);
+  // Apply the responsive frame on first paint too. Calling setFocus("fleet")
+  // immediately afterward is intentionally a no-op, so using the raw phone
+  // frame here meant desktop never received its safe framing until a resize.
+  stage.setFrame(frameFor("fleet"), true);
   stage.start();
 
   /* Reconciling ------------------------------------------------------ */

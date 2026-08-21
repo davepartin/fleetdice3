@@ -71,18 +71,18 @@ function sharedFor(kind: DieKind, font: string): Shared {
     map: atlas.map,
     emissiveMap: atlas.emissive,
     emissive: new THREE.Color(0xffffff),
-    emissiveIntensity: 0.42,
+    emissiveIntensity: kind === "flag" ? 0.12 : 0.22,
     color: new THREE.Color(HULL_COLOR),
     // Gaming dice are resin, not chrome. A metal die in a dark room is a black
     // die: the colour of metal comes entirely from what it reflects, and space
     // has nothing to reflect. Low metalness plus a hard clearcoat gives the
     // polished-resin look these want, and keeps red reading red.
-    metalness: 0.14,
-    roughness: 0.42,
-    clearcoat: 1,
-    clearcoatRoughness: 0.1,
-    reflectivity: 0.55,
-    envMapIntensity: 1.1,
+    metalness: 0.08,
+    roughness: 0.52,
+    clearcoat: 0.58,
+    clearcoatRoughness: 0.28,
+    reflectivity: 0.4,
+    envMapIntensity: 0.8,
   });
 
   // A slightly larger shell drawn from the inside gives a clean dark rim, which
@@ -258,6 +258,25 @@ export function createDie(kind: DieKind, font: string, scale = 1): Die {
   ring.position.y = -shared.built.seatHeight * 0.96;
   object.add(ring);
 
+  // Selection is a gameplay state, not a lighting effect. A larger cyan ring
+  // plus the physical lift stays obvious in grayscale and leaves the face
+  // exposure untouched; gold rings remain reserved for scoring bonuses.
+  const selectionMaterial = new THREE.MeshBasicMaterial({
+    color: 0x69dcff,
+    transparent: true,
+    opacity: 0,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false,
+    side: THREE.DoubleSide,
+  });
+  const selectionRing = new THREE.Mesh(
+    new THREE.RingGeometry(shared.built.radius * 1.28, shared.built.radius * 1.35, 48),
+    selectionMaterial,
+  );
+  selectionRing.rotation.x = -Math.PI / 2;
+  selectionRing.position.y = -shared.built.seatHeight * 0.95;
+  object.add(selectionRing);
+
   object.scale.setScalar(scale);
 
   const home = new THREE.Vector3();
@@ -295,12 +314,13 @@ export function createDie(kind: DieKind, font: string, scale = 1): Die {
       glowMaterial.opacity = 0;
       barMaterial.opacity = 0;
       ringMaterial.opacity = 0;
+      selectionMaterial.opacity = 0;
       return;
     }
     const even = value % 2 === 0;
     const accent = kind === "flag" ? 0xffd23d : even ? 0xff4d4d : 0x4db4ff;
     glowMaterial.color.setHex(accent);
-    material.color.setHex(state.enemy ? HULL_ENEMY : HULL_COLOR);
+    material.color.setHex(kind === "flag" ? 0xffdfa1 : state.enemy ? HULL_ENEMY : HULL_COLOR);
 
     if (state.disabled) {
       material.emissiveIntensity = 0.05;
@@ -309,11 +329,16 @@ export function createDie(kind: DieKind, font: string, scale = 1): Die {
       material.metalness = 0.02;
       glowMaterial.opacity = 0;
     } else {
-      material.roughness = 0.42;
-      material.metalness = 0.14;
-      material.emissiveIntensity = state.selected ? 0.72 : state.enemy ? 0.32 : 0.44;
-      glowMaterial.opacity = state.selected ? 0.45 : 0.13;
+      material.roughness = 0.52;
+      material.metalness = 0.08;
+      material.emissiveIntensity = state.selected
+        ? kind === "flag" ? 0.2 : 0.34
+        : state.enemy
+          ? 0.16
+          : kind === "flag" ? 0.12 : 0.22;
+      glowMaterial.opacity = state.selected ? 0.34 : 0.08;
     }
+    selectionMaterial.opacity = !state.disabled && state.selected ? 0.72 : 0;
     barMaterial.opacity = state.inRun ? 0.95 : 0;
     if (state.inLine) {
       ringMaterial.color.setHex(state.inLine === "col" ? 0xff4d4d : 0xffd23d);
@@ -427,9 +452,6 @@ export function createDie(kind: DieKind, font: string, scale = 1): Die {
         object.position.z += (home.z - object.position.z) * Math.min(1, dt * 14);
         const targetY = home.y + lift + idle;
         object.position.y += (targetY - object.position.y) * Math.min(1, dt * 12);
-        if (state.selected) {
-          pivot.rotation.y += dt * 0.9;
-        }
       }
 
       // Squash on landing, then spring back.
@@ -445,7 +467,9 @@ export function createDie(kind: DieKind, font: string, scale = 1): Die {
       if (state.selected) {
         const pulse = 0.36 + Math.sin(time * 7) * 0.16;
         glowMaterial.opacity = pulse;
-        material.emissiveIntensity = 0.62 + Math.sin(time * 7) * 0.16;
+        const base = kind === "flag" ? 0.18 : 0.3;
+        material.emissiveIntensity = base + Math.sin(time * 7) * 0.06;
+        selectionMaterial.opacity = 0.6 + Math.sin(time * 7) * 0.1;
       }
       if (state.inRun) {
         barMaterial.opacity = 0.7 + Math.sin(time * 4.5) * 0.28;
@@ -467,6 +491,8 @@ export function createDie(kind: DieKind, font: string, scale = 1): Die {
       bar.geometry.dispose();
       ringMaterial.dispose();
       ring.geometry.dispose();
+      selectionMaterial.dispose();
+      selectionRing.geometry.dispose();
       object.removeFromParent();
     },
   } as Die;

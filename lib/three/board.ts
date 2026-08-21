@@ -54,7 +54,7 @@ export function createBoard(side: BoardSide, font: string): Board {
     map: albedo,
     emissiveMap: emissive,
     emissive: new THREE.Color(0xffffff),
-    emissiveIntensity: 0.85,
+    emissiveIntensity: 0.48,
     roughness: 0.46,
     metalness: 0.45,
     clearcoat: 0.35,
