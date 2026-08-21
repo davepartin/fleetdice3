@@ -46,12 +46,12 @@ const GradeShader = {
   uniforms: {
     tDiffuse: { value: null as THREE.Texture | null },
     uTime: { value: 0 },
-    uVignette: { value: 1.05 },
-    uGrain: { value: 0.035 },
-    uAberration: { value: 0.0018 },
+    uVignette: { value: 0.92 },
+    uGrain: { value: 0.007 },
+    uAberration: { value: 0.00055 },
     uFlash: { value: new THREE.Color(0, 0, 0) },
     uFlashAmount: { value: 0 },
-    uSaturation: { value: 1.08 },
+    uSaturation: { value: 1.04 },
   },
   vertexShader: /* glsl */ `
     varying vec2 vUv;
@@ -91,8 +91,8 @@ const GradeShader = {
       colour = mix(vec3(luma), colour, uSaturation);
 
       // Vignette, cool in the corners so the frame feels deep
-      float vig = smoothstep(0.92, 0.28, radius * uVignette);
-      colour *= mix(0.42, 1.0, vig);
+      float vig = 1.0 - smoothstep(0.28, 0.92, radius * uVignette);
+      colour *= mix(0.7, 1.0, vig);
       colour += vec3(0.004, 0.008, 0.022) * (1.0 - vig);
 
       // Flash for impacts
@@ -318,8 +318,8 @@ const QUALITY_SETTINGS: Record<
   { dpr: number; bloom: number; shadows: boolean; grade: boolean; stars: boolean; nebula: boolean }
 > = {
   low: { dpr: 1, bloom: 0, shadows: false, grade: false, stars: true, nebula: false },
-  medium: { dpr: 1.4, bloom: 0.34, shadows: true, grade: true, stars: true, nebula: true },
-  high: { dpr: 2, bloom: 0.45, shadows: true, grade: true, stars: true, nebula: true },
+  medium: { dpr: 1.4, bloom: 0.13, shadows: true, grade: true, stars: true, nebula: true },
+  high: { dpr: 2, bloom: 0.18, shadows: true, grade: true, stars: true, nebula: true },
 };
 
 /** Where the camera rests when nothing dramatic is happening. */
@@ -375,8 +375,8 @@ export function createStage(canvas: HTMLCanvasElement, initial?: Quality): Stage
   });
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 0.98;
-  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.toneMappingExposure = 0.9;
+  renderer.shadowMap.type = THREE.PCFShadowMap;
 
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0x03050c);
@@ -398,10 +398,10 @@ export function createStage(canvas: HTMLCanvasElement, initial?: Quality): Stage
 
   /* Lights ---------------------------------------------------------- */
 
-  const ambient = new THREE.AmbientLight(0x5c74b8, 0.42);
+  const ambient = new THREE.AmbientLight(0x6d83c1, 0.5);
   scene.add(ambient);
 
-  const key = new THREE.DirectionalLight(0xdce9ff, 2.1);
+  const key = new THREE.DirectionalLight(0xdce9ff, 1.65);
   key.position.set(-7, 13, 9);
   key.castShadow = true;
   key.shadow.mapSize.set(1024, 1024);
@@ -415,19 +415,24 @@ export function createStage(canvas: HTMLCanvasElement, initial?: Quality): Stage
   key.shadow.normalBias = 0.03;
   scene.add(key);
 
-  const rim = new THREE.DirectionalLight(0xff8a5c, 1.15);
+  const rim = new THREE.DirectionalLight(0xff8a5c, 0.82);
   rim.position.set(9, 5, -8);
   scene.add(rim);
 
-  const fill = new THREE.PointLight(0x4db4ff, 14, 42, 2);
-  fill.position.set(0, 2.5, 7);
+  // A broad directional fill keeps every cell readable. The old inverse-square
+  // point light sat directly over the flagship and lit it several times harder
+  // than the corner dice, which is why the centre became a white flare.
+  const fill = new THREE.DirectionalLight(0x76bfff, 0.7);
+  fill.position.set(0, 8, 10);
   scene.add(fill);
 
   /* Post ------------------------------------------------------------ */
 
   const composer = new EffectComposer(renderer);
   const renderPass = new RenderPass(scene, camera);
-  const bloomPass = new UnrealBloomPass(new THREE.Vector2(1, 1), 0.45, 0.5, 0.88);
+  // Bloom is a highlight, never the light source. The old 0.88 threshold let
+  // the entire gold flagship face bloom into a white rectangle on real GPUs.
+  const bloomPass = new UnrealBloomPass(new THREE.Vector2(1, 1), 0.18, 0.28, 1.08);
   const gradePass = new ShaderPass(GradeShader);
   const outputPass = new OutputPass();
   composer.addPass(renderPass);
@@ -458,7 +463,8 @@ export function createStage(canvas: HTMLCanvasElement, initial?: Quality): Stage
   let slowFrames = 0;
   let totalFrames = 0;
   let checkedAt = 0;
-  let autoDropped = false;
+  // A forced tier is a visual-test contract; never quietly downgrade it.
+  let autoDropped = initial !== undefined;
 
   function applyQuality() {
     settings = QUALITY_SETTINGS[quality];
@@ -590,7 +596,7 @@ export function createStage(canvas: HTMLCanvasElement, initial?: Quality): Stage
     },
     setQuality(next) {
       quality = next;
-      autoDropped = next === "low";
+      autoDropped = true;
       applyQuality();
     },
     shake(strength) {

@@ -29,7 +29,7 @@ export type FaceSpec = {
 
 const HIT = { ink: "#fff6f4", glow: "#ff7a6a", deep: "#63101c" };
 const BLOCK = { ink: "#f4fbff", glow: "#8ed2ff", deep: "#0b3a6b" };
-const FLAG = { ink: "#fffaee", glow: "#ffe06a", deep: "#7a5300" };
+const FLAG = { ink: "#fff9df", glow: "#f6c84d", deep: "#2a1902" };
 
 /* ------------------------------------------------------------------ */
 /* Glyphs                                                              */
@@ -105,9 +105,9 @@ function paintFace(
   if (mode === "albedo") {
     // Brushed plate with a hint of the face's colour bleeding from the centre.
     const plate = ctx.createRadialGradient(cx, size * 0.42, size * 0.04, cx, cx, size * 0.72);
-    plate.addColorStop(0, isFlag ? "#f0b429" : spec.fights === "hits" ? "#e03a4e" : "#2f8ce0");
-    plate.addColorStop(0.62, isFlag ? "#a3741a" : spec.fights === "hits" ? "#8e1d31" : "#1a4d86");
-    plate.addColorStop(1, isFlag ? "#3d2a08" : spec.fights === "hits" ? "#3f0e1a" : "#0c2444");
+    plate.addColorStop(0, isFlag ? "#d29a28" : spec.fights === "hits" ? "#d4354a" : "#2b7fca");
+    plate.addColorStop(0.62, isFlag ? "#785116" : spec.fights === "hits" ? "#7b192c" : "#173f70");
+    plate.addColorStop(1, isFlag ? "#271805" : spec.fights === "hits" ? "#310a15" : "#091c36");
     ctx.fillStyle = plate;
     ctx.fillRect(0, 0, size, size);
 
@@ -129,8 +129,8 @@ function paintFace(
     // rectangular sticker had been pasted across the hull.
     if (sides === 6) {
       ctx.save();
-      ctx.globalAlpha = 0.42;
-      ctx.strokeStyle = "#ffffff";
+      ctx.globalAlpha = isFlag ? 0.5 : 0.34;
+      ctx.strokeStyle = glow;
       ctx.lineWidth = size * 0.016;
       ctx.beginPath();
       ctx.roundRect(size * 0.09, size * 0.09, size * 0.82, size * 0.82, size * 0.16);
@@ -143,7 +143,7 @@ function paintFace(
     if (sides === 6) {
       // The d6 bevel ring glows faintly too.
       ctx.save();
-      ctx.globalAlpha = 0.34;
+      ctx.globalAlpha = 0.2;
       ctx.strokeStyle = glow;
       ctx.lineWidth = size * 0.014;
       ctx.beginPath();
@@ -162,13 +162,17 @@ function paintFace(
   ctx.textBaseline = "middle";
   ctx.font = `900 ${numberSize}px ${numberFont}`;
   if (mode === "albedo") {
-    ctx.shadowColor = palette.glow;
-    ctx.shadowBlur = size * 0.1;
+    ctx.shadowColor = palette.deep;
+    ctx.shadowBlur = size * 0.035;
+    ctx.strokeStyle = palette.deep;
+    ctx.lineWidth = size * 0.032;
+    ctx.lineJoin = "round";
+    ctx.strokeText(String(spec.value), cx, numberY);
     ctx.fillStyle = palette.ink;
   } else {
-    ctx.shadowColor = palette.glow;
-    ctx.shadowBlur = size * 0.14;
-    ctx.fillStyle = "#ffffff";
+    ctx.shadowColor = "#000000";
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = "#aebed1";
   }
   ctx.fillText(String(spec.value), cx, numberY);
   ctx.restore();
@@ -179,9 +183,15 @@ function paintFace(
     ctx.textBaseline = "middle";
     ctx.font = `800 ${size * 0.135}px ${numberFont}`;
     ctx.letterSpacing = `${size * 0.018}px`;
-    ctx.fillStyle = mode === "albedo" ? palette.ink : "#ffffff";
-    ctx.shadowColor = palette.glow;
-    ctx.shadowBlur = size * 0.07;
+    ctx.fillStyle = mode === "albedo" ? palette.ink : "#aebed1";
+    ctx.shadowColor = mode === "albedo" ? palette.deep : "#000000";
+    ctx.shadowBlur = mode === "albedo" ? size * 0.025 : 0;
+    if (mode === "albedo") {
+      ctx.strokeStyle = palette.deep;
+      ctx.lineWidth = size * 0.018;
+      ctx.lineJoin = "round";
+      ctx.strokeText(spec.caption.toUpperCase(), cx, size * 0.785);
+    }
     ctx.fillText(spec.caption.toUpperCase(), cx, size * 0.785);
     ctx.restore();
   }
@@ -200,7 +210,7 @@ function paintFace(
     glyphs.forEach((kind, index) => {
       ctx.fillStyle = MARK_COLOR[kind];
       ctx.shadowColor = MARK_COLOR[kind];
-      ctx.shadowBlur = mode === "emissive" ? size * 0.075 : size * 0.05;
+      ctx.shadowBlur = mode === "emissive" ? size * 0.025 : size * 0.025;
       drawMark(ctx, kind, startX + index * gap, markY, markSize);
     });
     ctx.restore();

@@ -350,9 +350,10 @@ export function MatchScreen({ controller, onExit, title, subtitle }: Props) {
 
           <div className="panel panel-enemy panel-flush min-w-0 flex-1 px-3 py-2">
             <div className="flex items-baseline justify-between gap-2">
-              <span className="truncate text-[0.8rem] font-semibold text-[--color-attack-glow]">
+              <span className="min-w-0 flex-1 truncate text-[0.8rem] font-semibold text-[--color-attack-glow]">
                 {enemyName}
               </span>
+              <span className="t-eyebrow shrink-0 text-[0.58rem]">Round {you.round}</span>
               <span className="t-num text-[0.8rem] text-white">
                 {them ? <Ticker value={them.hp} /> : 0}
                 <span className="c-dim"> / {them?.maxHp ?? TUNING.hp}</span>
@@ -374,18 +375,19 @@ export function MatchScreen({ controller, onExit, title, subtitle }: Props) {
                 setMuted(audio.toggleMuted());
               }}
             >
-              {muted ? "🔇" : "🔊"}
+              <SoundIcon muted={muted} />
             </Button>
           </div>
         </header>
 
-        <div className="flex items-center justify-center gap-2 pt-2">
-          <Chip>Round {you.round}</Chip>
-          {you.round > TUNING.escalateAfterRound && (
-            <Chip tone="attack">War escalating +{(you.round - TUNING.escalateAfterRound) * TUNING.escalateStep}</Chip>
-          )}
-          {controller.mode === "versus" && <Chip>Room {state.code}</Chip>}
-        </div>
+        {(you.round > TUNING.escalateAfterRound || controller.mode === "versus") && (
+          <div className="flex items-center justify-center gap-2 pt-2">
+            {you.round > TUNING.escalateAfterRound && (
+              <Chip tone="attack">War escalating +{(you.round - TUNING.escalateAfterRound) * TUNING.escalateStep}</Chip>
+            )}
+            {controller.mode === "versus" && <Chip>Room {state.code}</Chip>}
+          </div>
+        )}
 
         {/* ---------------- middle: the board shows through ---------------- */}
         <div className="hud-pass-through min-h-0 flex-1" />
@@ -609,7 +611,7 @@ function RollDock({
         </p>
       )}
 
-      {you.dice.length > 0 && <FlagshipLine you={you} />}
+      <FlagshipLine you={you} />
 
       {you.flag.token && you.phase === "rolling" && (
         <div className="flex items-center gap-2">
@@ -662,7 +664,7 @@ function RollDock({
 
       {you.phase === "rolling" && selected.size === 0 && (
         <p className="text-center text-[0.76rem] c-dim">
-          Tap any die to send it back.{" "}
+          Tap any ship die to send it back.{" "}
           {rollsLeft > 0
             ? `${rollsLeft} free ${rollsLeft === 1 ? "roll" : "rolls"} left.`
             : "Extra rolls cost 1 Energy a die."}
@@ -859,5 +861,33 @@ function FlagshipLine({ you }: { you: PlayerState }) {
         <span className="c-dim"> — {level?.text ?? face.short}</span>
       </span>
     </div>
+  );
+}
+
+function SoundIcon({ muted }: { muted: boolean }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className="h-4 w-4"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.9"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d="M4 9v6h4l5 4V5L8 9H4Z" />
+      {muted ? (
+        <>
+          <path d="m17 9 4 6" />
+          <path d="m21 9-4 6" />
+        </>
+      ) : (
+        <>
+          <path d="M16 9.2a4 4 0 0 1 0 5.6" />
+          <path d="M18.8 6.5a7.6 7.6 0 0 1 0 11" />
+        </>
+      )}
+    </svg>
   );
 }

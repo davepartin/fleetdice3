@@ -118,7 +118,7 @@ button {
   font-size: 0.6875rem;
   letter-spacing: 0.22em;
   text-transform: uppercase;
-  color: var(--color-hull-400);
+  color: var(--color-hull-300);
 }
 
 .t-num {
@@ -301,7 +301,7 @@ button {
 .c-repair { color: var(--color-repair); }
 .c-direct { color: var(--color-direct); }
 .c-run { color: var(--color-run); }
-.c-dim { color: var(--color-hull-400); }
+.c-dim { color: var(--color-hull-300); }
 
 .glow-attack { text-shadow: 0 0 18px rgb(255 77 77 / 0.65); }
 .glow-shield { text-shadow: 0 0 18px rgb(77 180 255 / 0.65); }
