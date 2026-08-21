@@ -25,6 +25,10 @@ const SHOTS = resolve(root, "shots");
 const VIEWPORTS = {
   phone: { width: 402, height: 874, deviceScaleFactor: 2, isMobile: true, hasTouch: true },
   phone390: { width: 390, height: 844, deviceScaleFactor: 2, isMobile: true, hasTouch: true },
+  // Safari's expanded address and tab bars leave roughly this much of a
+  // 390×844 iPhone available to the page. This is the state that exposed the
+  // low camera, flagship overlap, and wasted bands of sky in real screenshots.
+  phone390short: { width: 390, height: 630, deviceScaleFactor: 3, isMobile: true, hasTouch: true },
   desktop: { width: 1440, height: 900, deviceScaleFactor: 2 },
   review: { width: 1274, height: 902, deviceScaleFactor: 2 },
 };

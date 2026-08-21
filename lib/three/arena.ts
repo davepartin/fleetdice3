@@ -51,11 +51,28 @@ function frameFor(focus: Focus, soloPhone = false) {
   if (soloPhone && focus === "fleet") {
     return {
       ...base,
-      pitch: 54,
-      fitWidth: 9.7,
-      fitDepth: 12.8,
+      // A near-overhead command view is the only honest phone composition:
+      // every cell stays separated, the flagship cannot hide the rear ship,
+      // and the deck uses the tall safe rectangle instead of leaving a band
+      // of empty sky above it.
+      pitch: 70,
+      // On tall browser states we intentionally crop a sliver of decorative
+      // deck edge. The dice, not the metal frame, deserve those pixels.
+      fitWidth: 9.1,
+      fitDepth: 10.1,
       target: new THREE.Vector3(0, 0, 5.2),
-      parallax: 0.22,
+      parallax: 0.12,
+    };
+  }
+  if (soloPhone && focus === "both") {
+    return {
+      ...base,
+      // Brace and report still show both fleets, but a steeper overview keeps
+      // the two centre flagships from masking the ship directly behind them.
+      pitch: 66,
+      fitWidth: 13,
+      fitDepth: 23.2,
+      parallax: 0.08,
     };
   }
   const landscape = window.innerWidth >= 900 && window.innerWidth > window.innerHeight;
@@ -114,7 +131,6 @@ export function createArena(canvas: HTMLCanvasElement, options: ArenaOptions = {
     you: makeDeck("you", YOUR_DECK, font, stage),
     enemy: makeDeck("enemy", ENEMY_DECK, font, stage),
   };
-  const isPhone = () => window.innerWidth <= 640;
   const isSoloPhone = () => options.mode === "solo" && window.innerWidth <= 640;
 
   /* Tapping ---------------------------------------------------------- */
@@ -176,7 +192,7 @@ export function createArena(canvas: HTMLCanvasElement, options: ArenaOptions = {
   // Apply the responsive frame on first paint too. Calling setFocus("fleet")
   // immediately afterward is intentionally a no-op, so using the raw phone
   // frame here meant desktop never received its safe framing until a resize.
-  stage.setFrame(frameFor("fleet", isPhone()), true);
+  stage.setFrame(frameFor("fleet", isSoloPhone()), true);
   stage.start();
 
   /* Reconciling ------------------------------------------------------ */
@@ -339,7 +355,7 @@ export function createArena(canvas: HTMLCanvasElement, options: ArenaOptions = {
   }
 
   let lastFocus: Focus = "fleet";
-  const refreshFrame = () => stage.setFrame(frameFor(lastFocus, isPhone()), true);
+  const refreshFrame = () => stage.setFrame(frameFor(lastFocus, isSoloPhone()), true);
   window.addEventListener("resize", refreshFrame);
 
   const arena: Arena = {
@@ -358,7 +374,7 @@ export function createArena(canvas: HTMLCanvasElement, options: ArenaOptions = {
     setFocus(focus, immediate) {
       if (focus === lastFocus && !immediate) return;
       lastFocus = focus;
-      stage.setFrame(frameFor(focus, isPhone()), immediate);
+      stage.setFrame(frameFor(focus, isSoloPhone()), immediate);
     },
     cellWorld(side, cell) {
       const local = cellCentre(cell);

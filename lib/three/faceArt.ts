@@ -54,7 +54,7 @@ export const FLAG_FACE_PALETTE: Record<
 /* ------------------------------------------------------------------ */
 
 function drawBolt(ctx: CanvasRenderingContext2D, x: number, y: number, size: number) {
-  const w = size * 0.46;
+  const w = size * 0.58;
   const h = size;
   ctx.beginPath();
   ctx.moveTo(x + w * 0.28, y - h * 0.5);
@@ -69,7 +69,7 @@ function drawBolt(ctx: CanvasRenderingContext2D, x: number, y: number, size: num
 
 function drawCross(ctx: CanvasRenderingContext2D, x: number, y: number, size: number) {
   const arm = size * 0.5;
-  const thick = size * 0.3;
+  const thick = size * 0.36;
   ctx.beginPath();
   ctx.roundRect(x - thick / 2, y - arm, thick, arm * 2, thick * 0.34);
   ctx.roundRect(x - arm, y - thick / 2, arm * 2, thick, thick * 0.34);
@@ -77,16 +77,18 @@ function drawCross(ctx: CanvasRenderingContext2D, x: number, y: number, size: nu
 }
 
 function drawChevron(ctx: CanvasRenderingContext2D, x: number, y: number, size: number) {
-  const w = size * 0.62;
-  const h = size * 0.5;
-  const thick = size * 0.26;
+  // A bold forward chevron reads as an armor-piercing shot at a glance. The
+  // previous upward outline became a pair of tiny carets after projection.
+  const w = size * 0.58;
+  const h = size * 0.7;
+  const thick = size * 0.22;
   ctx.beginPath();
-  ctx.moveTo(x - w / 2, y + h / 2);
-  ctx.lineTo(x, y - h / 2);
-  ctx.lineTo(x + w / 2, y + h / 2);
-  ctx.lineTo(x + w / 2 - thick * 0.7, y + h / 2 + thick * 0.62);
-  ctx.lineTo(x, y + thick * 0.05);
-  ctx.lineTo(x - w / 2 + thick * 0.7, y + h / 2 + thick * 0.62);
+  ctx.moveTo(x - w / 2, y - h / 2);
+  ctx.lineTo(x + w / 2, y);
+  ctx.lineTo(x - w / 2, y + h / 2);
+  ctx.lineTo(x - w / 2 + thick, y + h / 2);
+  ctx.lineTo(x + w / 2 + thick * 0.08, y);
+  ctx.lineTo(x - w / 2 + thick, y - h / 2);
   ctx.closePath();
   ctx.fill();
 }
@@ -214,8 +216,8 @@ function paintFace(
     for (const mark of spec.marks) {
       for (let i = 0; i < mark.count; i += 1) glyphs.push(mark.kind);
     }
-    const markSize = size * (glyphs.length > 2 ? 0.2 : 0.235);
-    const gap = markSize * 1.18;
+    const markSize = size * (glyphs.length > 2 ? 0.225 : 0.265);
+    const gap = markSize * 1.12;
     const startX = cx - ((glyphs.length - 1) * gap) / 2;
     const markY = size * 0.79;
 
@@ -226,7 +228,7 @@ function paintFace(
       drawMark(ctx, kind, startX + index * gap, markY, markSize);
       if (mode === "albedo") {
         ctx.strokeStyle = "rgba(3,8,18,0.88)";
-        ctx.lineWidth = size * 0.009;
+        ctx.lineWidth = size * 0.013;
         ctx.stroke();
       }
     });
