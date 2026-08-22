@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import { ViewportSync } from "@/components/ViewportSync";
+import "./globals.css";
 
 /**
  * Fonts ship with the site rather than coming from Google, so the game loads
