@@ -348,10 +348,34 @@ This is the single biggest visual win available and it costs nothing to run.
   `t-display text-xl` pattern applied to the fixed Shipyard drawer header —
   renders legibly at 22px Oxanium.
 
-- [ ] **2.4 — HUD colours run at 60%.**
+- [x] **2.4 — HUD colours run at 60%.**
   **DONE when:** the five stat chips use the dimmed tokens, the dice still use
   full strength, and a side-by-side screenshot shows the board clearly brighter
   than the dock.
+  **Proved:** Added five `--color-*-dim` tokens to `@theme`, each computed by
+  converting the base hue to HSL and scaling saturation to 60% of the
+  original while holding hue and lightness fixed (repair's base saturation
+  was already 71.4%, so its dim value is 42.9% absolute — still exactly 60%
+  relative, per the token's own comment). Scoped the dimming to
+  `.tally-strip .c-attack/.c-shield/.c-energy/.c-repair/.c-direct` and the
+  matching `.glow-*` text-shadow rules — the tally strip in
+  `components/MatchScreen.tsx` is literally "the five stat chips" the DONE
+  test names (Attack/Shields/Direct/Repair/Energy, the primary HUD dock on
+  the roll screen), and scoping the override there rather than to the shared
+  `.c-*`/`.glow-*` classes globally leaves every other HUD use of these
+  colours (round report, results screen, brace) untouched, matching the
+  item's literal, narrow scope rather than reopening the whole meaning-colour
+  system. The dice themselves (`lib/three/`) are a separate palette that
+  never touches this CSS file, so they were structurally untouched —
+  confirmed via `git diff --stat lib/ components/`, empty. Verified with
+  `node tools/playtest.mjs 2 phone` (a temporary local patch pointed its
+  Chromium launch at this sandbox's pre-installed binary; not committed):
+  the `05b-rolled-phone` screenshot shows the dice board rendering fully
+  saturated red/blue (`#ff4d4d`/`#4db4ff`) while the tally strip directly
+  below it shows visibly dustier, muted versions of the same five hues —
+  the board unambiguously brighter than the dock. `tsc --noEmit`,
+  `pnpm lint`, `BASE_PATH= pnpm build`, and `pnpm test` (27/27) all pass.
+  `/code-review` came back with zero findings.
 
 ## Phase 3 — Composition
 

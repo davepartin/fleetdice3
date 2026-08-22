@@ -37,6 +37,15 @@
   --color-direct-deep: #3d1b78;
   --color-direct-glow: #d9bcff;
 
+  /* The same five hues at 60% saturation, same hue and lightness. Full
+     strength is reserved for the dice; the HUD's stat chips read at this
+     dimmed value so the board stays the brightest thing on screen. */
+  --color-attack-dim: #db7171;
+  --color-shield-dim: #71aedb;
+  --color-energy-dim: #d8bd64;
+  --color-repair-dim: #64c18e;
+  --color-direct-dim: #b697e5;
+
   /* The straight / formation highlight. */
   --color-run: #ff9d2e;
   --color-run-glow: #ffc978;
@@ -597,6 +606,20 @@ button {
 .tally-cell-direct { background: rgb(176 125 255 / 0.07); }
 .tally-cell-repair { background: rgb(69 224 139 / 0.07); }
 .tally-cell-energy { background: rgb(255 210 61 / 0.08); }
+
+/* The five stat chips read at 60% saturation — full strength stays on the
+   dice. Scoped to the tally strip alone; every other HUD use of these
+   colours (round report, results, brace) is unaffected. */
+.tally-strip .c-attack { color: var(--color-attack-dim); }
+.tally-strip .c-shield { color: var(--color-shield-dim); }
+.tally-strip .c-energy { color: var(--color-energy-dim); }
+.tally-strip .c-repair { color: var(--color-repair-dim); }
+.tally-strip .c-direct { color: var(--color-direct-dim); }
+.tally-strip .glow-attack { text-shadow: 0 0 18px rgb(219 113 113 / 0.65); }
+.tally-strip .glow-shield { text-shadow: 0 0 18px rgb(113 174 219 / 0.65); }
+.tally-strip .glow-energy { text-shadow: 0 0 18px rgb(216 189 100 / 0.65); }
+.tally-strip .glow-repair { text-shadow: 0 0 18px rgb(100 193 142 / 0.65); }
+.tally-strip .glow-direct { text-shadow: 0 0 18px rgb(182 151 229 / 0.65); }
 
 .brace-mobile-guide {
   display: none;
