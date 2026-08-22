@@ -62,7 +62,7 @@ function frameFor(focus: Focus, phone = false) {
       pitch: 88,
       // On tall browser states we intentionally crop a sliver of decorative
       // deck edge. The dice, not the metal frame, deserve those pixels.
-      fitWidth: 9.1,
+      fitWidth: 8.3,
       fitDepth: 10.1,
       target: new THREE.Vector3(0, 0, 5.2),
       parallax: 0,

@@ -111,7 +111,7 @@ export function MatchScreen({ controller, onExit, title, subtitle }: Props) {
       // rectangles move when the address bar or a pinch-zoom shifts the screen.
       const top = Math.max(0, header.offsetHeight + 10);
       const bottomInset = Math.max(0, bottom.offsetHeight + 14);
-      arena.stage.setViewportInsets({ top, right: 8, bottom: bottomInset, left: 8 });
+      arena.stage.setViewportInsets({ top, right: 3, bottom: bottomInset, left: 3 });
     };
 
     const observer = new ResizeObserver(updateInsets);

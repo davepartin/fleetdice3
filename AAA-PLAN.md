@@ -379,10 +379,46 @@ This is the single biggest visual win available and it costs nothing to run.
 
 ## Phase 3 — Composition
 
-- [ ] **3.1 — The board fills the frame.**
+- [x] **3.1 — The board fills the frame.**
   Today it is roughly 45% of the screen with black bands above and below.
   **DONE when:** measured at 375×812, the board's rendered bounds cover ≥55% of
   viewport height on the roll, brace and report screens.
+  **Proved:** Built a Playwright measurement (not committed — a throwaway
+  tool script) that plays a real match at exactly 375×812, screenshots the
+  roll, brace and report screens, and scans pixel rows between the header's
+  and dock's real DOM bounds for the deck plate's rendered extent — not just
+  bright dice, since the lit deck surface itself (a distinct, bordered
+  rectangle, calibrated against a real sample: void ≈12 max-channel, deck
+  plate ≈20-29, well below where saturated dice sit) is legitimately part of
+  "the board." Traced *why* the roll screen fell short: `lib/three/arena.ts`
+  fits the camera to the tighter of two constraints (`fitWidth` against
+  screen width, `fitDepth × sin(pitch)` against screen height); on the phone
+  "fleet" frame the width constraint was the binding one, so distance was
+  set to satisfy it exactly — which necessarily under-fills the height,
+  producing letterboxing above and below that no dock-size or chrome change
+  could touch, since the vertical fill is a pure function of camera distance
+  and physical board geometry, not of how much free space surrounds it.
+  First attempt (`fitWidth` 9.1→7.5) hit the target numerically but a
+  screenshot showed a real die clipped at the right edge — reverted
+  immediately rather than accept a regression 0.1 exists to prevent. Landed
+  on a smaller, verified-safe combination instead: `fitWidth` 9.1→8.3 (phone
+  fleet frame) plus the phone camera's left/right viewport insets 8px→3px
+  (`components/MatchScreen.tsx`) — both real, screenshot-confirmed levers
+  that only tighten the already-sanctioned "crop a sliver of decorative deck
+  edge" margin (the "FLEET DICE III"/"SECTOR 03" title now loses a couple
+  more characters at the edge) without clipping any die, checked at both
+  375px and, incidentally, 402px during a full 3-round real playthrough.
+  Result, measured against the full viewport height: roll 43.6%→62.4%,
+  report 53.4%→57.5% (its camera frame was untouched — already well clear),
+  brace 59.9%→64.1%. Checked robustness against threshold choice, since a
+  brightness cutoff is inherently a judgment call: roll stays ≥55% for every
+  threshold from 16 up to 30 (56.6% even there), only dropping below at an
+  extreme dice-only cutoff of 40 — a real, non-fragile margin, not a result
+  that happens to clear the bar at one arbitrarily generous setting.
+  `tsc --noEmit`, `pnpm lint`, `BASE_PATH= pnpm build`, `pnpm test` (27/27),
+  and `node tools/playtest.mjs 3 phone` (full 3-round real match, phone
+  viewport) all pass clean but for the same pre-existing 404 already logged
+  under "Found along the way." `/code-review` came back with zero findings.
 
 - [ ] **3.2 — The stat row is weighted, not uniform.**
   Five identical boxes make you re-read all five every round.
