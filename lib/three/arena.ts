@@ -282,11 +282,11 @@ export function createArena(canvas: HTMLCanvasElement, options: ArenaOptions = {
       die.setState({ facedown });
 
       const asked = opts.thrown?.has(id) ?? false;
-      // Re-throwing a die that is already in the air is fine — it simply starts
-      // a fresh flight toward the new number. Skipping it instead left the die
-      // showing a face the scoreboard had already moved past.
       const changed = spec.value !== die.value;
-      if (!facedown && (changed || asked)) {
+      // A second sync while the die is already flying to this face used to
+      // yank it back into the air. Same number, same throw — leave it alone.
+      const alreadyFlyingThere = die.rolling && spec.value === die.value;
+      if (!facedown && !alreadyFlyingThere && (changed || asked)) {
         if (opts.instant) die.setFace(spec.value);
         else {
           die.throwTo(spec.value, {

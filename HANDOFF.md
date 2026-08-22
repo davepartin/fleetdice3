@@ -138,3 +138,9 @@ the measuring lesson from the first session — is in `NEXT.md`.
    has already been right once about something important.
 4. **Plain words.** If you use a term, make sure it names something in the game
    today.
+5. **Solo and versus take the same board changes.** `components/MatchScreen.tsx`
+   is the battle for both `/solo/` and `/versus/` (`app/match/page.tsx`). A
+   rules, HUD, dice, or phone-layout fix that only lands in one mode is unfinished.
+   If a lock or tap lives in `lib/useMatch.ts`, update `useSoloMatch` and
+   `useRoomMatch` together. Cancel game is the exception: it is a versus room
+   action, not a board change.

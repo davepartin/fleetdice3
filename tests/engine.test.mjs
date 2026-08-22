@@ -32,6 +32,8 @@ const {
   newMatch,
   newPlayer,
   nextActions,
+  pendingThrow,
+  pendingThrowReady,
   publicMatchView,
   repairOf,
   setRng,
@@ -465,4 +467,17 @@ test("war escalation still hits the flagship after shields eat the dice", () => 
     guest.report.damage >= war,
     `flagship damage ${guest.report.damage} must include the war extra of ${war}`,
   );
+});
+
+test("a roll throw waits for the new faces, not the tap", () => {
+  const state = freshMatch(8);
+  const before = state.players.host;
+  const pending = pendingThrow(before, ["flag"]);
+  assert.equal(pendingThrowReady(pending, before), false, "the old board is not the roll");
+
+  applyAction(state, "host", { type: "roll", dice: [] });
+  assert.equal(pendingThrowReady(pending, state.players.host), true, "new faces release the throw");
+
+  const again = pendingThrow(state.players.host, ["flag"]);
+  assert.equal(pendingThrowReady(again, state.players.host), false, "the same faces must not throw twice");
 });

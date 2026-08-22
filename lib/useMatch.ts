@@ -82,6 +82,7 @@ export function useSoloMatch(settings: SoloSettings): MatchController {
   const brainRef = useRef<Brain | null>(null);
   const stateRef = useRef<MatchState | null>(null);
   const timerRef = useRef<number>(0);
+  const rollLockRef = useRef(false);
 
   const start = useCallback(() => {
     const match = newMatch(`solo-${randomId(8)}`, "0000", "you", settings.name ?? commanderName(), "solo");
@@ -128,14 +129,20 @@ export function useSoloMatch(settings: SoloSettings): MatchController {
     (action: MatchAction) => {
       const match = stateRef.current;
       if (!match) return;
+      if (action.type === "roll") {
+        if (rollLockRef.current) return;
+        rollLockRef.current = true;
+      }
       try {
         applyAction(match, "host", action);
         setError(null);
       } catch (reason) {
+        rollLockRef.current = false;
         setError(reason instanceof Error ? reason.message : String(reason));
         return;
       }
       setState(structuredClone(match));
+      rollLockRef.current = false;
       pumpEnemy();
     },
     [pumpEnemy],
@@ -180,6 +187,7 @@ export function useRoomMatch(matchId: string | null): MatchController {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const queueRef = useRef<Promise<unknown>>(Promise.resolve());
+  const busyRef = useRef(false);
 
   useEffect(() => {
     if (!matchId) {
@@ -239,6 +247,10 @@ export function useRoomMatch(matchId: string | null): MatchController {
   const act = useCallback(
     (action: MatchAction) => {
       if (!matchId) return;
+      // Two taps in the same moment both see busy=false. Same lock as solo.
+      // A second roll would either error or write a second set of faces.
+      if (action.type === "roll" && busyRef.current) return;
+      busyRef.current = true;
       setBusy(true);
       queueRef.current = queueRef.current
         .then(() => playAction(matchId, action))
@@ -249,7 +261,10 @@ export function useRoomMatch(matchId: string | null): MatchController {
         .catch((reason: unknown) => {
           setError(reason instanceof Error ? reason.message : String(reason));
         })
-        .finally(() => setBusy(false));
+        .finally(() => {
+          busyRef.current = false;
+          setBusy(false);
+        });
     },
     [matchId],
   );
