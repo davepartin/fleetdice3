@@ -110,12 +110,24 @@ continuously — steady beats blinking every time.
 Broken things read as "unfinished" far louder than polish reads as "premium".
 These come first.
 
-- [ ] **0.1 — Nothing is clipped off the screen edge.**
+- [x] **0.1 — Nothing is clipped off the screen edge.**
   The shipyard's right column currently runs off the phone: "d6 ship" and
   "OPENS A COLUM…" are cut in half.
   **DONE when:** `node tools/playtest.mjs 4 phone` renders every screen at
   375×812 and no element's bounding box extends beyond the viewport. Prove it by
   running, in the page: `[...document.querySelectorAll('*')].filter(el => el.getBoundingClientRect().right > innerWidth + 1 || el.getBoundingClientRect().left < -1)` and getting an empty array on every screen.
+  **Proved:** added `min-width: 0` to `.yard-cell` in `app/globals.css` — without
+  it a grid item's minimum width defaults to its content's min-content size, so
+  a long word in `.yard-cell-sub` (e.g. "OPENS A COLUMN") could force that
+  column wider than its 1fr share and push the board past the viewport edge,
+  which is the exact mechanism this item describes. Verified at 375×812 with a
+  full solo playthrough through round 7 (real "d6 ship" and "OPENS A COLUMN" /
+  "OPENS A ROW" cells in the board's right column) plus a synthetic worst-case
+  pass that force-set every right-column cell to "d6 ship" / "opens a column"
+  text: the DONE-test snippet returned `[]` on all 29 captured screens (home,
+  how to play, solo setup, round start, rolled, brace, round report + details,
+  shipyard, shipyard drawer, result) both before and after the fix — the fix is
+  a defensive close of the bug class, not a visible layout change.
 
 - [ ] **0.2 — Health never shows a negative number or a wrong maximum.**
   The victory screen shows `-3 / 70`. Other screens show `/60` and `/61`.
@@ -236,7 +248,11 @@ Only after everything above.
 
 Add anything discovered mid-task here rather than fixing it out of order.
 
-- (nothing yet)
+- A single `Failed to load resource: the server responded with a status of 404
+  (Not Found)` console error shows up on every screen during a headless
+  playtest (`node tools/playtest.mjs`), before and after the 0.1 fix. Not
+  investigated — unrelated to clipping — but worth someone tracking down the
+  missing resource.
 
 ---
 
