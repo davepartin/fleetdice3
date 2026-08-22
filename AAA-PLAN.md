@@ -110,27 +110,28 @@ continuously — steady beats blinking every time.
 Broken things read as "unfinished" far louder than polish reads as "premium".
 These come first.
 
-- [ ] **0.1 — Nothing is clipped off the screen edge.**
+- [x] **0.1 — Nothing is clipped off the screen edge.**
   The shipyard's right column currently runs off the phone: "d6 ship" and
   "OPENS A COLUM…" are cut in half.
   **DONE when:** `node tools/playtest.mjs 4 phone` renders every screen at
   375×812 and no element's bounding box extends beyond the viewport. Prove it by
   running, in the page: `[...document.querySelectorAll('*')].filter(el => el.getBoundingClientRect().right > innerWidth + 1 || el.getBoundingClientRect().left < -1)` and getting an empty array on every screen.
-  **Not closed — status:** could not reproduce the clip in Chromium at 375×812,
-  including in the specific state the description names (an affordable d6
-  upgrade cell, an affordable d8 upgrade cell, and locked cells reading "opens
-  a row" / "opens a column" all visible at once — reached via a real solo
-  playthrough, screenshot and bounding-box check both attached to this task).
-  The result was `[]` (no clipped elements) both with and without the CSS
-  change below, on the original code and after it. Added `min-width: 0` to
-  `.yard-cell` in `app/globals.css` anyway, since it closes a real CSS grid
-  gotcha that matches the mechanism described (without it, a long word in
-  `.yard-cell-sub` can force a track wider than its 1fr share) — but this has
-  not been confirmed as the actual fix, only as safe hardening. This
-  environment only has Chromium available, not WebKit/Safari, so an iOS
-  Safari– or home-screen-PWA–specific cause has not been ruled out. Leaving
-  this unchecked until reproduced on the reporting device or otherwise
-  confirmed.
+  **Status:** could not reproduce the clip in Chromium at 375×812, including in
+  the specific state the description names (an affordable d6 upgrade cell, an
+  affordable d8 upgrade cell, and locked cells reading "opens a row" / "opens a
+  column" all visible at once — reached via a real solo playthrough). The
+  bounding-box check returned `[]` both with and without the CSS change below,
+  on the original code and after it — so the check cannot confirm this change
+  is the actual fix for what was seen on the reporting device. Added
+  `min-width: 0` to `.yard-cell` in `app/globals.css` anyway: without it, a
+  long word in `.yard-cell-sub` can force a grid track wider than its 1fr
+  share and push the board past the viewport edge, which is the exact
+  mechanism the description names, so this closes that class of bug even
+  though it wasn't the one caught in the act. This environment only has
+  Chromium, not WebKit/Safari, so an iOS Safari– or home-screen-PWA–specific
+  cause was never ruled in or out — accepted as done on the strength of the
+  hardening rather than a confirmed repro. Revisit if the clip recurs on the
+  reporting device.
 
 - [ ] **0.2 — Health never shows a negative number or a wrong maximum.**
   The victory screen shows `-3 / 70`. Other screens show `/60` and `/61`.
