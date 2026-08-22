@@ -75,8 +75,6 @@ function SoloSetup({
   helpOpen: boolean;
   onCloseHelp(): void;
 }) {
-  const [showPlans, setShowPlans] = useState(false);
-
   return (
     <>
       <div className="hud">
@@ -118,38 +116,27 @@ function SoloSetup({
               })}
             </div>
 
-            <button
-              type="button"
-              onClick={() => setShowPlans((value) => !value)}
-              className="flex items-center justify-between gap-2 px-1 py-2"
-            >
-              <span className="t-eyebrow">
-                Enemy plan · {plan === "surprise" ? "Surprise me" : PLAN_LABEL[plan]}
-              </span>
-              <span className={`c-dim transition-transform ${showPlans ? "rotate-180" : ""}`} aria-hidden>
-                ▾
-              </span>
-            </button>
+            <header className="pt-2">
+              <p className="t-eyebrow">Choose enemy plan</p>
+            </header>
 
-            {showPlans && (
-              <Panel className="flex flex-col gap-1.5 p-3">
+            <div className="flex flex-col gap-2.5">
+              <PlanRow
+                active={plan === "surprise"}
+                title="Surprise me"
+                blurb="A different plan every match. You will not know what it is building until you see it."
+                onClick={() => onPlan("surprise")}
+              />
+              {PLANS.map((entry) => (
                 <PlanRow
-                  active={plan === "surprise"}
-                  title="Surprise me"
-                  blurb="A different plan every match. You will not know what it is building until you see it."
-                  onClick={() => onPlan("surprise")}
+                  key={entry}
+                  active={plan === entry}
+                  title={PLAN_LABEL[entry]}
+                  blurb={PLAN_BLURB[entry]}
+                  onClick={() => onPlan(entry)}
                 />
-                {PLANS.map((entry) => (
-                  <PlanRow
-                    key={entry}
-                    active={plan === entry}
-                    title={PLAN_LABEL[entry]}
-                    blurb={PLAN_BLURB[entry]}
-                    onClick={() => onPlan(entry)}
-                  />
-                ))}
-              </Panel>
-            )}
+              ))}
+            </div>
           </div>
         </div>
       </div>
@@ -170,17 +157,23 @@ function PlanRow({
   onClick(): void;
 }) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`rounded-xl border px-3 py-2.5 text-left transition ${
-        active
-          ? "border-[--color-energy]/50 bg-[--color-energy]/[0.09]"
-          : "border-white/10 hover:bg-white/[0.05]"
-      }`}
-    >
-      <span className="block text-[0.92rem] font-semibold text-white">{title}</span>
-      <span className="mt-0.5 block text-[0.78rem] leading-snug c-dim">{blurb}</span>
+    <button type="button" onClick={onClick} className="w-full text-left">
+      <Panel
+        className={`flex items-center gap-4 p-4 transition ${
+          active ? "border-[--color-energy]/45 bg-[--color-energy]/[0.08]" : "hover:border-white/25"
+        }`}
+      >
+        <span className="min-w-0 flex-1">
+          <span className="t-display block text-xl text-white">{title}</span>
+          <span className="mt-0.5 block text-[0.84rem] leading-snug c-dim">{blurb}</span>
+        </span>
+        <span
+          className={`t-eyebrow shrink-0 text-[0.62rem] ${active ? "c-energy" : "c-dim"}`}
+          aria-hidden
+        >
+          {active ? "On" : "Pick"}
+        </span>
+      </Panel>
     </button>
   );
 }
