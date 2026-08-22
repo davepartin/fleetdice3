@@ -1587,5 +1587,110 @@ button {
 .help-data td:first-child {
   font-weight: 700;
   color: white;
-  white-space: nowrap;
+}
+
+.help-shop-list,
+.help-prize-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  margin-top: 0.85rem;
+}
+
+.help-shop-row,
+.help-prize-card {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.7rem;
+  align-items: start;
+  padding: 0.7rem 0.75rem;
+  border-radius: 14px;
+  border: 1px solid rgb(255 255 255 / 0.08);
+  background: rgb(255 255 255 / 0.03);
+}
+
+.help-prize-card {
+  grid-template-columns: 1fr;
+}
+
+.help-shop-art {
+  display: flex;
+  width: 2.6rem;
+  height: 2.6rem;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  gap: 0.15rem;
+}
+
+.help-shop-art svg,
+.help-shop-art canvas {
+  width: 1.35rem;
+  height: 1.35rem;
+}
+
+.help-shop-art svg:only-child,
+.help-shop-art canvas:only-child,
+.help-shop-slot {
+  width: 2.4rem;
+  height: 2.4rem;
+}
+
+.help-shop-slot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.7rem;
+  border: 1px dashed rgb(255 255 255 / 0.28);
+  color: var(--color-hull-200);
+  font-size: 1.2rem;
+}
+
+.help-shop-row strong,
+.help-prize-card > strong {
+  display: block;
+  color: white;
+  font-size: 0.98rem;
+}
+
+.help-shop-cost {
+  display: block;
+  margin-top: 0.12rem;
+  color: var(--color-energy);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.help-shop-row p {
+  margin: 0.35rem 0 0;
+  font-size: 0.84rem;
+  line-height: 1.4;
+  color: var(--color-hull-300);
+}
+
+.help-prize-hulls {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.4rem;
+  margin-top: 0.55rem;
+}
+
+.help-prize-hull {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.12rem;
+  text-align: center;
+  font-size: 0.68rem;
+  line-height: 1.2;
+  color: var(--color-hull-200);
+}
+
+.help-prize-hull.is-empty {
+  opacity: 0.4;
+}
+
+.help-prize-hull .help-hull-art {
+  width: 2rem;
+  height: 2rem;
 }
