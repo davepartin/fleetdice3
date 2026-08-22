@@ -455,11 +455,77 @@ This is the single biggest visual win available and it costs nothing to run.
   `BASE_PATH= pnpm build` all pass. `/code-review` came back with zero
   findings.
 
-- [ ] **3.3 — Empty and damaged cells do not look like dice.**
+- [x] **3.3 — Empty and damaged cells do not look like dice.**
   Dark hexagons currently read as unlit d10s.
   **DONE when:** an empty cell, a locked cell and a damaged ship are three
   visibly different things, none of which is die-shaped, and a person shown a
   screenshot can name which is which.
+  **Proved:** Traced all three states to the actual 3D board (`lib/three/`),
+  since that is where "dice" live and where the plan's own diagnosis
+  ("unlit d10s") points, not the flat 2D shipyard list, which already had
+  distinct icons/labels per state. Found the root cause: a locked cell's
+  "cap" (`board.ts`) was a single flat near-black plane with no iconography
+  — literally indistinguishable at a glance from an unlit die or bare deck —
+  and an open-but-shipless cell (a real, reachable state: opening a bay and
+  buying a ship are two separate purchases) had no visual treatment
+  whatsoever, identical to a locked cell. Added `paintLockCap()` (hazard
+  stripes + a padlock, the same glyph shape as the shipyard's own
+  `<LockIcon>`, redrawn as canvas paths so the board never teaches a second
+  "locked" symbol) and `paintEmptyMarker()` (a soft plus, matching the
+  shipyard's "Open bay" glyph) in `deckArt.ts`, wired through a new
+  `board.setCellEmpty()` alongside the existing `setCellOpen()`, driven from
+  `arena.ts` by reusing `lib/engine.ts`'s own `emptyOpenSlots()` rather than
+  re-deriving the same "open slot, no ship" logic a second time.
+  For the damaged-ship clause, found that a disabled (braced-last-round) die
+  was already recoloured grey — but still a full, upright, die-shaped mesh,
+  failing the "none of which is die-shaped" clause outright. Gave the hull a
+  persistent flattened scale in `die.ts`'s update loop (distinct from the
+  existing landing-squash animation, which it shares state with) so a
+  damaged ship visibly collapses and stays collapsed, and pushed its albedo
+  toward a near-black neutral rather than a specific tint, since the hull's
+  base colour is a *multiplier* over the face-art texture (`atlas.map`) —
+  discovered by watching a first attempt at a scorched-amber tint render as
+  barely-changed blue, then confirming via a temporary console log that the
+  underlying die's own painted colour was fighting the tint, which only a
+  near-neutral multiplier reliably drains regardless of hull colour.
+  Along the way, found and fixed a real, deeper bug rather than settling for
+  a screenshot that merely looked right: the disabled-die styling never
+  actually ran, because the existing `facedown` condition
+  (`spec.value === 0`) routed every not-yet-rolled die — including a
+  disabled one, which never rolls again this round and so is stuck at
+  value 0 all round — through the same generic "hidden" placeholder
+  material, masking the new styling entirely. Root-caused with a temporary
+  debug log rather than guessing, confirmed the exact mechanism, then fixed
+  the `facedown` condition to exempt disabled ships. That fix reintroduced a
+  second-order bug a `/code-review` pass caught before it shipped: with
+  `facedown` no longer true, the die's normal face-change/throw logic saw
+  `spec.value` (frozen at 0) disagree with the die's real last-rolled value
+  every sync, and would have re-thrown the "damaged" die on every resync,
+  fighting its own collapsed pose — fixed by excluding disabled ships from
+  that throw check entirely, since they structurally cannot roll this round.
+  The same review pass caught two more real issues, both fixed: scoring
+  highlights (`inRun`/`inLine`/`flagRing`) were computed off the die's
+  frozen pre-disable value and could still glow on a disabled ship, since
+  only `facedown` used to zero them and `facedown` no longer covers this
+  case — now explicitly gated on `state.disabled`; and the new persistent
+  scale-lerp ran every frame for every die even once fully settled, where
+  the code it replaced was a no-op once converged — restored the early exit
+  with an epsilon check.
+  Verified: `tsc --noEmit`, `pnpm lint`, `pnpm test` (27/27), and
+  `BASE_PATH= pnpm build` all pass. `node tools/playtest.mjs 3 phone`
+  (full 3-round real match) passes clean but for the same pre-existing 404.
+  Verified visually via targeted Playwright playthroughs at 375×812,
+  deliberately steering into each state (opening a bay without buying a
+  ship; bracing a ship to disable it next round) rather than hoping the RNG
+  produced them: a locked cell, an open-empty cell, and a damaged ship are
+  clearly, simultaneously distinct in the same screenshot — hazard
+  stripes+padlock, a soft plus on bare deck, and a flattened near-black
+  collapsed hull — next to ordinary bright, upright dice. Also confirmed,
+  screenshot-to-screenshot across five forced resyncs, that the damaged
+  ship's pose is genuinely static (the re-throw bug is gone) rather than
+  replaying its landing animation on every state change. `/code-review`
+  passed clean on the final diff after two rounds of real findings, both
+  fixed.
 
 ## Phase 4 — Identity
 

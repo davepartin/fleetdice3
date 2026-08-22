@@ -8,7 +8,7 @@
 
 import * as THREE from "three";
 import type { MatchState, PlayerState, SideId, Tally } from "../engine";
-import { activeShips, cellForSlot, opponentOf } from "../engine";
+import { activeShips, cellForSlot, emptyOpenSlots, opponentOf } from "../engine";
 import { createStage, type Quality, type Stage } from "./stage";
 import { CELL, createBoard, cellCentre, type Board } from "./board";
 import { createDie, type Die, type DieKind } from "./die";
@@ -276,8 +276,11 @@ export function createArena(canvas: HTMLCanvasElement, options: ArenaOptions = {
 
       // A ship that exists but has not rolled yet is shown blank, not removed.
       // Seeing the shape and size of the enemy fleet is information you would
-      // have across a table, and an empty enemy deck reads as a bug.
-      const facedown = !show || spec.value === 0;
+      // have across a table, and an empty enemy deck reads as a bug. A
+      // disabled ship never rolls this round at all, so its value stays 0
+      // for the whole round — without the disabled exception it would sit
+      // blank all round, indistinguishable from a ship about to roll.
+      const facedown = !show || (spec.value === 0 && !spec.disabled);
       die.object.visible = true;
       die.setState({ facedown });
 
@@ -286,7 +289,13 @@ export function createArena(canvas: HTMLCanvasElement, options: ArenaOptions = {
       // A second sync while the die is already flying to this face used to
       // yank it back into the air. Same number, same throw — leave it alone.
       const alreadyFlyingThere = die.rolling && spec.value === die.value;
-      if (!facedown && !alreadyFlyingThere && (changed || asked)) {
+      // A disabled ship never rolls this round, so spec.value sits at 0
+      // (clampFace floors a real die's value at 1) for as long as it stays
+      // disabled — without this exception every resync would read that as
+      // "changed" and keep re-throwing it to face 1, fighting the flattened
+      // pose it is meant to settle into. It just keeps showing whatever it
+      // last rolled.
+      if (!facedown && !spec.disabled && !alreadyFlyingThere && (changed || asked)) {
         if (opts.instant) die.setFace(spec.value);
         else {
           die.throwTo(spec.value, {
@@ -305,13 +314,17 @@ export function createArena(canvas: HTMLCanvasElement, options: ArenaOptions = {
       });
     }
 
+    const emptySlots = new Set(emptyOpenSlots(player));
     for (let cell = 0; cell < 9; cell += 1) {
       if (cell === 4) {
         deck.board.setCellOpen(cell, true);
+        deck.board.setCellEmpty(cell, false);
         continue;
       }
       const slot = cell < 4 ? cell : cell - 1;
-      deck.board.setCellOpen(cell, player.open[slot] ?? false);
+      const open = player.open[slot] ?? false;
+      deck.board.setCellOpen(cell, open);
+      deck.board.setCellEmpty(cell, emptySlots.has(slot));
     }
 
     applyScoreMarks(

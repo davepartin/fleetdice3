@@ -443,8 +443,16 @@ export function createDie(kind: DieKind, font: string, scale = 1, cellSize = 0):
     material.color.setHex(state.enemy ? HULL_ENEMY : HULL_COLOR);
 
     if (state.disabled) {
-      material.emissiveIntensity = 0.05;
-      material.color.setHex(0x39414f); // a disabled-hull grey; no matching token — 3D-only
+      // Zeroed, not dimmed: the emissive map still carries whatever colour
+      // that face last rolled, and any nonzero intensity lets it bleed
+      // through the tint below.
+      material.emissiveIntensity = 0;
+      // Crushed near-black rather than a specific tint — the base map is
+      // whatever colour the die last rolled, and multiplying it by a hue
+      // (even a dim one) mostly reproduces that colour, darker. Only a
+      // near-neutral multiplier reliably drains it on every hull, on top of
+      // the flattened shape the update loop settles it into.
+      material.color.setHex(0x14161c);
       material.roughness = 0.9;
       material.metalness = 0.02;
       glowMaterial.opacity = 0;
@@ -467,8 +475,14 @@ export function createDie(kind: DieKind, font: string, scale = 1, cellSize = 0):
     for (const damageBar of damageBars) {
       (damageBar.material as THREE.MeshBasicMaterial).opacity = damageMaterial.opacity;
     }
-    barMaterial.opacity = state.inRun ? 0.92 : 0;
-    if (state.inLine) {
+    // A disabled die keeps whatever value it last rolled — it never rolls
+    // again while sat out — so without this guard a frozen value that
+    // happens to fall in this round's run or line could still light up a
+    // scoring highlight on a ship that took no part in it.
+    barMaterial.opacity = !state.disabled && state.inRun ? 0.92 : 0;
+    if (state.disabled) {
+      linkMaterial.opacity = 0;
+    } else if (state.inLine) {
       // A column/row completion tint — close to but distinct from
       // --color-attack-glow / --color-energy-glow; no exact token match.
       linkMaterial.color.setHex(state.inLine === "col" ? 0xff8090 : 0xffe07a);
@@ -590,14 +604,26 @@ export function createDie(kind: DieKind, font: string, scale = 1, cellSize = 0):
         object.position.y += (targetY - object.position.y) * Math.min(1, dt * 12);
       }
 
-      // Squash on landing, then spring back.
+      // Squash on landing, then spring back — or settle flat and stay there
+      // while damaged. A ship that sat out the round is not just a dim die;
+      // it is a collapsed one, so it never reads as merely "off."
       if (landPunch > 0) {
         landPunch = Math.max(0, landPunch - dt * 3.4);
         const punch = EASE_OUT_BACK(1 - landPunch);
         const squash = 1 + (1 - punch) * 0.26;
         pivot.scale.set(squash, 2 - squash, squash);
-      } else if (pivot.scale.x !== 1) {
-        pivot.scale.setScalar(1);
+      } else {
+        const restY = state.disabled ? 0.32 : 1;
+        const restXZ = state.disabled ? 1.18 : 1;
+        if (
+          Math.abs(pivot.scale.x - restXZ) > 0.001 ||
+          Math.abs(pivot.scale.y - restY) > 0.001
+        ) {
+          const ease = Math.min(1, dt * 6);
+          pivot.scale.x += (restXZ - pivot.scale.x) * ease;
+          pivot.scale.z += (restXZ - pivot.scale.z) * ease;
+          pivot.scale.y += (restY - pivot.scale.y) * ease;
+        }
       }
 
       // Nothing on this board pulses. Selection, damage and the flagship link
