@@ -10,10 +10,11 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { HeroStage } from "./HeroStage";
-import { Button, Chip, Notice, Panel, Rule, Spinner } from "./ui";
+import { Button, Chip, Notice, Panel, Rule, Sheet, Spinner } from "./ui";
 import { HowToPlaySheet } from "./HowToPlay";
 import { commanderName, ensurePlayerIdentity, firebaseConfigured, rememberCommanderName } from "@/lib/firebase";
 import {
+  cancelRoom,
   loadRememberedRoomCards,
   watchLiveBattles,
   watchRecentResults,
@@ -33,6 +34,8 @@ export function HomeScreen() {
   const [battles, setBattles] = useState<LiveBattleRow[]>([]);
   const [results, setResults] = useState<BattleResultRow[]>([]);
   const [showBoard, setShowBoard] = useState(false);
+  const [pendingCancel, setPendingCancel] = useState<RememberedRoomCard | null>(null);
+  const [closing, setClosing] = useState(false);
 
   useEffect(() => {
     setName(commanderName());
@@ -74,6 +77,22 @@ export function HomeScreen() {
     setJoining(true);
     window.location.href = `${basePath}/join/?code=${cleaned}`;
   }, [code]);
+
+  const confirmCancel = useCallback(async () => {
+    const card = pendingCancel;
+    if (!card) return;
+    setClosing(true);
+    setError(null);
+    try {
+      await cancelRoom(card.id);
+      setCards((rows) => rows.filter((row) => row.id !== card.id));
+      setPendingCancel(null);
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : String(reason));
+    } finally {
+      setClosing(false);
+    }
+  }, [pendingCancel]);
 
   return (
     <>
@@ -171,8 +190,14 @@ export function HomeScreen() {
                 <p className="t-eyebrow mb-2">Your games</p>
                 <div className="flex flex-col gap-2">
                   {cards.map((card) => (
-                    <Link key={card.id} href={`/match/?id=${card.id}`} className="block">
-                      <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2.5 transition hover:bg-white/[0.07]">
+                    <div
+                      key={card.id}
+                      className="flex items-stretch overflow-hidden rounded-xl border border-white/10 bg-white/[0.03]"
+                    >
+                      <Link
+                        href={`/match/?id=${card.id}`}
+                        className="flex min-w-0 flex-1 items-center gap-3 px-3 py-2.5 transition hover:bg-white/[0.07]"
+                      >
                         <span className="t-num rounded-lg bg-white/8 px-2 py-1 text-sm">{card.code}</span>
                         <span className="min-w-0 flex-1 text-[0.86rem]">
                           <b className="text-white">
@@ -185,8 +210,18 @@ export function HomeScreen() {
                         <span className="c-dim" aria-hidden>
                           ›
                         </span>
-                      </div>
-                    </Link>
+                      </Link>
+                      <button
+                        type="button"
+                        className="min-h-[44px] shrink-0 border-l border-white/10 px-3 text-[0.72rem] font-bold uppercase tracking-wide text-[--color-attack-glow]"
+                        onClick={() => {
+                          setError(null);
+                          setPendingCancel(card);
+                        }}
+                      >
+                        Cancel
+                      </button>
+                    </div>
                   ))}
                 </div>
               </Panel>
@@ -266,6 +301,27 @@ export function HomeScreen() {
       </div>
 
       <HowToPlaySheet open={helpOpen} onClose={() => setHelpOpen(false)} />
+      <Sheet
+        open={Boolean(pendingCancel)}
+        onClose={() => !closing && setPendingCancel(null)}
+        title="Cancel this game?"
+        footer={
+          <div className="flex flex-col gap-2">
+            <Button tone="ghost" full disabled={closing} onClick={() => setPendingCancel(null)}>
+              Keep it
+            </Button>
+            <Button tone="primary" full disabled={closing} onClick={() => void confirmCancel()}>
+              {closing ? "Ending…" : "Cancel game"}
+            </Button>
+          </div>
+        }
+      >
+        <p className="text-[0.94rem] leading-relaxed text-[--color-hull-200]">
+          This ends{" "}
+          {pendingCancel?.enemyName ? `the game vs ${pendingCancel.enemyName}` : "this game"} for
+          both of you. The four-digit code dies.
+        </p>
+      </Sheet>
       {joining && (
         <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/60">
           <Spinner label="Finding that room…" />
