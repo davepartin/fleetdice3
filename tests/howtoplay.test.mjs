@@ -14,8 +14,11 @@ test("how to play is one illustrated scroll, not an accordion", () => {
   assert.match(src, /HelpFlagFace/);
   assert.match(src, /HullShape/);
   assert.match(src, /from "@\/lib\/reference"/);
+  assert.match(src, /help-shop-row/);
   assert.doesNotMatch(src, /setOpenId/);
   assert.doesNotMatch(src, /aria-expanded/);
+  assert.doesNotMatch(src, /help-data/);
+  assert.doesNotMatch(src, /shopTable/);
 });
 
 test("help faces are painted with the same plates as the 3D dice", () => {

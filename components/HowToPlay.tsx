@@ -18,7 +18,9 @@ import {
   GLOSSARY,
   HOW_TO_PLAY,
   SHOP_ROWS,
+  STRAIGHT_LADDER,
   type HelpBlock,
+  type ShopRow,
 } from "@/lib/reference";
 import type { DieSize } from "@/lib/engine";
 import { Button, Sheet } from "./ui";
@@ -41,12 +43,31 @@ function steps(id: string) {
   return block && block.kind === "steps" ? block.steps : [];
 }
 
-function table(id: string, index = 0) {
-  const block = section(id)?.blocks.filter((entry) => entry.kind === "table")[index];
-  return block && block.kind === "table" ? block : null;
+const HULLS = SHOP_ROWS.filter((row) => row.kind === "hull");
+const STRAIGHT_LENGTHS = [...new Set(STRAIGHT_LADDER.map((rung) => rung.length))];
+const STRAIGHT_HULLS = [...new Set(STRAIGHT_LADDER.map((rung) => rung.biggest))] as DieSize[];
+const LONGEST_STRAIGHT = STRAIGHT_LENGTHS[STRAIGHT_LENGTHS.length - 1] ?? 0;
+
+function dieSizesIn(name: string): DieSize[] {
+  const found: DieSize[] = [];
+  for (const match of name.matchAll(/d(\d+)/g)) {
+    const sides = Number(match[1]);
+    if (sides === 4 || sides === 6 || sides === 8 || sides === 10) found.push(sides);
+  }
+  return found;
 }
 
-const HULLS = SHOP_ROWS.filter((row) => row.kind === "hull");
+function shopTitle(row: ShopRow): string {
+  if (row.kind === "hull") {
+    const sides = dieSizesIn(row.name)[0];
+    return sides ? `d${sides}` : row.name;
+  }
+  if (row.kind === "upgrade") {
+    const [from, to] = dieSizesIn(row.name);
+    return from && to ? `d${from} → d${to}` : row.name;
+  }
+  return row.name;
+}
 
 function Card({
   title,
@@ -67,36 +88,24 @@ function Copy({ children }: { children: string }) {
   return <p className="help-copy">{children}</p>;
 }
 
-function HelpTable({
-  block,
-}: {
-  block: Extract<HelpBlock, { kind: "table" }>;
-}) {
+function ShopItem({ row }: { row: ShopRow }) {
+  const sides = dieSizesIn(row.name);
   return (
-    <div>
-      <div className="-mx-1 overflow-x-auto">
-        <table className="help-data">
-          <thead>
-            <tr>
-              {block.head.map((cell) => (
-                <th key={cell}>{cell}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {block.rows.map((row, index) => (
-              <tr key={index}>
-                {row.map((cell, cellIndex) => (
-                  <td key={cellIndex} className={cellIndex === 0 ? "t-num" : undefined}>
-                    {cell}
-                  </td>
-                ))}
-              </tr>
-            ))}
-          </tbody>
-        </table>
+    <div className="help-shop-row">
+      <span className="help-shop-art">
+        {row.kind === "flagship" ? (
+          <HelpFlagFace face={1} size={48} />
+        ) : sides.length ? (
+          sides.map((size) => <HullShape key={size} sides={size} tone="live" />)
+        ) : (
+          <span className="help-shop-slot t-num">+</span>
+        )}
+      </span>
+      <div>
+        <strong>{shopTitle(row)}</strong>
+        <span className="help-shop-cost">{row.cost} Energy</span>
+        <p>{row.gain}</p>
       </div>
-      {block.note && <p className="help-note">{block.note}</p>}
     </div>
   );
 }
@@ -109,9 +118,6 @@ export function HowToPlayBody() {
   const round = section("a-round");
   const yard = section("shipyard");
   const win = section("winning");
-  const straightTable = table("straights-formations");
-  const shopTable = table("shipyard");
-
   return (
     <div className="help-scroll">
       <p className="help-lede">
@@ -145,7 +151,8 @@ export function HowToPlayBody() {
         </p>
         <div className="help-hulls">
           {HULLS.map((row) => {
-            const sides = Number(row.name.replace(/\D/g, "")) as DieSize;
+            const sides = dieSizesIn(row.name)[0];
+            if (!sides) return null;
             return (
               <div key={row.name} className="help-hull">
                 <span className="help-hull-art">
@@ -250,7 +257,34 @@ export function HowToPlayBody() {
           <HelpShipFace value={4} size={48} />
           <HelpShipFace value={5} size={48} />
         </div>
-        {straightTable && <HelpTable block={straightTable} />}
+        <div className="help-prize-list">
+          {STRAIGHT_LENGTHS.map((length) => (
+            <div key={length} className="help-prize-card">
+              <strong>
+                {length >= LONGEST_STRAIGHT ? `${length} or more in a row` : `${length} in a row`}
+              </strong>
+              <div className="help-prize-hulls">
+                {STRAIGHT_HULLS.map((biggest) => {
+                  const rung = STRAIGHT_LADDER.find(
+                    (entry) => entry.length === length && entry.biggest === biggest,
+                  );
+                  return (
+                    <div
+                      key={biggest}
+                      className={`help-prize-hull${rung?.possible ? "" : " is-empty"}`}
+                    >
+                      <span className="help-hull-art">
+                        <HullShape sides={biggest} tone={rung?.possible ? "live" : "ghost"} />
+                      </span>
+                      <span>d{biggest}</span>
+                      <span>{rung?.possible ? rung.label : "—"}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+        </div>
         <dl className="help-table">
           {FORMATIONS.map((formation) => (
             <div key={formation.kind}>
@@ -268,7 +302,11 @@ export function HowToPlayBody() {
         {texts("shipyard").map((text) => (
           <Copy key={text}>{text}</Copy>
         ))}
-        {shopTable && <HelpTable block={shopTable} />}
+        <div className="help-shop-list">
+          {SHOP_ROWS.map((row) => (
+            <ShopItem key={row.name} row={row} />
+          ))}
+        </div>
       </Card>
 
       <Card title={win?.title ?? "Winning"}>
