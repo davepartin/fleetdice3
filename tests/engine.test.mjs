@@ -32,6 +32,8 @@ const {
   newMatch,
   newPlayer,
   nextActions,
+  pendingThrow,
+  pendingThrowReady,
   publicMatchView,
   repairOf,
   setRng,
@@ -406,4 +408,17 @@ test("a commander cannot see the other fleet's dice until the volley starts", ()
   resolved.players.guest.dice = [{ id: "flag", sides: 6, value: 6, flag: true }];
   const reportView = publicMatchView(resolved, "host");
   assert.equal(reportView.players.guest.dice.length, 1, "the report is allowed to show what hit you");
+});
+
+test("a roll throw waits for the new faces, not the tap", () => {
+  const state = freshMatch(8);
+  const before = state.players.host;
+  const pending = pendingThrow(before, ["flag"]);
+  assert.equal(pendingThrowReady(pending, before), false, "the old board is not the roll");
+
+  applyAction(state, "host", { type: "roll", dice: [] });
+  assert.equal(pendingThrowReady(pending, state.players.host), true, "new faces release the throw");
+
+  const again = pendingThrow(state.players.host, ["flag"]);
+  assert.equal(pendingThrowReady(again, state.players.host), false, "the same faces must not throw twice");
 });

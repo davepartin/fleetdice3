@@ -24,6 +24,7 @@ import {
 import { rollHint } from "@/lib/ai";
 import { FLAGSHIP_FACES } from "@/lib/reference";
 import type { MatchController } from "@/lib/useMatch";
+import { pendingThrow, pendingThrowReady, type PendingThrow } from "@/lib/throwSync";
 import { createArena, type Arena, type Focus } from "@/lib/three/arena";
 import { waitForFonts } from "@/lib/three/fonts";
 import { audio } from "@/lib/audio";
@@ -57,8 +58,11 @@ export function MatchScreen({ controller, onExit, title, subtitle }: Props) {
    * behind a wall of text.
    */
   const [cinematic, setCinematic] = useState<null | "reveal" | "volley">(null);
-  /** Dice the player just sent back, so they animate even on the same number. */
-  const thrownRef = useRef<Set<string>>(new Set());
+  /**
+   * Dice the player just sent back. Held until the new numbers actually
+   * arrive — otherwise versus tosses the old faces, then tosses again.
+   */
+  const pendingThrowRef = useRef<PendingThrow | null>(null);
 
   const { state, you, them, act, busy, error, clearError, waitingOnEnemy } = controller;
   const phase = you?.phase ?? "waiting";
@@ -165,17 +169,19 @@ export function MatchScreen({ controller, onExit, title, subtitle }: Props) {
   useEffect(() => {
     const arena = arenaRef.current;
     if (!arena || !state) return;
+    const pending = pendingThrowRef.current;
+    const throwReady = pendingThrowReady(pending, you);
     arena.sync(state, controller.side, {
       instant: firstSyncRef.current,
       selected,
       damageSelected: phase === "brace" ? braceShips : undefined,
       previewTally: tally,
       revealEnemy: phase === "brace" || phase === "report" || phase === "over",
-      thrown: thrownRef.current,
+      thrown: throwReady ? pending?.ids : undefined,
     });
-    thrownRef.current = new Set();
+    if (throwReady) pendingThrowRef.current = null;
     firstSyncRef.current = false;
-  }, [state, selected, braceShips, phase, controller.side, arenaReady, tally]);
+  }, [state, you, selected, braceShips, phase, controller.side, arenaReady, tally]);
 
   /* Point the camera at whatever matters right now ------------------- */
 
@@ -324,18 +330,20 @@ export function MatchScreen({ controller, onExit, title, subtitle }: Props) {
   );
 
   const rollAll = () => {
+    if (!you || busy || you.phase !== "ready") return;
+    const ids = new Set(you.ships.map((ship) => ship.id));
+    ids.add("flag");
+    pendingThrowRef.current = pendingThrow(you, ids);
     audio.play("dice-throw");
-    thrownRef.current = new Set(you?.ships.map((ship) => ship.id) ?? []);
-    thrownRef.current.add("flag");
     setSelected(new Set());
     send({ type: "roll", dice: [] });
   };
 
   const rerollSelected = () => {
-    if (!selected.size) return;
-    audio.play("reroll");
+    if (!you || busy || !selected.size || you.phase !== "rolling") return;
     const ids = [...selected];
-    thrownRef.current = new Set(ids);
+    pendingThrowRef.current = pendingThrow(you, ids);
+    audio.play("reroll");
     setSelected(new Set());
     send({ type: "roll", dice: ids });
   };

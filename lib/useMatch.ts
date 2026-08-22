@@ -180,6 +180,7 @@ export function useRoomMatch(matchId: string | null): MatchController {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const queueRef = useRef<Promise<unknown>>(Promise.resolve());
+  const busyRef = useRef(false);
 
   useEffect(() => {
     if (!matchId) {
@@ -239,6 +240,10 @@ export function useRoomMatch(matchId: string | null): MatchController {
   const act = useCallback(
     (action: MatchAction) => {
       if (!matchId) return;
+      // Two taps in the same moment both see busy=false. A second roll would
+      // either error or, if both still saw "ready", write a second set of faces.
+      if (action.type === "roll" && busyRef.current) return;
+      busyRef.current = true;
       setBusy(true);
       queueRef.current = queueRef.current
         .then(() => playAction(matchId, action))
@@ -249,7 +254,10 @@ export function useRoomMatch(matchId: string | null): MatchController {
         .catch((reason: unknown) => {
           setError(reason instanceof Error ? reason.message : String(reason));
         })
-        .finally(() => setBusy(false));
+        .finally(() => {
+          busyRef.current = false;
+          setBusy(false);
+        });
     },
     [matchId],
   );
