@@ -178,11 +178,27 @@ These come first.
 
 This is the single biggest visual win available and it costs nothing to run.
 
-- [ ] **1.1 — Only the rolled face is lit.**
+- [x] **1.1 — Only the rolled face is lit.**
   Nine numbers are currently visible across the three d10s in one screenshot.
   **DONE when:** on any die, faces other than the rolled one render at ≤35%
   brightness with marks hidden, and a screenshot of a full d10 fleet shows one
   legible number per die and no competing digits.
+  **Proved:** every die was one draw call sharing a single material across all
+  its faces (a texture atlas baked at build time), so nothing distinguished
+  "the rolled face" from any other at render time — dimming had nowhere to
+  attach. Added a `faceIndex` vertex attribute in `buildDie`
+  (`lib/three/polyhedron.ts`) so each triangle knows which face it belongs to,
+  then in `lib/three/die.ts` gave each die's cloned material an
+  `onBeforeCompile` hook that injects a `uActiveFace` uniform: any face other
+  than the active one has its sampled colour flattened to 30% of its own
+  greyscale luminance (desaturated, ≤35% brightness) and its emissive
+  contribution zeroed (killing the payoff marks' glow, which is where the
+  emissive channel carries them). `setFace`/`throwTo` update the uniform
+  whenever the die's value changes. Verified against a real, un-scripted solo
+  match at phone size (402×874): a rolled d10 shows one bright, fully legible
+  number with its neighbouring kite faces visibly flattened to grey,
+  screenshot sent in chat — not a synthetic single-die render. `pnpm lint` and
+  `pnpm test` (27/27) both still pass; `tsc --noEmit` is clean.
 
 - [ ] **1.2 — Dice numerals use the numeral face.**
   **DONE when:** Archivo Black is self-hosted in `public/fonts`, the dice atlas

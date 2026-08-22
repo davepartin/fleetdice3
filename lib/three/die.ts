@@ -192,6 +192,36 @@ export function createDie(kind: DieKind, font: string, scale = 1, cellSize = 0):
   object.add(pivot);
 
   const material = shared.material.clone();
+  let activeFaceUniform: { value: number } | null = null;
+  material.onBeforeCompile = (shader) => {
+    shader.uniforms.uActiveFace = { value: 0 };
+    activeFaceUniform = shader.uniforms.uActiveFace;
+    shader.vertexShader = shader.vertexShader
+      .replace(
+        "#include <common>",
+        "attribute float faceIndex;\nvarying float vFaceIndex;\n#include <common>",
+      )
+      .replace("#include <begin_vertex>", "#include <begin_vertex>\nvFaceIndex = faceIndex;");
+    shader.fragmentShader = shader.fragmentShader
+      .replace(
+        "#include <common>",
+        "uniform float uActiveFace;\nvarying float vFaceIndex;\n#include <common>",
+      )
+      .replace(
+        "#include <emissivemap_fragment>",
+        `#include <emissivemap_fragment>
+        {
+          // A real d10 shows its neighbours; a readable one does not. Every
+          // face but the one that was rolled sits at a third of its lit
+          // brightness, flattened to grey, with its marks' glow switched off
+          // — so a fleet of dice reads as one legible number each, not nine.
+          float lit = abs(vFaceIndex - uActiveFace) < 0.5 ? 1.0 : 0.0;
+          float luma = dot(diffuseColor.rgb, vec3(0.299, 0.587, 0.114));
+          diffuseColor.rgb = mix(vec3(luma) * 0.3, diffuseColor.rgb, lit);
+          totalEmissiveRadiance *= lit;
+        }`,
+      );
+  };
   const mesh = new THREE.Mesh(shared.built.geometry, material);
   mesh.castShadow = true;
   mesh.receiveShadow = false;
@@ -461,12 +491,14 @@ export function createDie(kind: DieKind, font: string, scale = 1, cellSize = 0):
     },
     setFace(next) {
       value = clampFace(next, sides);
+      if (activeFaceUniform) activeFaceUniform.value = value - 1;
       pivot.quaternion.copy(frameFor(value));
       rolling = false;
       applyStateColours();
     },
     throwTo(next, options = {}) {
       value = clampFace(next, sides);
+      if (activeFaceUniform) activeFaceUniform.value = value - 1;
       targetQuaternion = frameFor(value);
       flightDelay = options.delay ?? 0;
       flightDuration = options.duration ?? 0.78;
