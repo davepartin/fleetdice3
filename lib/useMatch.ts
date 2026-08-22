@@ -24,6 +24,7 @@ import {
 } from "./engine";
 import { newBrain, nextActions, type Brain, type Difficulty, type Plan } from "./ai";
 import {
+  cancelRoom,
   enterRoom,
   playAction,
   startRoomHeartbeat,
@@ -49,6 +50,8 @@ export type MatchController = {
   act(action: MatchAction): void;
   /** Solo only: start a fresh match with the same settings. */
   restart?(): void;
+  /** Versus only: end the room for both commanders. */
+  cancel?(): void;
   mode: "solo" | "versus";
 };
 
@@ -269,6 +272,21 @@ export function useRoomMatch(matchId: string | null): MatchController {
     [matchId],
   );
 
+  const cancel = useCallback(() => {
+    if (!matchId) return;
+    busyRef.current = true;
+    setBusy(true);
+    queueRef.current = queueRef.current
+      .then(() => cancelRoom(matchId))
+      .catch((reason: unknown) => {
+        setError(reason instanceof Error ? reason.message : String(reason));
+      })
+      .finally(() => {
+        busyRef.current = false;
+        setBusy(false);
+      });
+  }, [matchId]);
+
   const state = room?.state ?? null;
   const side = room?.side ?? "host";
   const you = state?.players[side] ?? null;
@@ -285,6 +303,7 @@ export function useRoomMatch(matchId: string | null): MatchController {
     error,
     clearError: () => setError(null),
     act,
+    cancel,
     mode: "versus",
   };
 }

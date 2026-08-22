@@ -84,7 +84,7 @@ function SoloSetup({
           <div className="mx-auto flex w-full max-w-[30rem] flex-col gap-4 px-4 pb-10 pt-6">
             <div className="flex items-center gap-2">
               <Button tone="ghost" size="sm" onClick={onBack}>
-                ‹ Home
+                ‹ Back to home
               </Button>
               <span className="flex-1" />
               <Button tone="ghost" size="sm" onClick={onHelp}>

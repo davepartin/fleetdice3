@@ -538,7 +538,8 @@ button {
 
 .match-mobile-menu,
 .flagship-compact,
-.commander-name-mobile {
+.commander-name-mobile,
+.leave-label-short {
   display: none;
 }
 
@@ -625,6 +626,8 @@ button {
     min-height: 44px;
     padding-inline: 0.65rem;
   }
+  .match-hud-solo .leave-label-full { display: none; }
+  .match-hud-solo .leave-label-short { display: inline; }
 
   .match-hud-solo .match-header .panel-enemy {
     min-height: 58px;

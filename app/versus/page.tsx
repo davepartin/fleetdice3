@@ -117,7 +117,7 @@ export default function VersusPage() {
               size="sm"
               onClick={() => (room ? abandon() : router.push("/"))}
             >
-              ‹ {room ? "Close this room" : "Home"}
+              ‹ {room ? "Cancel game" : "Back to home"}
             </Button>
             <span className="flex-1" />
             <Button tone="ghost" size="sm" onClick={() => setHelpOpen(true)}>
