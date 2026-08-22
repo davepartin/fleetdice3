@@ -162,6 +162,11 @@ function markText(row: FaceRow): string {
   return parts.length ? joinWords(parts) : "pays nothing extra";
 }
 
+/** The smallest hull that can show this face. A 4 lives on a d4; a 7 needs a d8. */
+export function hullForFace(value: number): DieSize {
+  return HULLS.find((sides) => sides >= value) ?? BIG;
+}
+
 /** Every face 1–10: what it hits or blocks for, and exactly what its mark pays. */
 export const FACE_ROWS: readonly FaceReference[] = faceTable().map((row) => {
   const fightText = `${row.fights === "hits" ? "hits" : "blocks"} for ${row.amount}`;
