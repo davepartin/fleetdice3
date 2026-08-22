@@ -15,6 +15,8 @@ export type DeckPalette = {
   stencil: string;
 };
 
+// The deck's own paint: no matching token except each side's rim glow —
+// you: --color-shield. enemy: close to but distinct from --color-attack.
 export const DECK_PALETTE: Record<"you" | "enemy", DeckPalette> = {
   you: {
     plate: "#1b2436",
@@ -105,7 +107,7 @@ export function paintDeck(
   const emissive = mode === "emissive";
 
   if (emissive) {
-    ctx.fillStyle = "#000000";
+    ctx.fillStyle = "#000000"; // no glow by default; no matching token
     ctx.fillRect(0, 0, SIZE, SIZE);
   } else {
     const base = ctx.createLinearGradient(0, 0, SIZE * 0.6, SIZE);
@@ -216,7 +218,7 @@ export function paintDeck(
       ctx.rect(cx, cy, 92, 18);
       ctx.clip();
       for (let i = -20; i < 120; i += 14) {
-        ctx.strokeStyle = i % 28 === 0 ? "#ffd23d" : "#0a0d16";
+        ctx.strokeStyle = i % 28 === 0 ? "#ffd23d" : "#0a0d16"; // --color-energy : no matching token
         ctx.lineWidth = 8;
         ctx.beginPath();
         ctx.moveTo(cx + i, cy + 26);

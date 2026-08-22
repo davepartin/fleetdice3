@@ -40,7 +40,12 @@ export function HullShape({ sides, tone }: { sides: DieSize; tone: "live" | "gho
   const stroke = tone === "live" ? "rgba(255,255,255,0.85)" : "rgba(255,255,255,0.3)";
   const fill =
     tone === "live"
-      ? { 4: "#3b5a86", 6: "#3f6ba8", 8: "#5a5aa8", 10: "#7d51a0" }[sides]
+      ? {
+          4: "var(--color-hull-icon-d4)",
+          6: "var(--color-hull-icon-d6)",
+          8: "var(--color-hull-icon-d8)",
+          10: "var(--color-hull-icon-d10)",
+        }[sides]
       : "rgba(255,255,255,0.05)";
   return (
     <svg viewBox="0 0 64 64" className="h-full w-full" aria-hidden="true">

@@ -373,7 +373,7 @@ export function createArena(canvas: HTMLCanvasElement, options: ArenaOptions = {
         inRun,
         inLine: cell >= 0 ? (lineCells.get(cell) ?? null) : null,
         flagRing,
-        flagRingColor: FLAG_FACE_PALETTE[face]?.ring ?? 0xffd23d,
+        flagRingColor: FLAG_FACE_PALETTE[face]?.ring ?? 0xffd23d, // fallback: --color-energy
       });
     }
     deck.board.setRunCells(runCells);

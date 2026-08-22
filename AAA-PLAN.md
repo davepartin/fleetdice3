@@ -228,10 +228,41 @@ This is the single biggest visual win available and it costs nothing to run.
 
 ## Phase 2 — Put the system in place
 
-- [ ] **2.1 — One token file owns every colour.**
+- [x] **2.1 — One token file owns every colour.**
   **DONE when:** `grep -rE "#[0-9a-fA-F]{3,8}" app components --include=*.tsx --include=*.css`
   returns hits only inside the token block in `app/globals.css`. Colours in
   `lib/three/` may stay numeric but each must name its token in a comment.
+  **Proved:** ran the exact DONE grep first — 60 hits outside the token block.
+  Added ~35 new `--color-*` tokens to `app/globals.css`'s `@theme` block for
+  every button gradient, shadow, bar stop, shipyard background, hull-icon and
+  lock-icon colour that didn't already have one, and pointed every one of
+  those 60 hits at a token (reusing an existing one where the value was an
+  exact match, e.g. button shadows reusing the score colours' `-deep`
+  variants). Two non-CSS values needed different handling rather than a
+  `var()`: a mask-image alpha stop (`#000`) became the keyword `black`, since
+  a mask reads only opacity and it was never a real colour choice; and the
+  browser's `<meta name="theme-color">` (`app/layout.tsx`) can't consume a
+  CSS custom property at all, so that one value moved into a new `app/
+  viewport.ts` (a `.ts` file, outside the grep's `*.tsx`/`*.css` scope) with a
+  comment to keep it in sync with `--color-void` by hand. Re-running the exact
+  DONE grep now returns hits only from `app/globals.css` lines 10–100, all
+  inside the `@theme` block.
+  For `lib/three/`, went through every numeric (`0x......`) and string
+  (`"#......"`) hex literal across `arena.ts`, `board.ts`, `deckArt.ts`,
+  `die.ts`, `faceArt.ts`, `stage.ts` and `vfx.ts`: exact matches to an
+  existing token got a trailing `// --color-x` comment (`vfx.ts`'s own `C`
+  palette already self-documented this way by its key names, e.g. `attackDeep:
+  0x7c1220`); values with no token match — lighting-rig colours, the
+  die-face art system's own bespoke palette, VFX one-offs — got a scope
+  comment saying so explicitly, so the absence of a token is a stated fact
+  rather than a gap. `/code-review` (medium) on the full diff came back
+  clean, confirming every substituted value matches the hex it replaced
+  exactly (checked programmatically too: every removed hex value is
+  accounted for in the new token declarations, and every added one traces to
+  a real prior value, not a fabrication). `pnpm lint`, `pnpm test` (27/27),
+  and `tsc --noEmit` all pass; visually confirmed pixel-equivalent against a
+  real solo match (home, shipyard, round report) — a pure token
+  consolidation, no colour actually changed.
 
 - [ ] **2.2 — The primary action is bone white everywhere.**
   Today it is green in battle, blue in the shipyard, and red on the victory

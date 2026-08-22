@@ -11,6 +11,13 @@ import * as THREE from "three";
 
 export type MarkKind = "energy" | "repair" | "direct";
 
+// Every colour in this file — MARK_COLOR, HIT, FLAG_SHELL, BLOCK,
+// FLAG_FACE_PALETTE, and the keylines/shadows/highlights painted in
+// paintGlyph and paintFace below — is the die-face art's own bespoke
+// palette (plate gradients, per-value flagship insets, mark glyphs, ink and
+// shine passes), not the UI's --color-* tokens. None has a 1:1 token match
+// in app/globals.css, so none is named against one, except where a value is
+// literally reused — e.g. "#ffffff" below is always --color-white.
 export const MARK_COLOR: Record<MarkKind, string> = {
   // These stay intentionally lighter than their matching HUD colours. Tiny
   // marks are viewed on a steeply projected face, so the symbol needs a bright

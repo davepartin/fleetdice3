@@ -71,8 +71,8 @@ function LockIcon() {
     <svg viewBox="0 0 32 38" aria-hidden="true">
       <path d="M8 16v-5C8 5 11.3 2 16 2s8 3 8 9v5" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" />
       <rect x="4" y="15" width="24" height="20" rx="5" fill="currentColor" />
-      <circle cx="16" cy="24" r="2.4" fill="#090711" />
-      <path d="M16 25.5v4" stroke="#090711" strokeWidth="2.6" strokeLinecap="round" />
+      <circle cx="16" cy="24" r="2.4" fill="var(--color-lock-hole)" />
+      <path d="M16 25.5v4" stroke="var(--color-lock-hole)" strokeWidth="2.6" strokeLinecap="round" />
     </svg>
   );
 }

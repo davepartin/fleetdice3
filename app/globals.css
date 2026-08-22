@@ -41,6 +41,64 @@
   --color-run: #ff9d2e;
   --color-run-glow: #ffc978;
 
+  /* Universal. */
+  --color-white: #ffffff;
+
+  /* Each command-tone button: a top/mid/bottom gradient, a dark ink for its
+     text, and (where it differs from the tone's own -deep score colour) a
+     shadow. Attack/repair/energy buttons reuse the score colours' -deep
+     shadow directly rather than duplicating it here. */
+  --color-btn-primary-ink: #12060a;
+  --color-btn-primary-top: #ff7a5c;
+  --color-btn-primary-mid: #ff3d52;
+  --color-btn-primary-bottom: #d4142f;
+  --color-btn-confirm-ink: #04180d;
+  --color-btn-confirm-top: #6cf0a6;
+  --color-btn-confirm-mid: #29d97c;
+  --color-btn-confirm-bottom: #12a25a;
+  --color-btn-energy-ink: #1a1200;
+  --color-btn-energy-top: #ffe071;
+  --color-btn-energy-mid: #ffc61f;
+  --color-amber-deep: #d99700;
+  --color-btn-command-ink: #03111f;
+  --color-btn-command-top: #80d4ff;
+  --color-btn-command-mid: #35aef7;
+  --color-btn-command-bottom: #1675c5;
+  --color-btn-command-shadow: #0a3f73;
+
+  /* The greyed-out reroll pill once you can no longer afford it. */
+  --color-reroll-locked-bg: #15171d;
+  --color-reroll-locked-shadow: #08090d;
+  --color-reroll-cost-ink: #171000;
+
+  /* The two score bars' start stops, darker than the score colour itself. */
+  --color-repair-bar-start: #17b463;
+  --color-attack-bar-start: #a30f22;
+
+  /* The shipyard's own backdrop, deeper than the void behind everything else. */
+  --color-yard-bg-top: #060a14;
+  --color-yard-bg-bottom: #03050b;
+
+  /* A selected shipyard cell's border — brighter than --color-shield-glow. */
+  --color-shield-bright: #a9e3ff;
+  /* The flagship cell icon's own glow — close to but distinct from
+     --color-energy-glow. */
+  --color-flag-glow: #ffd98a;
+
+  /* The "you can afford this" price pill. */
+  --color-price-ok-ink: #eff9ff;
+  --color-price-ok-top: #278ed5;
+  --color-price-ok-bottom: #145b9d;
+
+  /* The shipyard's hull-shape icons, one blue-to-purple step per size. */
+  --color-hull-icon-d4: #3b5a86;
+  --color-hull-icon-d6: #3f6ba8;
+  --color-hull-icon-d8: #5a5aa8;
+  --color-hull-icon-d10: #7d51a0;
+
+  /* The lock icon's keyhole cutout. */
+  --color-lock-hole: #090711;
+
   --font-display: var(--font-display), "Arial Black", system-ui, sans-serif;
   --font-body: var(--font-body), ui-sans-serif, system-ui, sans-serif;
   --font-numeric: var(--font-display), ui-monospace, monospace;
@@ -221,14 +279,19 @@ button {
 
 /* The one button on the screen that matters. */
 .btn-primary {
-  color: #12060a;
+  color: var(--color-btn-primary-ink);
   background:
     linear-gradient(180deg, rgb(255 255 255 / 0.38), rgb(255 255 255 / 0) 46%),
-    linear-gradient(180deg, #ff7a5c 0%, #ff3d52 52%, #d4142f 100%);
+    linear-gradient(
+      180deg,
+      var(--color-btn-primary-top) 0%,
+      var(--color-btn-primary-mid) 52%,
+      var(--color-btn-primary-bottom) 100%
+    );
   box-shadow:
     inset 0 1px 0 rgb(255 255 255 / 0.55),
     inset 0 -2px 0 rgb(0 0 0 / 0.28),
-    0 6px 0 -1px #7c1220,
+    0 6px 0 -1px var(--color-attack-deep),
     0 16px 34px -12px rgb(255 61 82 / 0.7);
   text-shadow: 0 1px 0 rgb(255 255 255 / 0.28);
 }
@@ -238,19 +301,24 @@ button {
 .btn-primary:active:not(:disabled) {
   box-shadow:
     inset 0 1px 0 rgb(255 255 255 / 0.4),
-    0 2px 0 -1px #7c1220,
+    0 2px 0 -1px var(--color-attack-deep),
     0 8px 20px -10px rgb(255 61 82 / 0.6);
 }
 
 .btn-confirm {
-  color: #04180d;
+  color: var(--color-btn-confirm-ink);
   background:
     linear-gradient(180deg, rgb(255 255 255 / 0.36), rgb(255 255 255 / 0) 46%),
-    linear-gradient(180deg, #6cf0a6 0%, #29d97c 52%, #12a25a 100%);
+    linear-gradient(
+      180deg,
+      var(--color-btn-confirm-top) 0%,
+      var(--color-btn-confirm-mid) 52%,
+      var(--color-btn-confirm-bottom) 100%
+    );
   box-shadow:
     inset 0 1px 0 rgb(255 255 255 / 0.55),
     inset 0 -2px 0 rgb(0 0 0 / 0.25),
-    0 6px 0 -1px #0d5432,
+    0 6px 0 -1px var(--color-repair-deep),
     0 16px 34px -12px rgb(41 217 124 / 0.6);
 }
 .btn-confirm:hover:not(:disabled) {
@@ -258,13 +326,18 @@ button {
 }
 
 .btn-energy {
-  color: #1a1200;
+  color: var(--color-btn-energy-ink);
   background:
     linear-gradient(180deg, rgb(255 255 255 / 0.4), rgb(255 255 255 / 0) 46%),
-    linear-gradient(180deg, #ffe071 0%, #ffc61f 52%, #d99700 100%);
+    linear-gradient(
+      180deg,
+      var(--color-btn-energy-top) 0%,
+      var(--color-btn-energy-mid) 52%,
+      var(--color-amber-deep) 100%
+    );
   box-shadow:
     inset 0 1px 0 rgb(255 255 255 / 0.6),
-    0 6px 0 -1px #7a5300,
+    0 6px 0 -1px var(--color-energy-deep),
     0 16px 34px -12px rgb(255 210 61 / 0.6);
 }
 .btn-energy:hover:not(:disabled) {
@@ -274,14 +347,19 @@ button {
 /* Cool command blue: buying and returning to battle are navigation/upgrade
    actions, not Energy itself and not incoming danger. */
 .btn-command {
-  color: #03111f;
+  color: var(--color-btn-command-ink);
   background:
     linear-gradient(180deg, rgb(255 255 255 / 0.42), rgb(255 255 255 / 0) 46%),
-    linear-gradient(180deg, #80d4ff 0%, #35aef7 52%, #1675c5 100%);
+    linear-gradient(
+      180deg,
+      var(--color-btn-command-top) 0%,
+      var(--color-btn-command-mid) 52%,
+      var(--color-btn-command-bottom) 100%
+    );
   box-shadow:
     inset 0 1px 0 rgb(255 255 255 / 0.62),
     inset 0 -2px 0 rgb(0 0 0 / 0.24),
-    0 6px 0 -1px #0a3f73,
+    0 6px 0 -1px var(--color-btn-command-shadow),
     0 16px 34px -12px rgb(53 174 247 / 0.66);
 }
 .btn-command:hover:not(:disabled) {
@@ -321,14 +399,14 @@ button {
   border: 1px solid rgb(255 210 61 / 0.42);
   background:
     linear-gradient(180deg, rgb(255 255 255 / 0.07), rgb(255 255 255 / 0.01)),
-    #15171d;
+    var(--color-reroll-locked-bg);
   box-shadow:
     inset 0 1px 0 rgb(255 255 255 / 0.08),
-    0 5px 0 -1px #08090d,
+    0 5px 0 -1px var(--color-reroll-locked-shadow),
     0 12px 28px -16px rgb(255 210 61 / 0.45);
 }
 .reroll-action.reroll-unaffordable:disabled .reroll-cost {
-  color: #171000;
+  color: var(--color-reroll-cost-ink);
   border-color: var(--color-energy);
   background: var(--color-energy);
   box-shadow: 0 0 18px rgb(255 210 61 / 0.25);
@@ -343,7 +421,7 @@ button {
 }
 .btn-ghost:hover:not(:disabled) {
   background: linear-gradient(180deg, rgb(255 255 255 / 0.12), rgb(255 255 255 / 0.04));
-  color: #fff;
+  color: var(--color-white);
 }
 
 .btn-sm {
@@ -401,15 +479,30 @@ button {
   inset: 0 auto 0 0;
   border-radius: 999px;
   transition: width 0.34s var(--ease-snap);
-  background: linear-gradient(90deg, #17b463 0%, #45e08b 62%, #9df3c2 100%);
+  background: linear-gradient(
+    90deg,
+    var(--color-repair-bar-start) 0%,
+    var(--color-repair) 62%,
+    var(--color-repair-glow) 100%
+  );
   box-shadow: 0 0 14px rgb(69 224 139 / 0.6);
 }
 .hpbar-fill[data-state="hurt"] {
-  background: linear-gradient(90deg, #d99700 0%, #ffd23d 62%, #ffe98a 100%);
+  background: linear-gradient(
+    90deg,
+    var(--color-amber-deep) 0%,
+    var(--color-energy) 62%,
+    var(--color-energy-glow) 100%
+  );
   box-shadow: 0 0 14px rgb(255 210 61 / 0.6);
 }
 .hpbar-fill[data-state="critical"] {
-  background: linear-gradient(90deg, #a30f22 0%, #ff4d4d 62%, #ff8a7a 100%);
+  background: linear-gradient(
+    90deg,
+    var(--color-attack-bar-start) 0%,
+    var(--color-attack) 62%,
+    var(--color-attack-glow) 100%
+  );
   box-shadow: 0 0 16px rgb(255 77 77 / 0.75);
   animation: hp-pulse 1.15s ease-in-out infinite;
 }
@@ -956,11 +1049,13 @@ button {
 
 /* Fades content out at the top and bottom of a scroll area. */
 .fade-edges {
+  /* A mask's colour is only ever read for its opacity, so this is math, not a
+     design colour — "black" (fully opaque) rather than a hex, on purpose. */
   mask-image: linear-gradient(
     180deg,
     transparent 0,
-    #000 16px,
-    #000 calc(100% - 20px),
+    black 16px,
+    black calc(100% - 20px),
     transparent 100%
   );
 }
@@ -981,7 +1076,7 @@ button {
   padding: calc(var(--hud-safe-top) + 0.75rem) 0.9rem calc(var(--hud-safe-bottom) + 0.75rem);
   background:
     radial-gradient(120% 80% at 50% 0%, rgb(22 34 64 / 0.55) 0%, transparent 62%),
-    linear-gradient(180deg, #060a14 0%, #03050b 55%);
+    linear-gradient(180deg, var(--color-yard-bg-top) 0%, var(--color-yard-bg-bottom) 55%);
   backdrop-filter: blur(18px) saturate(1.1);
   -webkit-backdrop-filter: blur(18px) saturate(1.1);
   overflow: hidden;
@@ -1109,7 +1204,7 @@ button {
     0 0 20px -6px rgb(77 180 255 / 0.5);
 }
 .yard-cell[data-selected] {
-  border-color: #a9e3ff;
+  border-color: var(--color-shield-bright);
   box-shadow:
     inset 0 0 0 2px rgb(169 227 255 / 0.72),
     0 0 26px -5px rgb(77 180 255 / 0.7);
@@ -1125,7 +1220,7 @@ button {
 }
 .yard-cell-flag.yard-cell-art,
 .yard-cell .yard-cell-flag {
-  color: #ffd98a;
+  color: var(--color-flag-glow);
   text-shadow: 0 0 16px rgb(255 210 61 / 0.7);
 }
 .yard-cell-empty-art {
@@ -1185,8 +1280,8 @@ button {
   flex: none;
 }
 .yard-price-ok {
-  color: #eff9ff;
-  background: linear-gradient(180deg, #278ed5, #145b9d);
+  color: var(--color-price-ok-ink);
+  background: linear-gradient(180deg, var(--color-price-ok-top), var(--color-price-ok-bottom));
   box-shadow:
     inset 0 1px 0 rgb(255 255 255 / 0.24),
     0 1px 0 rgb(0 0 0 / 0.38),

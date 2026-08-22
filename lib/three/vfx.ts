@@ -38,6 +38,9 @@ import { displayFontFamily } from "./fonts";
 
 /* ------------------------------------------------------------------ */
 /* The palette. These are the app's colours and they mean things.      */
+/* Every key here names its --color-* token in app/globals.css — e.g.  */
+/* attackDeep is --color-attack-deep, ash is --color-hull-300 — kept   */
+/* numeric because THREE.Color takes a number, not a CSS custom prop.  */
 /* ------------------------------------------------------------------ */
 
 const C = {
@@ -58,8 +61,8 @@ const C = {
   directGlow: 0xd9bcff,
   run: 0xff9d2e,
   runGlow: 0xffc978,
-  white: 0xffffff,
-  ash: 0x8593b8,
+  white: 0xffffff, // --color-white
+  ash: 0x8593b8, // --color-hull-300
 } as const;
 
 export type VfxKind = "attack" | "direct";
@@ -685,7 +688,7 @@ function paintNumber(
   // Outline first, twice, so it survives against a bright deck.
   ctx.lineJoin = "round";
   ctx.miterLimit = 2;
-  ctx.strokeStyle = "#04060d";
+  ctx.strokeStyle = "#04060d"; // --color-void
   ctx.lineWidth = size * 0.17;
   ctx.shadowColor = `#${colour.getHexString()}`;
   ctx.shadowBlur = size * 0.28;
@@ -704,9 +707,9 @@ function paintNumber(
     const labelSize = size * 0.26;
     ctx.font = `800 ${labelSize}px ${font}`;
     ctx.lineWidth = labelSize * 0.34;
-    ctx.strokeStyle = "#04060d";
+    ctx.strokeStyle = "#04060d"; // --color-void
     ctx.strokeText(label, w / 2, h * 0.84);
-    ctx.fillStyle = "#dde4f4";
+    ctx.fillStyle = "#dde4f4"; // --color-hull-100
     ctx.fillText(label, w / 2, h * 0.84);
   }
 
@@ -918,7 +921,7 @@ function softDiscTexture(): THREE.CanvasTexture {
     const x = size / 2 + Math.cos(a) * r;
     const y = size / 2 + Math.sin(a) * r;
     ctx.globalAlpha = 0.05;
-    ctx.fillStyle = Math.random() < 0.5 ? "#ffffff" : "#000000";
+    ctx.fillStyle = Math.random() < 0.5 ? "#ffffff" : "#000000"; // --color-white : pure black speckle
     ctx.beginPath();
     ctx.arc(x, y, 2 + Math.random() * 7, 0, Math.PI * 2);
     ctx.fill();
@@ -1054,7 +1057,7 @@ export function createVfx(stage: Stage, options: VfxOptions = {}): Vfx {
     Array.from({ length: 10 }, (): DarkSlot => {
       const material = new THREE.MeshBasicMaterial({
         map: darkTexture,
-        color: new THREE.Color(0x0a0510),
+        color: new THREE.Color(0x0a0510), // a smoke-puff near-void; no matching token — 3D-only
         transparent: true,
         opacity: 0,
         depthWrite: false,
@@ -1072,10 +1075,10 @@ export function createVfx(stage: Stage, options: VfxOptions = {}): Vfx {
   const DEBRIS_MAX = BUDGETS.high.debris;
   const debrisGeometry = new THREE.IcosahedronGeometry(0.17, 0);
   const debrisMaterial = new THREE.MeshStandardMaterial({
-    color: 0xffffff,
+    color: 0xffffff, // --color-white
     metalness: 0.55,
     roughness: 0.42,
-    emissive: new THREE.Color(0x2a0508),
+    emissive: new THREE.Color(0x2a0508), // a hot-debris ember glow; no matching token — 3D-only
     emissiveIntensity: 0.5,
   });
   const debrisMesh = new THREE.InstancedMesh(debrisGeometry, debrisMaterial, DEBRIS_MAX);
@@ -1100,7 +1103,7 @@ export function createVfx(stage: Stage, options: VfxOptions = {}): Vfx {
   // Punch lights. Real light on an explosion is what sells its size.
   const lightSlots = makeSlots(
     Array.from({ length: BUDGETS.high.lights }, () => {
-      const light = new THREE.PointLight(0xffffff, 0, 22, 2);
+      const light = new THREE.PointLight(0xffffff, 0, 22, 2); // --color-white
       light.visible = false;
       return light;
     }),
@@ -1248,12 +1251,12 @@ export function createVfx(stage: Stage, options: VfxOptions = {}): Vfx {
     if (mode === "ground") {
       mesh.rotation.set(-Math.PI / 2, 0, Math.random() * Math.PI);
       mesh.position.y = deckY + 0.006;
-      material.color.setHex(0x0b0409);
+      material.color.setHex(0x0b0409); // a ground-scorch near-void; no matching token — 3D-only
     } else {
       mesh.rotation.set(0, 0, Math.random() * Math.PI);
       // Smoke over a near-black deck has to be *lighter* than the deck to read
       // at all, so the puffs are a cold haze rather than true soot.
-      material.color.setHex(0x2b3350);
+      material.color.setHex(0x2b3350); // no matching token — 3D-only
     }
     const drift = mode === "puff" ? rand(0.5, 1.1) : 0;
     run(life, (task) => {

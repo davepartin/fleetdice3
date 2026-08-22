@@ -61,7 +61,7 @@ export function createBoard(side: BoardSide, font: string): Board {
   const topMaterial = new THREE.MeshPhysicalMaterial({
     map: albedo,
     emissiveMap: emissive,
-    emissive: new THREE.Color(0xffffff),
+    emissive: new THREE.Color(0xffffff), // --color-white
     emissiveIntensity: 0.48,
     roughness: 0.46,
     metalness: 0.45,
@@ -90,7 +90,7 @@ export function createBoard(side: BoardSide, font: string): Board {
 
   // Locked cells get a dark cap so they read as sealed rather than empty.
   const capMaterial = new THREE.MeshPhysicalMaterial({
-    color: new THREE.Color(0x05080f),
+    color: new THREE.Color(0x05080f), // a locked-cell near-void cap; no matching token — 3D-only
     roughness: 0.85,
     metalness: 0.2,
     transparent: true,
@@ -116,7 +116,7 @@ export function createBoard(side: BoardSide, font: string): Board {
     const bar = new THREE.Mesh(
       new THREE.PlaneGeometry(CELL * 0.7, 0.13),
       new THREE.MeshBasicMaterial({
-        color: 0xff9d2e,
+        color: 0xff9d2e, // --color-run
         transparent: true,
         opacity: 0,
         blending: THREE.AdditiveBlending,
@@ -156,6 +156,7 @@ export function createBoard(side: BoardSide, font: string): Board {
     const first = cellCentre(formation.cells[0]!);
     const last = cellCentre(formation.cells[formation.cells.length - 1]!);
     const row = formation.kind === "row";
+    // row: --color-energy. column: close to but distinct from --color-attack.
     const colour = row ? 0xffd23d : 0xff4d5f;
 
     // A wide light channel runs through the actual centres of the matching
@@ -359,6 +360,7 @@ function formationBadgeTexture(
   canvas.width = 384;
   canvas.height = 192;
   const ctx = canvas.getContext("2d")!;
+  // row: --color-energy. column: close to but distinct from --color-attack.
   const colour = kind === "row" ? "#ffd23d" : "#ff5a69";
 
   ctx.clearRect(0, 0, canvas.width, canvas.height);

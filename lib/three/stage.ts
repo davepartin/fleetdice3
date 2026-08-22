@@ -121,6 +121,8 @@ const GradeShader = {
 /* A hand-built sky, so PBR has something worth reflecting              */
 /* ------------------------------------------------------------------ */
 
+// The reflection-map sky below is a lighting-rig prop, not a UI colour —
+// none of its stops has a matching --color-* token.
 function environmentTexture(renderer: THREE.WebGLRenderer): THREE.Texture {
   const width = 1024;
   const height = 512;
@@ -175,8 +177,10 @@ function buildStarfield(): THREE.Points {
   const positions = new Float32Array(count * 3);
   const colors = new Float32Array(count * 3);
   const sizes = new Float32Array(count);
+  // Starfield colour scatter — white plus faint blue/amber tints. None of
+  // these are design tokens; the range is the point.
   const palette = [
-    new THREE.Color(0xffffff),
+    new THREE.Color(0xffffff), // --color-white
     new THREE.Color(0xbfd8ff),
     new THREE.Color(0xffd9b0),
     new THREE.Color(0x9fb8ff),
@@ -401,6 +405,7 @@ export function createStage(canvas: HTMLCanvasElement, initial?: Quality): Stage
   renderer.shadowMap.type = THREE.PCFShadowMap;
 
   const scene = new THREE.Scene();
+  // Close to but distinct from --color-void — deep space, not the UI deck.
   scene.background = new THREE.Color(0x03050c);
   scene.fog = new THREE.FogExp2(0x03050c, 0.0075);
   scene.environment = environmentTexture(renderer);
@@ -418,7 +423,9 @@ export function createStage(canvas: HTMLCanvasElement, initial?: Quality): Stage
   const nebula = buildNebula();
   backdrop.add(stars, nebula);
 
-  /* Lights ---------------------------------------------------------- */
+  /* Lights ------------------------------------------------------------
+     The rig itself, not a UI colour: a cool key, a warm rim, a dim cool
+     fill (see "The 3D" in AAA-PLAN.md). None of these are design tokens. */
 
   const ambient = new THREE.AmbientLight(0x6d83c1, 0.5);
   scene.add(ambient);
