@@ -116,7 +116,7 @@ function JoinInner() {
 
           {error && <Notice tone="warn">{error}</Notice>}
 
-          <Button tone="confirm" size="lg" full onClick={join} disabled={busy}>
+          <Button tone="primary" size="lg" full onClick={join} disabled={busy}>
             {busy ? "Sitting down…" : "Join the game"}
           </Button>
         </div>

@@ -166,7 +166,7 @@ export default function VersusPage() {
                 <RoomCode code={room.match.state.code} />
               </div>
 
-              <Button tone="confirm" size="lg" full onClick={share}>
+              <Button tone="primary" size="lg" full onClick={share}>
                 {copied ? "Link copied" : "Send the link"}
               </Button>
 

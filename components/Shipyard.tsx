@@ -225,7 +225,7 @@ export function Shipyard({ player, onAction, onDone, busy }: Props) {
 
       {/* ---------------- out ---------------- */}
       <div className="yard-foot">
-        <Button tone="command" size="lg" full onClick={onDone} disabled={busy}>
+        <Button tone="primary" size="lg" full onClick={onDone} disabled={busy}>
           Return to battle
         </Button>
       </div>
@@ -367,7 +367,7 @@ function Drawer({
               faces.
             </p>
             <Button
-              tone="command"
+              tone="ghost"
               full
               disabled={busy || cost > energy}
               onClick={() => onAct({ type: "shop", operation: "flagship" })}
@@ -410,7 +410,7 @@ function Drawer({
             </div>
             <p className="yard-copy">{HULL_BLURB[offer.next]}</p>
             <Button
-              tone="command"
+              tone="ghost"
               full
               disabled={busy || cost > energy}
               onClick={() => onAct({ type: "shop", operation: "upgrade", shipId: offer.ship.id })}
@@ -475,7 +475,7 @@ function Drawer({
         <p className="yard-copy">Every cell is already open.</p>
       ) : (
         <Button
-          tone="command"
+          tone="ghost"
           full
           disabled={busy || cost > energy}
           onClick={() => onAct({ type: "shop", operation: "slot", slotIndex: offer.slot })}

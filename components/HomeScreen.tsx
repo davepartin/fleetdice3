@@ -173,7 +173,7 @@ export function HomeScreen() {
                   aria-label="Four digit game code"
                   className="t-num min-w-0 flex-1 rounded-xl border border-white/12 bg-black/40 px-3 py-3 text-center text-2xl tracking-[0.4em] text-white outline-none focus:border-white/40"
                 />
-                <Button tone="confirm" onClick={join} disabled={joining || code.length !== 4}>
+                <Button tone="ghost" onClick={join} disabled={joining || code.length !== 4}>
                   {joining ? "…" : "Join"}
                 </Button>
               </div>

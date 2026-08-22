@@ -264,11 +264,38 @@ This is the single biggest visual win available and it costs nothing to run.
   real solo match (home, shipyard, round report) — a pure token
   consolidation, no colour actually changed.
 
-- [ ] **2.2 — The primary action is bone white everywhere.**
+- [x] **2.2 — The primary action is bone white everywhere.**
   Today it is green in battle, blue in the shipyard, and red on the victory
   screen — where red means danger and the button means "play again".
   **DONE when:** exactly one `.btn-primary` style exists, it is `#f4f1e8`, every
   screen's main action uses it, and no screen shows two primary buttons at once.
+  **Proved:** narrowed `Button`'s `tone` prop (`components/ui.tsx`) from five
+  values (`primary`/`confirm`/`energy`/`command`/`ghost`) down to two
+  (`primary`/`ghost`), deleted the `.btn-confirm`/`.btn-energy`/`.btn-command`
+  CSS rules and their now-dead tokens entirely, and recoloured `.btn-primary`
+  to `--color-primary: #f4f1e8`. Retargeted every call site repo-wide: each
+  screen's actual advancing action (Roll Fleet, Lock in, the brace confirm,
+  Return to battle, To the shipyard / See the result, Again, Join the game,
+  Send the link) is now `tone="primary"`; every action that coexists on
+  screen with one of those — the shipyard's per-cell buy/upgrade/level-up
+  buttons, the flagship weapon control and its ±1 face popover, the home
+  screen's inline join field — is `tone="ghost"`, since making them primary
+  too would put two bone-white buttons on screen at once (confirmed by
+  reading which of these can actually render simultaneously, e.g. the
+  shipyard drawer's buy button sits over "Return to battle").
+  Two spots carried a *conditional* tone tied to game state — the brace
+  confirm switched to plain "confirm" green unless the hit was fatal, and
+  the reroll button switched to "energy" yellow whenever it cost Energy —
+  both collapsed to a flat `tone="primary"`, since the state they were
+  encoding (fatal, costs Energy) is already said in the button's own text
+  and doesn't need a second, competing colour to say it again.
+  `/code-review` (medium) on the diff came back clean, confirming no
+  orphaned CSS/tokens and no leftover non-primary/ghost tone string
+  anywhere in the repo. `pnpm lint`, `pnpm test` (27/27), and `tsc --noEmit`
+  all pass. Verified visually against a real solo match, screen by screen —
+  Roll Fleet, Lock in, To the shipyard, Return to battle (with its drawer
+  open, to specifically check the two-buttons-at-once case) — each showing
+  exactly one bone-white button, brightest thing on screen.
 
 - [ ] **2.3 — Three font families, five sizes.**
   **DONE when:** the app loads exactly three families; a grep for `text-[` and

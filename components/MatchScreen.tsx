@@ -826,7 +826,7 @@ function RollDock({
 
         {you.flag.token && you.phase === "rolling" && (
           <Button
-            tone="energy"
+            tone="ghost"
             size="sm"
             onClick={() => setTokenOpen(true)}
             disabled={busy}
@@ -848,7 +848,7 @@ function RollDock({
             <Button tone="ghost" size="lg" onClick={() => setTokenOpen(false)}>
               Cancel
             </Button>
-            <Button tone="energy" size="lg" onClick={() => { onToken(1); setTokenOpen(false); }} disabled={busy}>
+            <Button tone="ghost" size="lg" onClick={() => { onToken(1); setTokenOpen(false); }} disabled={busy}>
               +1 face
             </Button>
           </div>
@@ -874,7 +874,7 @@ function RollDock({
                 Clear
               </Button>
               <Button
-                tone={rerollCost ? "energy" : "primary"}
+                tone="primary"
                 size="lg"
                 full
                 onClick={onReroll}
@@ -902,7 +902,7 @@ function RollDock({
             </>
           ) : (
             <>
-              <Button tone="confirm" size="lg" full onClick={onSubmit} disabled={busy}>
+              <Button tone="primary" size="lg" full onClick={onSubmit} disabled={busy}>
                 Lock in
               </Button>
             </>
@@ -1017,7 +1017,7 @@ function BraceDock({
         </Notice>
       )}
 
-      <Button tone={fatal ? "primary" : "confirm"} size="lg" full onClick={onConfirm} disabled={busy}>
+      <Button tone="primary" size="lg" full onClick={onConfirm} disabled={busy}>
         {chosen.size === 0 ? "Take it on the flagship" : `Send ${chosen.size} in front`}
       </Button>
     </div>

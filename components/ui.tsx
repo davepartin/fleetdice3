@@ -18,7 +18,9 @@ type ButtonProps = {
   children: ReactNode;
   onClick?: () => void;
   disabled?: boolean;
-  tone?: "primary" | "confirm" | "energy" | "command" | "ghost";
+  /** Exactly one filled style exists: "primary", bone white, one per screen.
+   *  Everything else is "ghost" — outline-only. */
+  tone?: "primary" | "ghost";
   size?: "sm" | "md" | "lg";
   full?: boolean;
   className?: string;
