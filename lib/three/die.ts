@@ -194,7 +194,10 @@ export function createDie(kind: DieKind, font: string, scale = 1, cellSize = 0):
   const material = shared.material.clone();
   let activeFaceUniform: { value: number } | null = null;
   material.onBeforeCompile = (shader) => {
-    shader.uniforms.uActiveFace = { value: 0 };
+    // onBeforeCompile fires lazily, on this die's first real draw call — by
+    // then `value` (declared below) already holds whatever face was set
+    // before anything was ever rendered, so read it rather than assuming 1.
+    shader.uniforms.uActiveFace = { value: value - 1 };
     activeFaceUniform = shader.uniforms.uActiveFace;
     shader.vertexShader = shader.vertexShader
       .replace(

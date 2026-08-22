@@ -199,6 +199,13 @@ This is the single biggest visual win available and it costs nothing to run.
   number with its neighbouring kite faces visibly flattened to grey,
   screenshot sent in chat — not a synthetic single-die render. `pnpm lint` and
   `pnpm test` (27/27) both still pass; `tsc --noEmit` is clean.
+  A follow-up `/code-review` pass caught a real bug in the first version: the
+  `uActiveFace` uniform was hardcoded to `{ value: 0 }` at first shader
+  compile, ignoring whatever face a die had already been set to before its
+  first render (`onBeforeCompile` fires lazily, on the first draw call, so a
+  restored board or hero-stage die's earlier `setFace` was silently a no-op).
+  Fixed by reading the die's own `value` at compile time instead of assuming
+  1; re-verified with the same lint/type-check/test pass.
 
 - [ ] **1.2 — Dice numerals use the numeral face.**
   **DONE when:** Archivo Black is self-hosted in `public/fonts`, the dice atlas
