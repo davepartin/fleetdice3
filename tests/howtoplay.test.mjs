@@ -26,3 +26,13 @@ test("help faces are painted with the same plates as the 3D dice", () => {
   assert.match(src, /export function paintHelpFace/);
   assert.match(src, /paintFace\(ctx, spec, sides, size, "albedo", numberFont\)/);
 });
+
+test("each help face is clipped to the hull that first shows that number", () => {
+  const help = readFileSync(new URL("../components/HelpArt.tsx", import.meta.url), "utf8");
+  const reference = readFileSync(new URL("../lib/reference.ts", import.meta.url), "utf8");
+  assert.match(help, /hullForFace/);
+  assert.match(help, /addHullPath/);
+  assert.match(help, /ctx\.clip\(\)/);
+  assert.match(reference, /export function hullForFace/);
+  assert.match(reference, /HULLS\.find\(\(sides\) => sides >= value\)/);
+});
