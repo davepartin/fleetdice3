@@ -92,7 +92,7 @@ function JoinInner() {
 
           <header className="text-center">
             <p className="t-eyebrow">You have been challenged</p>
-            <h1 className="t-display text-4xl">Take the second seat</h1>
+            <h1 className="t-display text-3xl">Take the second seat</h1>
           </header>
 
           {code.length === 4 && (
@@ -110,7 +110,7 @@ function JoinInner() {
               value={name}
               maxLength={20}
               onChange={(event) => setName(event.target.value)}
-              className="t-num w-full rounded-xl border border-white/12 bg-black/40 px-3 py-2.5 text-lg text-white outline-none focus:border-white/40"
+              className="t-num w-full rounded-xl border border-white/12 bg-black/40 px-3 py-2.5 text-base text-white outline-none focus:border-white/40"
             />
           </Panel>
 

@@ -86,7 +86,7 @@ function MatchInner() {
             <div className="flex justify-center py-2">
               <RoomCode code={controller.state.code} />
             </div>
-            <p className="text-center text-[0.92rem] leading-relaxed c-dim">
+            <p className="text-center text-base leading-relaxed c-dim">
               Give them these four numbers, or send the link again. This screen turns into the
               battle the moment they sit down — the same board you already know from solo.
             </p>

@@ -92,7 +92,7 @@ function SoloSetup({
 
             <header>
               <p className="t-eyebrow">Solo</p>
-              <h1 className="t-display text-4xl">How hard should it play?</h1>
+              <h1 className="t-display text-3xl">How hard should it play?</h1>
             </header>
 
             <div className="flex flex-col gap-2.5">
@@ -103,7 +103,7 @@ function SoloSetup({
                     <Panel className="flex items-center gap-4 p-4 transition hover:border-white/25">
                       <span className="min-w-0 flex-1">
                         <span className="t-display block text-xl text-white">{entry.label}</span>
-                        <span className="mt-0.5 block text-[0.84rem] leading-snug c-dim">
+                        <span className="mt-0.5 block text-sm leading-snug c-dim">
                           {entry.blurb}
                         </span>
                       </span>
@@ -165,10 +165,10 @@ function PlanRow({
       >
         <span className="min-w-0 flex-1">
           <span className="t-display block text-xl text-white">{title}</span>
-          <span className="mt-0.5 block text-[0.84rem] leading-snug c-dim">{blurb}</span>
+          <span className="mt-0.5 block text-sm leading-snug c-dim">{blurb}</span>
         </span>
         <span
-          className={`t-eyebrow shrink-0 text-[0.62rem] ${active ? "c-energy" : "c-dim"}`}
+          className={`t-eyebrow shrink-0 text-xs ${active ? "c-energy" : "c-dim"}`}
           aria-hidden
         >
           {active ? "On" : "Pick"}

@@ -428,11 +428,11 @@ export function MatchScreen({ controller, onExit, title, subtitle }: Props) {
 
           <div className="panel panel-enemy panel-flush min-w-0 flex-1 px-3 py-2">
             <div className="flex items-baseline justify-between gap-2">
-              <span className="min-w-0 flex-1 truncate text-[0.8rem] font-semibold text-[--color-attack-glow]">
+              <span className="min-w-0 flex-1 truncate text-sm font-semibold c-attack-glow">
                 {enemyName}
               </span>
-              <span className="t-eyebrow shrink-0 text-[0.58rem]">Round {you.round}</span>
-              <span className="t-num text-[0.8rem] text-white">
+              <span className="t-eyebrow shrink-0 text-xs">Round {you.round}</span>
+              <span className="t-num text-sm text-white">
                 {them ? <Ticker value={Math.max(0, them.hp)} /> : 0}
                 <span className="c-dim"> / {them?.maxHp ?? TUNING.hp}</span>
               </span>
@@ -621,11 +621,11 @@ export function MatchScreen({ controller, onExit, title, subtitle }: Props) {
           </div>
         }
       >
-        <p className="text-[0.94rem] leading-relaxed text-[--color-hull-200]">
+        <p className="text-base leading-relaxed c-dim-bright">
           <b className="text-white">Back to home</b> leaves this screen. The game stays open —
           open it again from Your games.
         </p>
-        <p className="mt-3 text-[0.94rem] leading-relaxed text-[--color-hull-200]">
+        <p className="mt-3 text-base leading-relaxed c-dim-bright">
           <b className="text-white">Cancel game</b> ends it for both of you. The four-digit code
           dies, and neither of you can come back to this battle.
         </p>
@@ -704,7 +704,7 @@ function YourHealth({ you }: { you: PlayerState }) {
         <span className="commander-name-mobile">Ship</span>
       </span>
       <HealthBar className="commander-hpbar min-w-0 flex-1" value={you.hp} max={you.maxHp} />
-      <span className="t-num shrink-0 text-[0.82rem] text-white">
+      <span className="t-num shrink-0 text-sm text-white">
         <Ticker value={Math.max(0, you.hp)} />
         <span className="c-dim">/{you.maxHp}</span>
       </span>
@@ -780,7 +780,7 @@ function RollDock({
 
       {tiers.length > 1 && (
         <div className="rounded-xl border border-[--color-run]/30 bg-[--color-run]/[0.08] p-2.5">
-          <p className="t-eyebrow mb-1.5 text-[--color-run]">
+          <p className="t-eyebrow mb-1.5 c-run">
             Straight — cash it as
           </p>
           <div className="flex flex-wrap gap-1.5">
@@ -792,10 +792,10 @@ function RollDock({
                   key={take}
                   type="button"
                   onClick={() => onTake(take)}
-                  className={`rounded-lg border px-2.5 py-1.5 text-[0.72rem] font-semibold transition ${
+                  className={`rounded-lg border px-2.5 py-1.5 text-xs font-semibold transition ${
                     take === chosenTake
                       ? "border-[--color-run] bg-[--color-run]/25 text-white"
-                      : "border-white/12 text-[--color-hull-300] hover:bg-white/[0.06]"
+                      : "border-white/12 c-dim hover:bg-white/[0.06]"
                   }`}
                 >
                   {take} in a row
@@ -809,7 +809,7 @@ function RollDock({
 
       {hint && (
         <p
-          className={`roll-hint text-[0.8rem] leading-snug ${
+          className={`roll-hint text-sm leading-snug ${
             hint.tone === "good"
               ? "c-repair"
               : hint.tone === "warn"
@@ -954,7 +954,7 @@ function BraceDock({
     <div className="brace-dock panel panel-you flex flex-col gap-3 p-3.5">
       <div>
         <p className="t-eyebrow">Incoming</p>
-        <h2 className="t-display text-2xl">
+        <h2 className="t-display text-xl">
           <span className="c-attack">{you.incoming}</span>
           <span className="c-dim text-base"> blockable</span>
           {you.directIncoming > 0 && (
@@ -966,15 +966,15 @@ function BraceDock({
           )}
         </h2>
         {war > 0 && (
-          <p className="mt-1 text-[0.8rem] font-semibold c-attack">
+          <p className="mt-1 text-sm font-semibold c-attack">
             Includes war +{war} — shields cannot stop that extra.
           </p>
         )}
-        <p className="brace-explanation mt-1 text-[0.84rem] leading-snug c-dim">
+        <p className="brace-explanation mt-1 text-sm leading-snug c-dim">
           Throw ships in front of it. Each one soaks its own size and sits out the next round.
           Nothing stops Direct.
         </p>
-        <p className="brace-mobile-guide mt-1 text-[0.78rem] font-semibold c-attack">
+        <p className="brace-mobile-guide mt-1 text-sm font-semibold c-attack">
           Tap a ship die. A red damage target means it will take the hit.
         </p>
       </div>
@@ -990,18 +990,18 @@ function BraceDock({
               className={`t-num rounded-lg border px-3 py-2 text-sm transition ${
                 picked
                   ? "border-[--color-shield] bg-[--color-shield]/20 text-white"
-                  : "border-white/12 text-[--color-hull-300] hover:bg-white/[0.06]"
+                  : "border-white/12 c-dim hover:bg-white/[0.06]"
               }`}
             >
               d{ship.sides}
-              <span className="ml-1 text-[0.66rem] opacity-70">cell {cellForSlot(ship.slot) + 1}</span>
+              <span className="ml-1 text-xs opacity-70">cell {cellForSlot(ship.slot) + 1}</span>
             </button>
           );
         })}
       </div>
 
       <div className="brace-summary flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-black/30 px-3 py-2.5">
-        <div className="text-[0.8rem] c-dim">
+        <div className="text-sm c-dim">
           Soaked <b className="c-shield t-num">{Math.min(soak, you.incoming)}</b> · landing{" "}
           <b className="c-attack t-num">{landing}</b>
         </div>
@@ -1050,7 +1050,7 @@ function ResultDock({
         <p className="t-eyebrow">
           {cancelled ? "Game cancelled" : draw ? "Both flagships fell" : won ? "Victory" : "Defeat"}
         </p>
-        <h2 className={`t-display text-4xl ${cancelled ? "text-white" : won ? "c-repair" : draw ? "text-white" : "c-attack"}`}>
+        <h2 className={`t-display text-3xl ${cancelled ? "text-white" : won ? "c-repair" : draw ? "text-white" : "c-attack"}`}>
           {cancelled
             ? youCancelled
               ? "You ended the game"
@@ -1112,7 +1112,7 @@ function RevealBanner({
             {them && <span className="c-dim text-base"> · {them.name} fired {incoming}</span>}
           </p>
         </div>
-        <span className="t-eyebrow shrink-0 text-[0.58rem]">Tap to skip</span>
+        <span className="t-eyebrow shrink-0 text-xs">Tap to skip</span>
       </div>
     </button>
   );
@@ -1159,7 +1159,7 @@ function FlagshipLine({ you }: { you: PlayerState }) {
       <span className="t-num shrink-0 rounded-md bg-current/20 px-2 py-0.5 text-sm">
         {face.face}
       </span>
-      <span className="min-w-0 text-[0.8rem] leading-snug">
+      <span className="min-w-0 text-sm leading-snug">
         <b>{face.name}</b>
         <span className="flagship-long"> — {level?.text ?? face.short}</span>
         <span className="flagship-compact"> · {compact}</span>

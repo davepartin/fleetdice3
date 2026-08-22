@@ -129,8 +129,8 @@ export default function VersusPage() {
             <>
               <header>
                 <p className="t-eyebrow">Two commanders</p>
-                <h1 className="t-display text-4xl">Start a game</h1>
-                <p className="mt-2 text-[0.92rem] leading-relaxed text-[--color-hull-300]">
+                <h1 className="t-display text-3xl">Start a game</h1>
+                <p className="mt-2 text-base leading-relaxed c-dim">
                   You get a four-digit code and a link. Send either one to your friend. You can run
                   as many games at once as you like — each one gets its own code.
                 </p>
@@ -145,7 +145,7 @@ export default function VersusPage() {
                   value={name}
                   maxLength={20}
                   onChange={(event) => setName(event.target.value)}
-                  className="t-num w-full rounded-xl border border-white/12 bg-black/40 px-3 py-2.5 text-lg text-white outline-none focus:border-white/40"
+                  className="t-num w-full rounded-xl border border-white/12 bg-black/40 px-3 py-2.5 text-base text-white outline-none focus:border-white/40"
                 />
               </Panel>
 
@@ -171,11 +171,11 @@ export default function VersusPage() {
               </Button>
 
               <Panel className="p-4">
-                <p className="text-[0.9rem] leading-relaxed text-[--color-hull-200]">
+                <p className="text-sm leading-relaxed c-dim-bright">
                   Your friend types those four numbers on the home page, or opens the link. The
                   moment they sit down, this screen turns into the battle.
                 </p>
-                <p className="mt-2 text-[0.86rem] leading-relaxed c-dim">
+                <p className="mt-2 text-sm leading-relaxed c-dim">
                   <b className="text-white">Stay on this page.</b> Do not open your own link — a
                   second tab counts as a third person, and the room only has two seats.
                 </p>

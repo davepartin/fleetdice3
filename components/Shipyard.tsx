@@ -184,7 +184,7 @@ export function Shipyard({ player, onAction, onDone, busy }: Props) {
         </div>
         <div className="yard-bank">
           <span className="yard-bank-value t-num c-energy">{energy}</span>
-          <span className="t-eyebrow text-[0.55rem]">in the bank</span>
+          <span className="t-eyebrow text-xs">in the bank</span>
         </div>
       </header>
 
@@ -490,7 +490,7 @@ function Drawer({
 function DrawerHead({ title, onClose }: { title: string; onClose(): void }) {
   return (
     <div className="yard-drawer-head">
-      <h3 className="t-display text-base">{title}</h3>
+      <h3 className="t-display text-xl">{title}</h3>
       <button type="button" className="yard-drawer-close" onClick={onClose} aria-label="Close">
         ✕
       </button>

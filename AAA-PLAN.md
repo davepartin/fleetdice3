@@ -297,10 +297,56 @@ This is the single biggest visual win available and it costs nothing to run.
   open, to specifically check the two-buttons-at-once case) — each showing
   exactly one bone-white button, brightest thing on screen.
 
-- [ ] **2.3 — Three font families, five sizes.**
+- [x] **2.3 — Three font families, five sizes.**
   **DONE when:** the app loads exactly three families; a grep for `text-[` and
   `font-size` finds only the five approved sizes; and Oxanium appears at no size
   below 20px.
+  **Proved:** Added a 5-size type scale (11/13/16/22/32px) to `@theme` as
+  `--text-xs/sm/base/xl/3xl`, each with a matching `--text-*--line-height`.
+  Converted all 56 raw `font-size: N.NNrem` declarations in `globals.css` to
+  `var(--text-*)` by nearest-numeric-distance mapping to the 5 approved values.
+  Converted every `text-[N.NNrem]` arbitrary-size usage across the TSX tree to
+  the matching `text-xs/sm/base/xl/3xl` class, and every plain Tailwind default
+  size outside the 5 (`text-lg`, `text-2xl`, `text-4xl`) to its nearest
+  approved neighbour — going beyond the letter of the grep, since un-bracketed
+  defaults resolve to disapproved sizes but wouldn't be caught by a `text-[`
+  grep alone. Discovered `text-[...]` bracket syntax is also used for
+  arbitrary text *colour* (e.g. `text-[--color-hull-200]`), which would have
+  produced false positives against a literal `text-[` grep; eliminated these
+  entirely by adding `.c-dim-bright`/`.c-attack-glow`/`.c-repair-glow` utility
+  classes, so the grep is genuinely, not just technically, clean.
+  Audited every Oxanium usage (`.t-display` class and `font-family:
+  var(--font-display)`) against the 20px floor and found the app was already
+  violating it in 9 places pre-existing this change: `--font-numeric` (driving
+  every `.t-num` numeric display app-wide) was aliased to Oxanium, plus 8 CSS
+  rules (`.t-eyebrow`, `.btn`, `.shipyard-overview b`, `.commander-base`,
+  `.round-report-disclosure-button` ×2, `.yard-cell-name`, `.help-data th`)
+  and 2 TSX headings (`components/HowToPlay.tsx`'s help-card title,
+  `components/Shipyard.tsx`'s drawer title) used Oxanium below 20px. Fixed by
+  re-aliasing `--font-numeric` to Inter (`--font-body`) — a single-point fix,
+  since only `.t-num` consumes that token — switching the 8 CSS rules'
+  `font-family` to Inter, and bumping the 2 TSX headings' size to `text-xl`
+  (22px) to match the established sub-heading pattern used elsewhere
+  (`ui.tsx`'s Sheet title, `RoundReport.tsx`'s h2). A `/code-review` pass then
+  caught two follow-on issues from this swap, both fixed: three CSS rules
+  (`.yard-hull-name`, `.yard-price`, `.shipyard-overview span`) requested
+  `font-weight: 800` while inheriting the now-Inter body font, which only has
+  400–700 loaded — capped to 700, matching every other rule this diff
+  converted; and a `text-xl` utility class I'd added to the help-card `<h3>`
+  was dead code (the unlayered `.help-card > h3` CSS rule, whose font-size I'd
+  already fixed, always wins over the layered Tailwind utility) — removed.
+  Verified: `grep -rn "text-\[" app components --include=*.tsx` returns
+  nothing; `grep -n "font-size:" app/globals.css | grep -v "var(--text-"`
+  returns nothing; `grep -n "font-family: var(--font-display)" app/globals.css`
+  returns only `.t-display` itself (line 176), and every TSX `t-display`
+  usage app-wide pairs with `text-xl` or `text-3xl`, never `text-base` or
+  smaller. `tsc --noEmit`, `pnpm lint`, `BASE_PATH= pnpm build`, and
+  `pnpm test` (27/27) all pass. Verified visually via Playwright screenshots
+  of the home screen and the How to Play sheet: small UI labels (eyebrows,
+  buttons, "GOT A CODE FROM A FRIEND?") render cleanly in Inter, and the
+  How to Play card's "A ROUND, STEP BY STEP" title — using the same
+  `t-display text-xl` pattern applied to the fixed Shipyard drawer header —
+  renders legibly at 22px Oxanium.
 
 - [ ] **2.4 — HUD colours run at 60%.**
   **DONE when:** the five stat chips use the dimmed tokens, the dice still use
