@@ -1457,6 +1457,11 @@ button {
   margin: 0.85rem 0 0;
 }
 
+.help-face-grid + .help-copy,
+.help-prize-list + .help-table {
+  margin-top: 0.85rem;
+}
+
 .help-die-legend-item,
 .help-face-row {
   display: grid;
