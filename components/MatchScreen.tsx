@@ -640,12 +640,13 @@ export function MatchScreen({ controller, onExit, title, subtitle }: Props) {
 
 function TallyStrip({ tally }: { tally: ReturnType<typeof previewTally> | null }) {
   return (
-    <div className="tally-strip grid grid-cols-5 gap-1">
+    <div className="tally-strip grid gap-1">
       <div className="tally-cell tally-cell-attack">
         <Stat
           kind="attack"
           value={tally?.attack ?? 0}
           label="Attack"
+          size="lg"
           showGlyph={false}
           colorLabel
         />
@@ -655,6 +656,7 @@ function TallyStrip({ tally }: { tally: ReturnType<typeof previewTally> | null }
           kind="shield"
           value={tally?.defense ?? 0}
           label="Shields"
+          size="lg"
           showGlyph={false}
           colorLabel
         />

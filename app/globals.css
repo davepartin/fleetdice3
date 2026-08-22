@@ -596,6 +596,13 @@ button {
   display: none;
 }
 
+/* Attack and Shields are what a round is won or lost on; Direct, Repair and
+   Energy are secondary. Wider cells here, not just bigger digits, are what
+   keep the eye from re-reading all five as equals every round. */
+.tally-strip {
+  grid-template-columns: 1.2fr 1.2fr 1fr 1fr 1fr;
+}
+
 .tally-cell {
   border: 1px solid rgb(255 255 255 / 0.08);
   border-radius: 12px;
@@ -813,6 +820,10 @@ button {
     padding: 0.35rem 0.1rem 0.3rem;
   }
   .match-hud-solo .tally-cell .t-num {
+    font-size: var(--text-sm);
+  }
+  .match-hud-solo .tally-cell-attack .t-num,
+  .match-hud-solo .tally-cell-shield .t-num {
     font-size: var(--text-base);
   }
   .match-hud-solo .tally-cell .t-eyebrow {

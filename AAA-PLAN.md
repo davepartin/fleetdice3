@@ -420,10 +420,40 @@ This is the single biggest visual win available and it costs nothing to run.
   viewport) all pass clean but for the same pre-existing 404 already logged
   under "Found along the way." `/code-review` came back with zero findings.
 
-- [ ] **3.2 — The stat row is weighted, not uniform.**
+- [x] **3.2 — The stat row is weighted, not uniform.**
   Five identical boxes make you re-read all five every round.
   **DONE when:** Attack and Shields are visibly larger than Direct, Repair and
   Energy during a roll, and Energy is the largest in the shipyard.
+  **Proved:** Checked the shipyard clause first: `.yard-bank-value` (the
+  Energy bank counter in the shipyard header) was already `--text-3xl`
+  (32px) — the largest of the five approved sizes, and, by grepping every
+  `.yard-*`/`.shipyard-*` rule's `font-size`, already larger than every
+  other stat number in that screen (only a decorative "+" glyph on empty
+  cells ties it, not a stat). No change needed there.
+  For the roll screen's tally strip (`TallyStrip` in
+  `components/MatchScreen.tsx`), gave Attack and Shields `size="lg"` on
+  their `Stat` (text-xl vs. the other three's default text-base), and
+  replaced the grid's `grid-cols-5` utility with a dedicated `.tally-strip`
+  rule (`grid-template-columns: 1.2fr 1.2fr 1fr 1fr 1fr`) so the boxes
+  themselves are wider, not just the digits inside — matching the item's own
+  title, "weighted, not uniform," rather than a same-size-box, bigger-font
+  half-measure. Caught and fixed a real conflict before it shipped: a
+  pre-existing mobile-breakpoint rule
+  (`.match-hud-solo .tally-cell .t-num { font-size: var(--text-base) }`,
+  under `@media (max-width: 640px)`, which the 375px verification width
+  falls inside) forced every tally number back to the same size regardless
+  of the `Stat` prop — would have silently erased this exact change on the
+  screen size the DONE test is measured on. Fixed by narrowing that rule to
+  `--text-sm` as the base and adding an explicit `--text-base` exception for
+  the attack/shield cells, preserving the same relative hierarchy at the
+  compact breakpoint's tighter scale. Verified visually with a real solo
+  match at 375×812: the tally strip's "6"/"4" (Attack/Shields) are
+  unmistakably larger and sit in wider cells than "2"/"3"/"5"
+  (Direct/Repair/Energy); the shipyard's "4 IN THE BANK" is the largest
+  number on that screen, clearly outsizing every price badge and ship label.
+  `tsc --noEmit`, `pnpm lint`, `pnpm test` (27/27), and
+  `BASE_PATH= pnpm build` all pass. `/code-review` came back with zero
+  findings.
 
 - [ ] **3.3 — Empty and damaged cells do not look like dice.**
   Dark hexagons currently read as unlit d10s.
