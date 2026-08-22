@@ -120,14 +120,10 @@ export function HowToPlayBody() {
   const win = section("winning");
   return (
     <div className="help-scroll">
-      <p className="help-lede">
-        {intro?.summary} {texts("one-minute")[0]}
-      </p>
-      {texts("one-minute")
-        .slice(1)
-        .map((text) => (
-          <Copy key={text}>{text}</Copy>
-        ))}
+      <p className="help-lede">{intro?.summary}</p>
+      {texts("one-minute").map((text) => (
+        <Copy key={text}>{text}</Copy>
+      ))}
 
       <Card title={round?.title ?? "A round, step by step"}>
         <Copy>{round?.summary ?? ""}</Copy>
@@ -168,11 +164,6 @@ export function HowToPlayBody() {
 
       <Card title="How to read a die">
         <Copy>{dice?.summary ?? ""}</Copy>
-        {texts("your-dice")
-          .slice(0, 2)
-          .map((text) => (
-            <Copy key={text}>{text}</Copy>
-          ))}
         <div className="help-die-legend">
           <div className="help-die-legend-item">
             <HelpShipFace value={2} size={88} />
@@ -199,11 +190,6 @@ export function HowToPlayBody() {
       </Card>
 
       <Card title="What each number does">
-        {texts("your-dice")
-          .slice(2)
-          .map((text) => (
-            <Copy key={text}>{text}</Copy>
-          ))}
         <div className="help-face-grid">
           {FACE_ROWS.map((row) => (
             <div key={row.value} className="help-face-row">
@@ -221,13 +207,13 @@ export function HowToPlayBody() {
             </div>
           ))}
         </div>
+        {texts("your-dice").slice(-1).map((text) => (
+          <Copy key={text}>{text}</Copy>
+        ))}
       </Card>
 
       <Card title={flag?.title ?? "Your flagship"}>
         <Copy>{flag?.summary ?? ""}</Copy>
-        {texts("flagship").map((text) => (
-          <Copy key={text}>{text}</Copy>
-        ))}
         <div className="help-face-grid">
           {FLAGSHIP_FACES.map((face) => (
             <div key={face.face} className="help-face-row">
@@ -243,13 +229,15 @@ export function HowToPlayBody() {
             </div>
           ))}
         </div>
+        {texts("flagship")
+          .slice(2)
+          .map((text) => (
+            <Copy key={text}>{text}</Copy>
+          ))}
       </Card>
 
       <Card title={lines?.title ?? "Straights and formations"}>
         <Copy>{lines?.summary ?? ""}</Copy>
-        {texts("straights-formations").map((text) => (
-          <Copy key={text}>{text}</Copy>
-        ))}
         <div className="help-prize-row" aria-hidden>
           <HelpShipFace value={1} size={48} />
           <HelpShipFace value={2} size={48} />
@@ -299,9 +287,6 @@ export function HowToPlayBody() {
 
       <Card title={yard?.title ?? "The shipyard"}>
         <Copy>{yard?.summary ?? ""}</Copy>
-        {texts("shipyard").map((text) => (
-          <Copy key={text}>{text}</Copy>
-        ))}
         <div className="help-shop-list">
           {SHOP_ROWS.map((row) => (
             <ShopItem key={row.name} row={row} />

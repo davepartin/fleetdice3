@@ -175,6 +175,12 @@ function drawMark(
 /* One face                                                            */
 /* ------------------------------------------------------------------ */
 
+type FaceLayout = {
+  numberY: number;
+  markY: number;
+  numberSize?: number;
+};
+
 function paintFace(
   ctx: CanvasRenderingContext2D,
   spec: FaceSpec,
@@ -182,6 +188,7 @@ function paintFace(
   size: number,
   mode: "albedo" | "emissive",
   numberFont: string,
+  layout?: FaceLayout,
 ) {
   const isFlag = spec.role === "flag";
   const flagPalette = FLAG_FACE_PALETTE[spec.value] ?? FLAG_FACE_PALETTE[1]!;
@@ -296,8 +303,12 @@ function paintFace(
   const hasMarks = spec.marks.length > 0 || Boolean(spec.caption);
   // Fleet numerals sit lower and leave more air around the triangle tip. Keep
   // the payoff marks anchored so their spacing does not change with the type.
-  const numberY = hasMarks ? size * (isFlag ? 0.39 : 0.445) : size * (isFlag ? 0.5 : 0.54);
-  const numberSize = hasMarks ? size * (isFlag ? 0.58 : 0.5) : size * (isFlag ? 0.69 : 0.56);
+  const numberY = size * (
+    layout?.numberY ?? (hasMarks ? (isFlag ? 0.39 : 0.445) : isFlag ? 0.5 : 0.54)
+  );
+  const numberSize = size * (
+    layout?.numberSize ?? (hasMarks ? (isFlag ? 0.58 : 0.5) : isFlag ? 0.69 : 0.56)
+  );
 
   ctx.save();
   ctx.textAlign = "center";
@@ -380,7 +391,7 @@ function paintFace(
     const markSize = size * (glyphs.length === 1 ? 0.26 : glyphs.length === 2 ? 0.23 : 0.175);
     const gap = markSize * (glyphs.length > 2 ? 1.22 : 1.16);
     const startX = cx - ((glyphs.length - 1) * gap) / 2;
-    const markY = size * 0.785;
+    const markY = size * (layout?.markY ?? 0.785);
 
     ctx.save();
     glyphs.forEach((kind, index) => {
@@ -402,6 +413,13 @@ function paintFace(
   }
 }
 
+/** Sit the numeral inside the hull silhouette How to play clips to. */
+const HELP_HULL_LAYOUT: Partial<Record<number, FaceLayout>> = {
+  4: { numberY: 0.5, markY: 0.7, numberSize: 0.42 },
+  8: { numberY: 0.48, markY: 0.68, numberSize: 0.42 },
+  10: { numberY: 0.47, markY: 0.68, numberSize: 0.4 },
+};
+
 /** Same plates and marks as the 3D dice, for How to play illustrations. */
 export function paintHelpFace(
   ctx: CanvasRenderingContext2D,
@@ -410,7 +428,7 @@ export function paintHelpFace(
   size: number,
   numberFont: string,
 ) {
-  paintFace(ctx, spec, sides, size, "albedo", numberFont);
+  paintFace(ctx, spec, sides, size, "albedo", numberFont, HELP_HULL_LAYOUT[sides]);
 }
 
 /* ------------------------------------------------------------------ */

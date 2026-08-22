@@ -24,7 +24,8 @@ test("how to play is one illustrated scroll, not an accordion", () => {
 test("help faces are painted with the same plates as the 3D dice", () => {
   const src = readFileSync(new URL("../lib/three/faceArt.ts", import.meta.url), "utf8");
   assert.match(src, /export function paintHelpFace/);
-  assert.match(src, /paintFace\(ctx, spec, sides, size, "albedo", numberFont\)/);
+  assert.match(src, /paintFace\(ctx, spec, sides, size, "albedo", numberFont/);
+  assert.match(src, /HELP_HULL_LAYOUT/);
 });
 
 test("each help face is clipped to the hull that first shows that number", () => {
