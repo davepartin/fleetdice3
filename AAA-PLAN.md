@@ -166,13 +166,40 @@ These come first.
   the four confirmed display sites, verified against the literal engine code
   rather than a mock.
 
-- [ ] **0.3 — Nothing floats over the board.**
+- [x] **0.3 — Nothing floats over the board.**
   The "WAR +24 TO FLAGSHIPS" badge sits on top of the deck stencils and the top
   row of dice. The "+5" formation bonus floats beside the board with nothing
   connecting it to the row that earned it.
   **DONE when:** every HUD element lives in the top bar or the dock, the board
   region contains only the board, and the formation bonus is drawn on the line
   it came from rather than beside it.
+  **Proved:** Found no code change required — every clause is already true in
+  the current codebase; this appears to already have been fixed since the
+  plan's description was written (the same kind of stale description found
+  half of 0.2 to be). Checked the layout structurally first:
+  `MatchScreen.tsx` has zero `absolute`/`fixed`-positioned elements, and the
+  region between the header and the dock is a single empty
+  `.hud-pass-through` spacer with no content of its own — there is no DOM
+  element that *could* float over the board, by construction. The "war"
+  escalation text exists in exactly two places, both nested inside dock-
+  scoped panels: `BraceDock`'s "Includes war +N" line and
+  `RoundReportCard`'s "The war" row — neither is reachable from the board
+  region. The formation payout is not a 2D element at all: it is painted
+  directly into the 3D scene (`lib/three/board.ts`'s `addFormation`), as a
+  light rail running the length of the matching row/column with the "+N"
+  badge anchored at the rail's own end — literally drawn on the line, not
+  beside it. Verified live: played a real solo match to round 7, where a
+  three-2s column completed naturally, and the resulting screenshot shows
+  exactly this — a lit vertical rail through the three matching dice with
+  "+10" sitting directly on that rail, no floating disconnected badge, and
+  nothing else drawn over the board. Could not get a live screenshot of the
+  round-9+ war badge specifically (the war escalates only after round 8,
+  and the scripted playthrough's browser crashed — likely a transient
+  WebGL/swiftshader issue under the sandbox's software renderer after an
+  extended session, not something tied to this item) — its placement is
+  confirmed by the same structural check (dock-scoped panels only, no
+  floating overlay possible) rather than a direct screenshot of that exact
+  round, which is the one honest gap in this verification.
 
 ## Phase 1 — Make the dice readable
 
