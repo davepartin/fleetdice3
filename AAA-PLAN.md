@@ -207,10 +207,24 @@ This is the single biggest visual win available and it costs nothing to run.
   Fixed by reading the die's own `value` at compile time instead of assuming
   1; re-verified with the same lint/type-check/test pass.
 
-- [ ] **1.2 — Dice numerals use the numeral face.**
+- [x] **1.2 — Dice numerals use the numeral face.**
   **DONE when:** Archivo Black is self-hosted in `public/fonts`, the dice atlas
   draws with it, and a 3× crop of a d10 at phone size is legible without
   zooming.
+  **Proved:** self-hosted `archivoblack-latin-900-normal.woff2` in
+  `public/fonts/` and loaded it via `next/font/local` in `app/layout.tsx` as
+  `--font-numeral-face` — a separate CSS variable never referenced by any
+  visible-text rule, so it stays out of the DOM per the design system's "never
+  used for anything in the DOM." Split the one `font` parameter that used to
+  reach every face-painting function into `numeralFont` (the big digit) and
+  `captionFont` (the flagship's small word, still Oxanium) through
+  `paintFace` → `buildAtlas` / `paintHelpFace` → `die.ts` / `HelpArt.tsx`, so
+  the numeral's job stays exactly what the plan's type table says and nothing
+  else picks up the new face. Verified with a 3× crop (the actual rendered
+  pixels at `deviceScaleFactor: 3`, no upscaling) of a rolled d10 from a real,
+  un-scripted solo match at phone size — sent in chat along with the full
+  board for context. `/code-review` (medium) on the staged diff came back
+  clean; `pnpm lint`, `pnpm test` (27/27), and `tsc --noEmit` all pass.
 
 ## Phase 2 — Put the system in place
 

@@ -187,7 +187,8 @@ function paintFace(
   sides: number,
   size: number,
   mode: "albedo" | "emissive",
-  numberFont: string,
+  numeralFont: string,
+  captionFont: string,
   layout?: FaceLayout,
 ) {
   const isFlag = spec.role === "flag";
@@ -313,7 +314,7 @@ function paintFace(
   ctx.save();
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  ctx.font = `900 ${numberSize}px ${numberFont}`;
+  ctx.font = `900 ${numberSize}px ${numeralFont}`;
   if (mode === "albedo") {
     ctx.shadowBlur = 0;
     ctx.lineJoin = "round";
@@ -375,7 +376,7 @@ function paintFace(
       ctx.roundRect(size * 0.155, capY - size * 0.082, size * 0.69, size * 0.164, size * 0.05);
       ctx.fill();
     }
-    ctx.font = `900 ${size * 0.105}px ${numberFont}`;
+    ctx.font = `900 ${size * 0.105}px ${captionFont}`;
     ctx.letterSpacing = `${size * 0.012}px`;
     ctx.fillStyle = mode === "albedo" ? "#fff6dd" : "#000000";
     ctx.shadowBlur = 0;
@@ -426,9 +427,10 @@ export function paintHelpFace(
   spec: FaceSpec,
   sides: number,
   size: number,
-  numberFont: string,
+  numeralFont: string,
+  captionFont: string,
 ) {
-  paintFace(ctx, spec, sides, size, "albedo", numberFont, HELP_HULL_LAYOUT[sides]);
+  paintFace(ctx, spec, sides, size, "albedo", numeralFont, captionFont, HELP_HULL_LAYOUT[sides]);
 }
 
 /* ------------------------------------------------------------------ */
@@ -458,7 +460,8 @@ export function buildAtlas(
   specs: FaceSpec[],
   sides: number,
   cell: number,
-  numberFont: string,
+  numeralFont: string,
+  captionFont: string,
 ): Atlas {
   const { columns, rows } = atlasLayout(sides);
   const width = columns * cell;
@@ -479,7 +482,7 @@ export function buildAtlas(
       ctx.beginPath();
       ctx.rect(0, 0, cell, cell);
       ctx.clip();
-      paintFace(ctx, spec, sides, cell, mode, numberFont);
+      paintFace(ctx, spec, sides, cell, mode, numeralFont, captionFont);
       ctx.restore();
     });
     const texture = new THREE.CanvasTexture(canvas);

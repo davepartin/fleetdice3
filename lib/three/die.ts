@@ -10,6 +10,7 @@
 import * as THREE from "three";
 import { buildDie, type BuiltDie } from "./polyhedron";
 import { buildAtlas, faceSpec, flagFaceSpec, type Atlas } from "./faceArt";
+import { numeralFontFamily } from "./fonts";
 
 export type DieKind = 4 | 6 | 8 | 10 | "flag";
 
@@ -69,8 +70,11 @@ function sharedFor(kind: DieKind, font: string): Shared {
       : Array.from({ length: sides }, (_, index) => faceSpec(index + 1));
 
   // 384px per face keeps glyph edges clean after the steep phone-camera
-  // projection without the large memory jump of a 512px d10 atlas.
-  const atlas = buildAtlas(specs, sides, 384, font);
+  // projection without the large memory jump of a 512px d10 atlas. The
+  // numeral gets its own face — Archivo Black, plain and heavy enough to
+  // survive at ~40px, tilted, on a saturated field — while `font` (Oxanium)
+  // still sets the flagship's small word caption.
+  const atlas = buildAtlas(specs, sides, 384, numeralFontFamily(), font);
   const built = buildDie(sides, 1, atlas.columns, atlas.rows);
 
   const material = new THREE.MeshPhysicalMaterial({
