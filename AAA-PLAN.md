@@ -110,24 +110,27 @@ continuously — steady beats blinking every time.
 Broken things read as "unfinished" far louder than polish reads as "premium".
 These come first.
 
-- [x] **0.1 — Nothing is clipped off the screen edge.**
+- [ ] **0.1 — Nothing is clipped off the screen edge.**
   The shipyard's right column currently runs off the phone: "d6 ship" and
   "OPENS A COLUM…" are cut in half.
   **DONE when:** `node tools/playtest.mjs 4 phone` renders every screen at
   375×812 and no element's bounding box extends beyond the viewport. Prove it by
   running, in the page: `[...document.querySelectorAll('*')].filter(el => el.getBoundingClientRect().right > innerWidth + 1 || el.getBoundingClientRect().left < -1)` and getting an empty array on every screen.
-  **Proved:** added `min-width: 0` to `.yard-cell` in `app/globals.css` — without
-  it a grid item's minimum width defaults to its content's min-content size, so
-  a long word in `.yard-cell-sub` (e.g. "OPENS A COLUMN") could force that
-  column wider than its 1fr share and push the board past the viewport edge,
-  which is the exact mechanism this item describes. Verified at 375×812 with a
-  full solo playthrough through round 7 (real "d6 ship" and "OPENS A COLUMN" /
-  "OPENS A ROW" cells in the board's right column) plus a synthetic worst-case
-  pass that force-set every right-column cell to "d6 ship" / "opens a column"
-  text: the DONE-test snippet returned `[]` on all 29 captured screens (home,
-  how to play, solo setup, round start, rolled, brace, round report + details,
-  shipyard, shipyard drawer, result) both before and after the fix — the fix is
-  a defensive close of the bug class, not a visible layout change.
+  **Not closed — status:** could not reproduce the clip in Chromium at 375×812,
+  including in the specific state the description names (an affordable d6
+  upgrade cell, an affordable d8 upgrade cell, and locked cells reading "opens
+  a row" / "opens a column" all visible at once — reached via a real solo
+  playthrough, screenshot and bounding-box check both attached to this task).
+  The result was `[]` (no clipped elements) both with and without the CSS
+  change below, on the original code and after it. Added `min-width: 0` to
+  `.yard-cell` in `app/globals.css` anyway, since it closes a real CSS grid
+  gotcha that matches the mechanism described (without it, a long word in
+  `.yard-cell-sub` can force a track wider than its 1fr share) — but this has
+  not been confirmed as the actual fix, only as safe hardening. This
+  environment only has Chromium available, not WebKit/Safari, so an iOS
+  Safari– or home-screen-PWA–specific cause has not been ruled out. Leaving
+  this unchecked until reproduced on the reporting device or otherwise
+  confirmed.
 
 - [ ] **0.2 — Health never shows a negative number or a wrong maximum.**
   The victory screen shows `-3 / 70`. Other screens show `/60` and `/61`.
