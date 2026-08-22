@@ -402,6 +402,17 @@ function paintFace(
   }
 }
 
+/** Same plates and marks as the 3D dice, for How to play illustrations. */
+export function paintHelpFace(
+  ctx: CanvasRenderingContext2D,
+  spec: FaceSpec,
+  sides: number,
+  size: number,
+  numberFont: string,
+) {
+  paintFace(ctx, spec, sides, size, "albedo", numberFont);
+}
+
 /* ------------------------------------------------------------------ */
 /* The atlas                                                           */
 /* ------------------------------------------------------------------ */
