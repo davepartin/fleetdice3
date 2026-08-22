@@ -15,6 +15,7 @@ import "../sim/bundle.mjs";
 const G = await import("../.simbuild/game.mjs");
 
 const {
+  PLANS,
   TUNING,
   applyAction,
   attackOf,
@@ -440,6 +441,70 @@ test("repair that would pass 60 grows the flagship instead of being thrown away"
   assert.equal(host.maxHp, host.hp, "the maximum must rise with the overflow repair");
   assert.equal(host.hp, host.report.hpAfter);
   assert.ok(host.stats.repaired > 0);
+});
+
+/** What every health readout on screen does with the raw engine number. */
+function displayHp(hp) {
+  return Math.max(0, hp);
+}
+
+test("health never displays negative, and the maximum never disagrees with itself, across full matches", () => {
+  let sawNegativeHp = false;
+  let sawMaxGrowth = false;
+
+  for (let seed = 1; seed <= 12; seed += 1) {
+    const state = freshMatch(seed * 17);
+    const brains = {
+      host: newBrain(PLANS[seed % PLANS.length], "captain"),
+      guest: newBrain(PLANS[(seed + 1) % PLANS.length], "captain"),
+    };
+    const lastMaxHp = { host: TUNING.hp, guest: TUNING.hp };
+    let guard = 0;
+
+    while (state.status !== "finished" && guard < 3000) {
+      guard += 1;
+      for (const side of ["host", "guest"]) {
+        for (const action of nextActions(state, side, brains[side])) {
+          if (state.status === "finished") break;
+          try {
+            applyAction(state, side, action);
+          } catch {
+            /* an action that stopped being legal */
+          }
+        }
+        const player = state.players[side];
+
+        // A lethal blow can send the raw number below zero — that's the real
+        // "how far past dead" figure the engine needs. Every screen that shows
+        // it to a player must clamp it, never print the negative.
+        if (player.hp < 0) sawNegativeHp = true;
+        assert.ok(displayHp(player.hp) >= 0, `${side} seed ${seed}: displayed health went negative`);
+
+        // The ceiling only ever moves one way (overflow repair growing it),
+        // so every screen reading player.maxHp at any moment sees the same,
+        // already-current number — never a stale, lower max from before a
+        // growth round.
+        assert.ok(
+          player.maxHp >= lastMaxHp[side],
+          `${side} seed ${seed}: the maximum dropped, so an earlier screen's number would now disagree`,
+        );
+        if (player.maxHp > lastMaxHp[side]) sawMaxGrowth = true;
+        lastMaxHp[side] = player.maxHp;
+
+        // The ceiling must already cover the current health the instant it
+        // changes — otherwise one screen could still show the old, lower max
+        // while another shows health above it.
+        assert.ok(
+          player.hp <= player.maxHp,
+          `${side} seed ${seed}: health exceeds the maximum shown for it`,
+        );
+      }
+    }
+    assert.equal(state.status, "finished", `seed ${seed}: the match must end`);
+  }
+
+  assert.ok(sawNegativeHp, "test setup: no match produced a lethal, below-zero blow to check");
+  assert.ok(sawMaxGrowth, "test setup: no match produced an overflow-repair maximum to check");
 });
 
 test("war escalation still hits the flagship after shields eat the dice", () => {

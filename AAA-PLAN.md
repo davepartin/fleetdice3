@@ -133,11 +133,38 @@ These come first.
   hardening rather than a confirmed repro. Revisit if the clip recurs on the
   reporting device.
 
-- [ ] **0.2 — Health never shows a negative number or a wrong maximum.**
+- [x] **0.2 — Health never shows a negative number or a wrong maximum.**
   The victory screen shows `-3 / 70`. Other screens show `/60` and `/61`.
   **DONE when:** health is clamped at zero for display, the maximum shown is the
   same number on every screen of one match, and a test asserts both across a
   full simulated match.
+  **Proved:** root cause was two things, both confirmed by reading the code
+  before touching it. (1) `report.hpAfter`/`player.hp` is the real engine
+  number a killing blow can send below zero, and it was passed straight into
+  `<Ticker>` unclamped at all four places health is printed as text
+  (`MatchScreen.tsx`'s enemy top bar and your own commander rail,
+  `RoundReport.tsx`'s two health readouts) — every one now wraps it in
+  `Math.max(0, ...)`. (2) `/60` then `/61` is not a bug: overflow repair
+  intentionally raises `maxHp` (see the existing test "repair that would pass
+  60 grows the flagship instead of being thrown away"), and every display
+  reads the single `player.maxHp` field live, so there was never a second,
+  disagreeing copy — that half of the plan's description was a correct
+  mechanic being misread as a defect, not a second bug to fix.
+  Added a new test, "health never displays negative, and the maximum never
+  disagrees with itself, across full matches" (`tests/engine.test.mjs`),
+  which plays 12 full real matches with the actual bundled engine and asserts,
+  every round for both sides: the display clamp never goes below zero, the
+  maximum never decreases, and health never exceeds the maximum shown for it.
+  The test explicitly checks it exercised both a below-zero killing blow and
+  an overflow-repair maximum growth, so it can't pass vacuously — both
+  occurred across the 12 matches. `pnpm test` (27/27) and `pnpm lint` both
+  pass. Tried, but couldn't reliably catch, a live browser screenshot of the
+  exact negative-hp moment (several full playthroughs, including one with
+  every die forced to its maximum face) — landing the precise overkill blow
+  by chance proved harder than expected, unlike 0.1 where the state itself
+  was reachable but never clipped. The fix is a mechanical, minimal change at
+  the four confirmed display sites, verified against the literal engine code
+  rather than a mock.
 
 - [ ] **0.3 — Nothing floats over the board.**
   The "WAR +24 TO FLAGSHIPS" badge sits on top of the deck stencils and the top

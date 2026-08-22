@@ -433,7 +433,7 @@ export function MatchScreen({ controller, onExit, title, subtitle }: Props) {
               </span>
               <span className="t-eyebrow shrink-0 text-[0.58rem]">Round {you.round}</span>
               <span className="t-num text-[0.8rem] text-white">
-                {them ? <Ticker value={them.hp} /> : 0}
+                {them ? <Ticker value={Math.max(0, them.hp)} /> : 0}
                 <span className="c-dim"> / {them?.maxHp ?? TUNING.hp}</span>
               </span>
             </div>
@@ -705,7 +705,7 @@ function YourHealth({ you }: { you: PlayerState }) {
       </span>
       <HealthBar className="commander-hpbar min-w-0 flex-1" value={you.hp} max={you.maxHp} />
       <span className="t-num shrink-0 text-[0.82rem] text-white">
-        <Ticker value={you.hp} />
+        <Ticker value={Math.max(0, you.hp)} />
         <span className="c-dim">/{you.maxHp}</span>
       </span>
       <span className="commander-energy-cluster flex shrink-0 items-stretch gap-1">
