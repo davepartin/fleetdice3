@@ -130,8 +130,8 @@ export function RoundReportCard({
               ))}
               {report.escalation > 0 && (
                 <Row
-                  label="The war has escalated"
-                  note="Every attack gets more each round after round 8"
+                  label="The war"
+                  note="Added to both flagships. Shields cannot stop it"
                   value={`+${report.escalation}`}
                   tone="attack"
                 />
@@ -145,9 +145,17 @@ export function RoundReportCard({
           <p className="t-eyebrow mb-1">{enemyName} fired back</p>
           <Row
             label="Their attack"
-            value={String((enemy?.attack ?? 0) + report.escalation)}
+            value={String(enemy?.attack ?? 0)}
             tone="attack"
           />
+          {report.escalation > 0 && (
+            <Row
+              label="The war"
+              note="Shields cannot stop this. Ships still can."
+              value={`+${report.escalation}`}
+              tone="attack"
+            />
+          )}
           <Row label="Your shields stopped" value={`−${blocked}`} tone="shield" />
           {report.bracedShips.length > 0 && (
             <Row

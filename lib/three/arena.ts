@@ -15,6 +15,7 @@ import { createDie, type Die, type DieKind } from "./die";
 import { FLAG_FACE_PALETTE } from "./faceArt";
 import { createVfx, type Vfx } from "./vfx";
 import { displayFontFamily } from "./fonts";
+import { isPhoneLayout } from "../viewport";
 
 /** Where each deck sits in the world. */
 export const YOUR_DECK = new THREE.Vector3(0, 0, 5.2);
@@ -78,7 +79,7 @@ function frameFor(focus: Focus, phone = false) {
       parallax: 0,
     };
   }
-  const landscape = window.innerWidth >= 900 && window.innerWidth > window.innerHeight;
+  const landscape = !phone && window.innerWidth >= 900 && window.innerWidth > window.innerHeight;
   return landscape ? { ...base, fitDepth: LANDSCAPE_DEPTH[focus] } : base;
 }
 
@@ -136,7 +137,7 @@ export function createArena(canvas: HTMLCanvasElement, options: ArenaOptions = {
     you: makeDeck("you", YOUR_DECK, font, stage),
     enemy: makeDeck("enemy", ENEMY_DECK, font, stage),
   };
-  const isPhone = () => window.innerWidth <= 640;
+  const isPhone = () => isPhoneLayout();
 
   /* Tapping ---------------------------------------------------------- */
 

@@ -52,6 +52,11 @@
   color-scheme: dark;
   --hud-safe-top: env(safe-area-inset-top, 0px);
   --hud-safe-bottom: env(safe-area-inset-bottom, 0px);
+  --vv-left: 0px;
+  --vv-top: 0px;
+  --vv-width: 100%;
+  --vv-height: 100dvh;
+  --vv-inv-scale: 1;
   --ease-snap: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-slam: cubic-bezier(0.34, 1.56, 0.64, 1);
 }
@@ -64,11 +69,14 @@ html,
 body {
   height: 100%;
   height: 100dvh;
+  height: var(--vv-height, 100dvh);
   margin: 0;
   background: var(--color-void);
   color: var(--color-hull-100);
   font-family: var(--font-body);
   overscroll-behavior: none;
+  text-size-adjust: 100%;
+  -webkit-text-size-adjust: 100%;
 }
 
 body {
@@ -499,24 +507,31 @@ button {
 
 .stage-canvas {
   position: fixed;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  height: 100dvh;
+  left: var(--vv-left, 0px);
+  top: var(--vv-top, 0px);
+  width: var(--vv-width, 100%);
+  height: var(--vv-height, 100dvh);
   display: block;
   z-index: 0;
+  touch-action: none;
+  transform: scale(var(--vv-inv-scale, 1));
+  transform-origin: top left;
 }
 
 .hud {
-  position: relative;
+  position: fixed;
+  left: var(--vv-left, 0px);
+  top: var(--vv-top, 0px);
   z-index: 10;
-  height: 100%;
-  height: 100dvh;
+  width: var(--vv-width, 100%);
+  height: var(--vv-height, 100dvh);
   display: flex;
   flex-direction: column;
   padding-top: var(--hud-safe-top);
   padding-bottom: var(--hud-safe-bottom);
   pointer-events: none;
+  transform: scale(var(--vv-inv-scale, 1));
+  transform-origin: top left;
 }
 .hud > * {
   pointer-events: auto;
@@ -598,13 +613,13 @@ button {
   cursor: pointer;
 }
 
-@media (min-width: 641px) {
+@media (min-width: 641px) and (min-height: 641px) {
   .round-report-details-body {
     display: block;
   }
 }
 
-@media (max-width: 640px) {
+@media (max-width: 640px), (max-height: 640px) {
   .match-hud-solo .match-header {
     align-items: flex-start;
     gap: 0.4rem;

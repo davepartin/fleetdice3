@@ -509,7 +509,7 @@ export const HOW_TO_PLAY: readonly HelpSection[] = [
     blocks: [
       {
         kind: "text",
-        text: `You and one other commander each keep a ${BOARD_SIDE} by ${BOARD_SIDE} board. The cell in the middle is your flagship. It holds all ${TUNING.hp} of your health and it never fights. The ${FLEET_CELLS} cells around it hold your ships, and a ship is simply a die: a ${joinWords(HULLS.map(die), "or")}. The size of the die is called its hull. You start with ${TUNING.startSlots} cells open and a ${die(START_HULL)} in each one.`,
+        text: `You and one other commander each keep a ${BOARD_SIDE} by ${BOARD_SIDE} board. The cell in the middle is your flagship. It starts with ${TUNING.hp} health and it never fights. The ${FLEET_CELLS} cells around it hold your ships, and a ship is simply a die: a ${joinWords(HULLS.map(die), "or")}. The size of the die is called its hull. You start with ${TUNING.startSlots} cells open and a ${die(START_HULL)} in each one.`,
       },
       {
         kind: "text",
@@ -611,7 +611,7 @@ export const HOW_TO_PLAY: readonly HelpSection[] = [
           },
           {
             name: "5. The volley",
-            text: "Nothing to decide. Both boards turn over. Your Attack, plus the round's escalation, minus their blocking, is what arrives at their flagship. Their Attack, minus your blocking, is what arrives at yours. Blocking that is not needed is simply wasted; it does not carry over. Direct is added on afterwards and ignores blocking completely.",
+            text: "Nothing to decide. Both boards turn over. Your Attack minus their blocking is what arrives from the dice. After round 8 the war adds extra on top of that, and shields cannot stop the extra. Blocking that is not needed is simply wasted; it does not carry over. Direct is added on afterwards and ignores blocking completely.",
           },
           {
             name: "6. Brace",
@@ -619,7 +619,7 @@ export const HOW_TO_PLAY: readonly HelpSection[] = [
           },
           {
             name: "7. Repairs and pay",
-            text: `Nothing to decide. Damage lands, then repair goes back on, and health never climbs past ${TUNING.hp}. Then your Energy is paid: everything your marks and your lines earned, plus whatever income your flagship has built up.`,
+            text: `Nothing to decide. Damage lands, then repair goes back on. You start at ${TUNING.hp}, but there is no ceiling — leftover repair raises the maximum, so a healthy flagship can grow past ${TUNING.hp}. Then your Energy is paid: everything your marks and your lines earned, plus whatever income your flagship has built up.`,
           },
         ],
       },
@@ -648,11 +648,11 @@ export const HOW_TO_PLAY: readonly HelpSection[] = [
     blocks: [
       {
         kind: "text",
-        text: `Both flagships start at ${TUNING.hp} health. The first one to reach 0 loses the match, and health can never be repaired past ${TUNING.hp}.`,
+        text: `Both flagships start at ${TUNING.hp} health. The first one to reach 0 loses the match. Repair that would go past the current maximum raises that maximum — ${TUNING.hp} is where you begin, not a cap.`,
       },
       {
         kind: "text",
-        text: `Matches are not allowed to drift. After round ${TUNING.escalateAfterRound} the war escalates: every plain attack, yours and theirs alike, carries ${TUNING.escalateStep} more each round. That is ${escalationFor(FIRST_ESCALATED_ROUND)} in round ${FIRST_ESCALATED_ROUND}, ${escalationFor(FIRST_ESCALATED_ROUND + 1)} in round ${FIRST_ESCALATED_ROUND + 1}, ${escalationFor(FIRST_ESCALATED_ROUND + 5)} by round ${FIRST_ESCALATED_ROUND + 5}. Direct does not change and the dice do not change, so blocking has to grow or the match ends.`,
+        text: `Matches are not allowed to drift. After round ${TUNING.escalateAfterRound} the war escalates: both flagships take ${TUNING.escalateStep} more damage each round, and shields cannot stop that extra. That is ${escalationFor(FIRST_ESCALATED_ROUND)} in round ${FIRST_ESCALATED_ROUND}, ${escalationFor(FIRST_ESCALATED_ROUND + 1)} in round ${FIRST_ESCALATED_ROUND + 1}, ${escalationFor(FIRST_ESCALATED_ROUND + 5)} by round ${FIRST_ESCALATED_ROUND + 5}. Ships can still step in front of it. Direct does not change.`,
       },
       {
         kind: "text",
@@ -684,7 +684,7 @@ export const GLOSSARY: readonly GlossaryEntry[] = [
   },
   {
     term: "Repair",
-    text: `Health put back on your flagship after the damage lands. It cannot take you past ${TUNING.hp}, so healing a full flagship throws the repair away.`,
+    text: `Health put back on your flagship after the damage lands. If it would go past your current maximum, the maximum grows. A full flagship that repairs gets tougher.`,
   },
   {
     term: "Direct",
@@ -700,7 +700,7 @@ export const GLOSSARY: readonly GlossaryEntry[] = [
   },
   {
     term: "Flagship",
-    text: `The ${die(FLAG_SIDES)} in the centre cell. It carries your ${TUNING.hp} health, it never hits and never blocks, and its face each round boosts the ships around it.`,
+    text: `The ${die(FLAG_SIDES)} in the centre cell. It starts at ${TUNING.hp} health and can grow, it never hits and never blocks, and its face each round boosts the ships around it.`,
   },
   {
     term: "Volley",
@@ -712,7 +712,7 @@ export const GLOSSARY: readonly GlossaryEntry[] = [
   },
   {
     term: "Escalation",
-    text: `Extra Attack that both sides get for free once the match runs long. It starts in round ${FIRST_ESCALATED_ROUND} at ${escalationFor(FIRST_ESCALATED_ROUND)} and grows ${TUNING.escalateStep} a round after that.`,
+    text: `Extra damage both flagships take once the match runs long. Shields cannot stop it; ships still can. It starts in round ${FIRST_ESCALATED_ROUND} at ${escalationFor(FIRST_ESCALATED_ROUND)} and grows ${TUNING.escalateStep} a round after that.`,
   },
 ];
 
@@ -765,6 +765,6 @@ export const TIPS: readonly Tip[] = [
   },
   {
     title: "Long matches are decided before they get long",
-    text: `Escalation adds ${TUNING.escalateStep} Attack a round to both sides from round ${FIRST_ESCALATED_ROUND}, so by round ${FIRST_ESCALATED_ROUND + 5} both fleets carry ${escalationFor(FIRST_ESCALATED_ROUND + 5)} before a single die is read. A fleet built only to block runs out of road; buy the hulls that can hit while you still have rounds to spend them in.`,
+    text: `Escalation adds ${TUNING.escalateStep} damage a round to both flagships from round ${FIRST_ESCALATED_ROUND}, and shields cannot eat it, so by round ${FIRST_ESCALATED_ROUND + 5} both sides take ${escalationFor(FIRST_ESCALATED_ROUND + 5)} before a single die is read. A fleet built only to block still has to throw ships in front or the flagship melts.`,
   },
 ];

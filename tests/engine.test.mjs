@@ -327,11 +327,14 @@ test("the round report adds up, every round, in a real match", () => {
       const expected = Math.max(0, report.incoming - report.soaked) + report.direct;
       assert.equal(report.damage, expected, "damage must equal what got past the soak");
 
-      const settled = Math.min(
-        state.players[side].maxHp,
-        report.hpBefore - report.damage + report.repair,
-      );
+      const settled = report.hpBefore - report.damage + report.repair;
       assert.equal(report.hpAfter, settled, "health must equal before minus damage plus repair");
+      if (settled > 0) {
+        assert.ok(
+          state.players[side].maxHp >= settled,
+          "overflow repair must raise the maximum instead of being thrown away",
+        );
+      }
       assert.ok(report.soaked <= report.incoming, "you cannot soak more than arrived");
     }
   }
@@ -406,4 +409,60 @@ test("a commander cannot see the other fleet's dice until the volley starts", ()
   resolved.players.guest.dice = [{ id: "flag", sides: 6, value: 6, flag: true }];
   const reportView = publicMatchView(resolved, "host");
   assert.equal(reportView.players.guest.dice.length, 1, "the report is allowed to show what hit you");
+});
+
+function lockFleets(state, hostSpec, guestSpec, round = 1) {
+  for (const [side, spec] of [
+    ["host", hostSpec],
+    ["guest", guestSpec],
+  ]) {
+    const player = state.players[side];
+    player.round = round;
+    player.phase = "rolling";
+    player.rolls = TUNING.rollsPerRound;
+    player.dice = board(spec);
+  }
+  applyAction(state, "host", { type: "submit" });
+  applyAction(state, "guest", { type: "submit" });
+}
+
+test("repair that would pass 60 grows the flagship instead of being thrown away", () => {
+  const state = freshMatch(21);
+  lockFleets(
+    state,
+    { 4: 3, 1: 3, 3: 3, 5: 3, 7: 3 },
+    { 4: 1, 1: 1, 3: 1, 5: 1, 7: 1 },
+  );
+  const host = state.players.host;
+  assert.ok(host.hp > TUNING.hp, `expected health above ${TUNING.hp}, got ${host.hp}`);
+  assert.equal(host.maxHp, host.hp, "the maximum must rise with the overflow repair");
+  assert.equal(host.hp, host.report.hpAfter);
+  assert.ok(host.stats.repaired > 0);
+});
+
+test("war escalation still hits the flagship after shields eat the dice", () => {
+  const state = freshMatch(22);
+  const round = TUNING.escalateAfterRound + 1;
+  lockFleets(
+    state,
+    { 4: 1, 1: 2, 3: 2, 5: 2, 7: 2 },
+    { 4: 1, 1: 5, 3: 5, 5: 5, 7: 5 },
+    round,
+  );
+  const war = escalationFor(round);
+  assert.equal(war, TUNING.escalateStep);
+  const guest = state.players.guest;
+  assert.equal(guest.phase, "brace");
+  assert.equal(
+    guest.incoming,
+    war,
+    "shields may eat the dice, but the war still arrives as extra incoming",
+  );
+  applyAction(state, "host", { type: "brace", ships: [] });
+  applyAction(state, "guest", { type: "brace", ships: [] });
+  assert.equal(guest.report.escalation, war);
+  assert.ok(
+    guest.report.damage >= war,
+    `flagship damage ${guest.report.damage} must include the war extra of ${war}`,
+  );
 });

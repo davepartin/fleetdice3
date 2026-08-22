@@ -159,7 +159,7 @@ export type MatchAction =
 /* ------------------------------------------------------------------ */
 
 export const TUNING = {
-  /** Flagship health. The length dial: 60 gives roughly a 12-round match. */
+  /** Starting flagship health. Repair can raise the maximum past this. */
   hp: 60,
   /**
    * How many fleet cells are open at the start, of 8.
@@ -205,7 +205,10 @@ export const TUNING = {
   lineAcrossEnergy: 5,
   /** Three of a kind down a column of the board. */
   lineDownAttack: 10,
-  /** Attack (not Direct) rises by this much per round once the war escalates. */
+  /**
+   * Extra flagship damage both sides take after this many rounds.
+   * Shields cannot stop it; ships still can.
+   */
   escalateAfterRound: 8,
   escalateStep: 4,
   /** Hard stop so a stalled match cannot run forever. */
@@ -800,12 +803,11 @@ function resolveSubmissions(state: MatchState) {
   const combatRound = host.round;
   const escalation = escalationFor(combatRound);
 
-  const hostAttack = (host.tally?.attack ?? 0) + escalation;
-  const guestAttack = (guest.tally?.attack ?? 0) + escalation;
-
-  host.incoming = Math.max(0, guestAttack - (host.tally?.defense ?? 0));
+  // Shields stop dice. They do not stop the war. Ships can still step in
+  // front of the extra, but a full shield wall no longer swallows it.
+  host.incoming = Math.max(0, (guest.tally?.attack ?? 0) - (host.tally?.defense ?? 0)) + escalation;
   host.directIncoming = guest.tally?.direct ?? 0;
-  guest.incoming = Math.max(0, hostAttack - (guest.tally?.defense ?? 0));
+  guest.incoming = Math.max(0, (host.tally?.attack ?? 0) - (guest.tally?.defense ?? 0)) + escalation;
   guest.directIncoming = host.tally?.direct ?? 0;
 
   host.stats.damageDealt += guest.incoming;
@@ -852,9 +854,10 @@ function settlePlayer(state: MatchState, player: PlayerState) {
   }
   const damage = Math.max(0, player.incoming - soaked) + player.directIncoming;
   const repair = player.tally?.heal ?? 0;
-
-  player.hp = Math.min(player.maxHp, before - damage + repair);
-  player.stats.repaired += Math.max(0, Math.min(repair, player.maxHp - (before - damage)));
+  const after = before - damage + repair;
+  if (after > player.maxHp) player.maxHp = after;
+  player.hp = after;
+  player.stats.repaired += Math.max(0, repair);
 
   const earned = player.baseEnergy + (player.tally?.energy ?? 0);
   player.energy += earned;

@@ -12,6 +12,7 @@ import { RenderPass } from "three/examples/jsm/postprocessing/RenderPass.js";
 import { UnrealBloomPass } from "three/examples/jsm/postprocessing/UnrealBloomPass.js";
 import { ShaderPass } from "three/examples/jsm/postprocessing/ShaderPass.js";
 import { OutputPass } from "three/examples/jsm/postprocessing/OutputPass.js";
+import { isPhoneLayout } from "../viewport";
 
 export type Quality = "low" | "medium" | "high";
 
@@ -490,7 +491,7 @@ export function createStage(canvas: HTMLCanvasElement, initial?: Quality): Stage
 
   function applyQuality() {
     settings = QUALITY_SETTINGS[quality];
-    const phone = Math.min(window.innerWidth, window.innerHeight) <= 640;
+    const phone = isPhoneLayout();
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, settings.dpr));
     renderer.shadowMap.enabled = settings.shadows;
     key.castShadow = settings.shadows;
@@ -535,6 +536,43 @@ export function createStage(canvas: HTMLCanvasElement, initial?: Quality): Stage
   function onPointerMove(event: PointerEvent) {
     pointer.x = (event.clientX / window.innerWidth) * 2 - 1;
     pointer.y = (event.clientY / window.innerHeight) * 2 - 1;
+  }
+
+  /** Two fingers on the board move the camera in or out. The HUD stays put. */
+  let pinch: { span: number; zoom: number } | null = null;
+
+  function pinchSpan(touches: TouchList) {
+    const a = touches[0];
+    const b = touches[1];
+    return Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
+  }
+
+  function clampZoom(value: number) {
+    return Math.min(1.45, Math.max(0.52, value));
+  }
+
+  function onTouchStart(event: TouchEvent) {
+    if (event.touches.length === 2) {
+      pinch = { span: pinchSpan(event.touches), zoom };
+    }
+  }
+
+  function onTouchMove(event: TouchEvent) {
+    if (!pinch || event.touches.length !== 2) return;
+    event.preventDefault();
+    const span = pinchSpan(event.touches);
+    if (pinch.span < 16) return;
+    zoomTarget = clampZoom(pinch.zoom * (pinch.span / span));
+  }
+
+  function onTouchEnd(event: TouchEvent) {
+    if (event.touches.length < 2) pinch = null;
+  }
+
+  function onWheel(event: WheelEvent) {
+    if (!event.ctrlKey && !event.metaKey) return;
+    event.preventDefault();
+    zoomTarget = clampZoom(zoomTarget * Math.exp(event.deltaY * 0.002));
   }
 
   function frame(now: number) {
@@ -690,13 +728,29 @@ export function createStage(canvas: HTMLCanvasElement, initial?: Quality): Stage
       checkedAt = performance.now();
       raf = requestAnimationFrame(frame);
       window.addEventListener("resize", resize);
+      window.addEventListener("fd3-viewport", resize as EventListener);
+      window.visualViewport?.addEventListener("resize", resize);
+      window.visualViewport?.addEventListener("scroll", resize);
       window.addEventListener("pointermove", onPointerMove, { passive: true });
+      canvas.addEventListener("touchstart", onTouchStart, { passive: true });
+      canvas.addEventListener("touchmove", onTouchMove, { passive: false });
+      canvas.addEventListener("touchend", onTouchEnd, { passive: true });
+      canvas.addEventListener("touchcancel", onTouchEnd, { passive: true });
+      canvas.addEventListener("wheel", onWheel, { passive: false });
     },
     stop() {
       running = false;
       cancelAnimationFrame(raf);
       window.removeEventListener("resize", resize);
+      window.removeEventListener("fd3-viewport", resize as EventListener);
+      window.visualViewport?.removeEventListener("resize", resize);
+      window.visualViewport?.removeEventListener("scroll", resize);
       window.removeEventListener("pointermove", onPointerMove);
+      canvas.removeEventListener("touchstart", onTouchStart);
+      canvas.removeEventListener("touchmove", onTouchMove);
+      canvas.removeEventListener("touchend", onTouchEnd);
+      canvas.removeEventListener("touchcancel", onTouchEnd);
+      canvas.removeEventListener("wheel", onWheel);
     },
     dispose() {
       stage.stop();

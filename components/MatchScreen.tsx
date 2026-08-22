@@ -16,6 +16,7 @@ import {
   activeShips,
   bestRun,
   cellForSlot,
+  escalationFor,
   flagBonusSize,
   previewTally,
   type MatchAction,
@@ -23,6 +24,7 @@ import {
 } from "@/lib/engine";
 import { rollHint } from "@/lib/ai";
 import { FLAGSHIP_FACES } from "@/lib/reference";
+import { isPhoneLayout } from "@/lib/viewport";
 import type { MatchController } from "@/lib/useMatch";
 import { createArena, type Arena, type Focus } from "@/lib/three/arena";
 import { waitForFonts } from "@/lib/three/fonts";
@@ -93,16 +95,14 @@ export function MatchScreen({ controller, onExit, title, subtitle }: Props) {
     if (!arena || !header || !bottom) return;
 
     const updateInsets = () => {
-      const phone = window.innerWidth <= 640;
-      if (!phone) {
+      if (!isPhoneLayout()) {
         arena.stage.setViewportInsets({ top: 0, right: 0, bottom: 0, left: 0 });
         return;
       }
-      const viewport = window.visualViewport;
-      const viewTop = viewport?.offsetTop ?? 0;
-      const viewBottom = viewTop + (viewport?.height ?? window.innerHeight);
-      const top = Math.max(0, header.getBoundingClientRect().bottom - viewTop + 10);
-      const bottomInset = Math.max(0, viewBottom - bottom.getBoundingClientRect().top + 14);
+      // offsetHeight is layout pixels, matching the canvas backing size. Visual
+      // rectangles move when the address bar or a pinch-zoom shifts the screen.
+      const top = Math.max(0, header.offsetHeight + 10);
+      const bottomInset = Math.max(0, bottom.offsetHeight + 14);
       arena.stage.setViewportInsets({ top, right: 8, bottom: bottomInset, left: 8 });
     };
 
@@ -110,6 +110,7 @@ export function MatchScreen({ controller, onExit, title, subtitle }: Props) {
     observer.observe(header);
     observer.observe(bottom);
     window.addEventListener("resize", updateInsets);
+    window.addEventListener("fd3-viewport", updateInsets as EventListener);
     window.visualViewport?.addEventListener("resize", updateInsets);
     window.visualViewport?.addEventListener("scroll", updateInsets);
     updateInsets();
@@ -117,6 +118,7 @@ export function MatchScreen({ controller, onExit, title, subtitle }: Props) {
     return () => {
       observer.disconnect();
       window.removeEventListener("resize", updateInsets);
+      window.removeEventListener("fd3-viewport", updateInsets as EventListener);
       window.visualViewport?.removeEventListener("resize", updateInsets);
       window.visualViewport?.removeEventListener("scroll", updateInsets);
     };
@@ -450,7 +452,9 @@ export function MatchScreen({ controller, onExit, title, subtitle }: Props) {
           {(you.round > TUNING.escalateAfterRound || controller.mode === "versus") && (
             <div className="flex items-center justify-center gap-2 pt-2">
               {you.round > TUNING.escalateAfterRound && (
-                <Chip tone="attack">War escalating +{(you.round - TUNING.escalateAfterRound) * TUNING.escalateStep}</Chip>
+                <Chip tone="attack">
+                  War +{(you.round - TUNING.escalateAfterRound) * TUNING.escalateStep} to flagships
+                </Chip>
               )}
               {controller.mode === "versus" && <Chip>Room {state.code}</Chip>}
             </div>
@@ -873,8 +877,10 @@ function BraceDock({
     .filter((ship) => chosen.has(ship.id))
     .reduce((sum, ship) => sum + ship.sides, 0);
   const landing = Math.max(0, you.incoming - soak) + you.directIncoming;
-  const after = Math.min(you.maxHp, you.hp - landing + (you.tally?.heal ?? 0));
+  const after = you.hp - landing + (you.tally?.heal ?? 0);
+  const maxAfter = Math.max(you.maxHp, after);
   const fatal = after <= 0;
+  const war = you.round > TUNING.escalateAfterRound ? escalationFor(you.round) : 0;
 
   return (
     <div className="brace-dock panel panel-you flex flex-col gap-3 p-3.5">
@@ -891,6 +897,11 @@ function BraceDock({
             </>
           )}
         </h2>
+        {war > 0 && (
+          <p className="mt-1 text-[0.8rem] font-semibold c-attack">
+            Includes war +{war} — shields cannot stop that extra.
+          </p>
+        )}
         <p className="brace-explanation mt-1 text-[0.84rem] leading-snug c-dim">
           Throw ships in front of it. Each one soaks its own size and sits out the next round.
           Nothing stops Direct.
@@ -928,7 +939,7 @@ function BraceDock({
         </div>
         <div className="t-num text-right text-sm">
           <span className={fatal ? "c-attack" : "text-white"}>{Math.max(0, after)}</span>
-          <span className="c-dim"> / {you.maxHp}</span>
+          <span className="c-dim"> / {maxAfter}</span>
         </div>
       </div>
 
