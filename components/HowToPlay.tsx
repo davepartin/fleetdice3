@@ -3,66 +3,91 @@
 /**
  * The one help button.
  *
- * Everything here is generated from `lib/reference.ts`, which reads the real
- * engine — so the numbers a player is taught are the numbers the game uses.
- * A help screen that drifts from the rules is worse than no help screen.
+ * One long illustrated scroll, like Fleet Dice 1/2 How to play. Every number
+ * comes from `lib/reference.ts`, which reads the engine — so the pictures a
+ * player is taught are the same plates they roll, and the numbers match the
+ * match. A help screen that drifts from the rules is worse than no help screen.
  */
 
-import { useState } from "react";
-import { GLOSSARY, HOW_TO_PLAY, TIPS, type HelpBlock } from "@/lib/reference";
-import { Button, Rule, Sheet } from "./ui";
+import { HelpFlagFace, HelpShipFace } from "@/components/HelpArt";
+import { HullShape } from "@/components/HullShape";
+import {
+  FACE_ROWS,
+  FLAGSHIP_FACES,
+  FORMATIONS,
+  GLOSSARY,
+  HOW_TO_PLAY,
+  SHOP_ROWS,
+  type HelpBlock,
+} from "@/lib/reference";
+import type { DieSize } from "@/lib/engine";
+import { Button, Sheet } from "./ui";
+import type { ReactNode } from "react";
 
-function Block({ block }: { block: HelpBlock }) {
-  if (block.kind === "text") {
-    return <p className="text-[0.94rem] leading-relaxed text-[--color-hull-200]">{block.text}</p>;
-  }
+function section(id: string) {
+  return HOW_TO_PLAY.find((entry) => entry.id === id);
+}
 
-  if (block.kind === "steps") {
-    return (
-      <ol className="flex flex-col gap-3">
-        {block.steps.map((step, index) => (
-          <li key={step.name} className="flex gap-3">
-            <span className="t-num mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-white/8 text-[0.72rem] text-[--color-hull-200]">
-              {index + 1}
-            </span>
-            <span className="text-[0.94rem] leading-relaxed text-[--color-hull-200]">
-              <b className="font-semibold text-white">{step.name}. </b>
-              {step.text}
-            </span>
-          </li>
-        ))}
-      </ol>
-    );
-  }
+function texts(id: string): string[] {
+  return (
+    section(id)?.blocks.filter((block): block is Extract<HelpBlock, { kind: "text" }> => block.kind === "text").map(
+      (block) => block.text,
+    ) ?? []
+  );
+}
 
+function steps(id: string) {
+  const block = section(id)?.blocks.find((entry) => entry.kind === "steps");
+  return block && block.kind === "steps" ? block.steps : [];
+}
+
+function table(id: string, index = 0) {
+  const block = section(id)?.blocks.filter((entry) => entry.kind === "table")[index];
+  return block && block.kind === "table" ? block : null;
+}
+
+const HULLS = SHOP_ROWS.filter((row) => row.kind === "hull");
+
+function Card({
+  title,
+  children,
+}: {
+  title: string;
+  children: ReactNode;
+}) {
+  return (
+    <article className="help-card">
+      <h3 className="t-display">{title}</h3>
+      {children}
+    </article>
+  );
+}
+
+function Copy({ children }: { children: string }) {
+  return <p className="help-copy">{children}</p>;
+}
+
+function HelpTable({
+  block,
+}: {
+  block: Extract<HelpBlock, { kind: "table" }>;
+}) {
   return (
     <div>
       <div className="-mx-1 overflow-x-auto">
-        <table className="w-full min-w-[19rem] border-collapse text-left text-[0.86rem]">
+        <table className="help-data">
           <thead>
             <tr>
               {block.head.map((cell) => (
-                <th
-                  key={cell}
-                  className="t-eyebrow whitespace-nowrap border-b border-white/12 px-2 pb-2 text-[0.58rem]"
-                >
-                  {cell}
-                </th>
+                <th key={cell}>{cell}</th>
               ))}
             </tr>
           </thead>
           <tbody>
             {block.rows.map((row, index) => (
-              <tr key={index} className="border-b border-white/[0.06] last:border-0">
+              <tr key={index}>
                 {row.map((cell, cellIndex) => (
-                  <td
-                    key={cellIndex}
-                    className={`px-2 py-2 align-top ${
-                      cellIndex === 0
-                        ? "t-num whitespace-nowrap font-semibold text-white"
-                        : "text-[--color-hull-200]"
-                    }`}
-                  >
+                  <td key={cellIndex} className={cellIndex === 0 ? "t-num" : undefined}>
                     {cell}
                   </td>
                 ))}
@@ -71,93 +96,198 @@ function Block({ block }: { block: HelpBlock }) {
           </tbody>
         </table>
       </div>
-      {block.note && (
-        <p className="mt-2 text-[0.8rem] leading-snug text-[--color-hull-400]">{block.note}</p>
-      )}
+      {block.note && <p className="help-note">{block.note}</p>}
     </div>
   );
 }
 
 export function HowToPlayBody() {
-  const [openId, setOpenId] = useState<string>(HOW_TO_PLAY[0]?.id ?? "");
-  const [showExtras, setShowExtras] = useState(false);
+  const intro = section("one-minute");
+  const dice = section("your-dice");
+  const lines = section("straights-formations");
+  const flag = section("flagship");
+  const round = section("a-round");
+  const yard = section("shipyard");
+  const win = section("winning");
+  const straightTable = table("straights-formations");
+  const shopTable = table("shipyard");
 
   return (
-    <div className="flex flex-col gap-2 pb-2">
-      {HOW_TO_PLAY.map((section) => {
-        const open = openId === section.id;
-        return (
-          <div key={section.id} className="overflow-hidden rounded-2xl border border-white/[0.09] bg-white/[0.025]">
-            <button
-              type="button"
-              onClick={() => setOpenId(open ? "" : section.id)}
-              aria-expanded={open}
-              className="flex w-full items-start gap-3 px-4 py-3.5 text-left"
-            >
-              <span className="min-w-0 flex-1">
-                <span className="t-display block text-[1.02rem] leading-tight text-white">
-                  {section.title}
-                </span>
-                <span className="mt-1 block text-[0.82rem] leading-snug text-[--color-hull-400]">
-                  {section.summary}
-                </span>
+    <div className="help-scroll">
+      <p className="help-lede">
+        {intro?.summary} {texts("one-minute")[0]}
+      </p>
+      {texts("one-minute")
+        .slice(1)
+        .map((text) => (
+          <Copy key={text}>{text}</Copy>
+        ))}
+
+      <Card title={round?.title ?? "A round, step by step"}>
+        <Copy>{round?.summary ?? ""}</Copy>
+        <ol className="help-steps">
+          {steps("a-round").map((step, index) => (
+            <li key={step.name}>
+              <span className="help-step-num t-num">{index + 1}</span>
+              <span>
+                <strong>{step.name.replace(/^\d+\.\s*/, "")}.</strong> {step.text}
               </span>
-              <span
-                className={`mt-1 shrink-0 text-[--color-hull-400] transition-transform duration-200 ${
-                  open ? "rotate-180" : ""
-                }`}
-                aria-hidden
-              >
-                ▾
-              </span>
-            </button>
-            {open && (
-              <div className="flex flex-col gap-4 px-4 pb-4">
-                <Rule />
-                {section.blocks.map((block, index) => (
-                  <Block key={index} block={block} />
-                ))}
+            </li>
+          ))}
+        </ol>
+      </Card>
+
+      <Card title="Ship shapes">
+        <p className="help-copy">
+          The hull is the size. Once you know the silhouette, you can read the
+          board at a glance — the same shapes you see in the shipyard and on
+          the table.
+        </p>
+        <div className="help-hulls">
+          {HULLS.map((row) => {
+            const sides = Number(row.name.replace(/\D/g, "")) as DieSize;
+            return (
+              <div key={row.name} className="help-hull">
+                <span className="help-hull-art">
+                  <HullShape sides={sides} tone="live" />
+                </span>
+                <strong className="t-num">d{sides}</strong>
+                <span>{row.cost} Energy</span>
               </div>
-            )}
-          </div>
-        );
-      })}
+            );
+          })}
+        </div>
+      </Card>
 
-      <button
-        type="button"
-        onClick={() => setShowExtras((value) => !value)}
-        className="mt-1 self-start text-[0.8rem] font-semibold uppercase tracking-[0.14em] text-[--color-hull-400] hover:text-white"
-      >
-        {showExtras ? "Hide" : "Show"} words and tips
-      </button>
-
-      {showExtras && (
-        <div className="flex flex-col gap-4 rounded-2xl border border-white/[0.09] bg-white/[0.025] p-4">
-          <div>
-            <p className="t-eyebrow mb-2">Words used in this game</p>
-            <dl className="flex flex-col gap-2">
-              {GLOSSARY.map((entry) => (
-                <div key={entry.term} className="text-[0.88rem] leading-snug">
-                  <dt className="inline font-semibold text-white">{entry.term}. </dt>
-                  <dd className="inline text-[--color-hull-300]">{entry.text}</dd>
-                </div>
-              ))}
-            </dl>
+      <Card title="How to read a die">
+        <Copy>{dice?.summary ?? ""}</Copy>
+        {texts("your-dice")
+          .slice(0, 2)
+          .map((text) => (
+            <Copy key={text}>{text}</Copy>
+          ))}
+        <div className="help-die-legend">
+          <div className="help-die-legend-item">
+            <HelpShipFace value={2} size={88} />
+            <div>
+              <strong>Even · hit</strong>
+              <span>{FACE_ROWS.find((row) => row.value === 2)?.line}</span>
+            </div>
           </div>
-          <Rule />
-          <div>
-            <p className="t-eyebrow mb-2">Once you know the rules</p>
-            <ul className="flex flex-col gap-2">
-              {TIPS.map((tip) => (
-                <li key={tip.title} className="text-[0.88rem] leading-snug">
-                  <b className="font-semibold text-white">{tip.title}. </b>
-                  <span className="text-[--color-hull-300]">{tip.text}</span>
-                </li>
-              ))}
-            </ul>
+          <div className="help-die-legend-item">
+            <HelpShipFace value={3} size={88} />
+            <div>
+              <strong>Odd · block</strong>
+              <span>{FACE_ROWS.find((row) => row.value === 3)?.line}</span>
+            </div>
+          </div>
+          <div className="help-die-legend-item">
+            <HelpShipFace value={1} size={88} />
+            <div>
+              <strong>Marks always pay</strong>
+              <span>{FACE_ROWS.find((row) => row.value === 1)?.line}</span>
+            </div>
           </div>
         </div>
-      )}
+      </Card>
+
+      <Card title="What each number does">
+        {texts("your-dice")
+          .slice(2)
+          .map((text) => (
+            <Copy key={text}>{text}</Copy>
+          ))}
+        <div className="help-face-grid">
+          {FACE_ROWS.map((row) => (
+            <div key={row.value} className="help-face-row">
+              <HelpShipFace value={row.value} size={64} />
+              <div>
+                <strong className="t-num">
+                  {row.value} · {row.fightText}
+                </strong>
+                <span>
+                  {row.markText === "pays nothing extra"
+                    ? row.hullsText
+                    : `${row.markText} · ${row.hullsText}`}
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </Card>
+
+      <Card title={flag?.title ?? "Your flagship"}>
+        <Copy>{flag?.summary ?? ""}</Copy>
+        {texts("flagship").map((text) => (
+          <Copy key={text}>{text}</Copy>
+        ))}
+        <div className="help-face-grid">
+          {FLAGSHIP_FACES.map((face) => (
+            <div key={face.face} className="help-face-row">
+              <HelpFlagFace face={face.face} size={64} />
+              <div>
+                <strong>
+                  {face.face} · {face.name}
+                </strong>
+                <span>
+                  {face.short}. {face.levels.map((level) => `L${level.level} +${level.bonus}`).join(" · ")}
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </Card>
+
+      <Card title={lines?.title ?? "Straights and formations"}>
+        <Copy>{lines?.summary ?? ""}</Copy>
+        {texts("straights-formations").map((text) => (
+          <Copy key={text}>{text}</Copy>
+        ))}
+        <div className="help-prize-row" aria-hidden>
+          <HelpShipFace value={1} size={48} />
+          <HelpShipFace value={2} size={48} />
+          <HelpShipFace value={3} size={48} />
+          <HelpShipFace value={4} size={48} />
+          <HelpShipFace value={5} size={48} />
+        </div>
+        {straightTable && <HelpTable block={straightTable} />}
+        <dl className="help-table">
+          {FORMATIONS.map((formation) => (
+            <div key={formation.kind}>
+              <dt>{formation.name}</dt>
+              <dd>
+                {formation.rule} {formation.note}
+              </dd>
+            </div>
+          ))}
+        </dl>
+      </Card>
+
+      <Card title={yard?.title ?? "The shipyard"}>
+        <Copy>{yard?.summary ?? ""}</Copy>
+        {texts("shipyard").map((text) => (
+          <Copy key={text}>{text}</Copy>
+        ))}
+        {shopTable && <HelpTable block={shopTable} />}
+      </Card>
+
+      <Card title={win?.title ?? "Winning"}>
+        <Copy>{win?.summary ?? ""}</Copy>
+        {texts("winning").map((text) => (
+          <Copy key={text}>{text}</Copy>
+        ))}
+      </Card>
+
+      <Card title="Words used in this game">
+        <dl className="help-glossary">
+          {GLOSSARY.map((entry) => (
+            <div key={entry.term}>
+              <dt>{entry.term}</dt>
+              <dd>{entry.text}</dd>
+            </div>
+          ))}
+        </dl>
+      </Card>
     </div>
   );
 }
