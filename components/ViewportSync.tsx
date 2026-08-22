@@ -1,12 +1,11 @@
 "use client";
 
 /**
- * Keep the board and the HUD on the pixels the player can actually see.
+ * Tell the renderer when the visible screen changes.
  *
- * Android Chrome resizes the visual viewport when the address bar moves or
- * someone pinches. If we ignore that, the dice sit under the dock or the
- * buttons slide off the screen. This writes the live rectangle onto CSS
- * variables and asks the WebGL stage to match it.
+ * Address bar show/hide and turning the phone all change the real pixels.
+ * The menus themselves stay in ordinary document flow so Safari cannot
+ * hide them behind the dice.
  */
 
 import { useEffect } from "react";

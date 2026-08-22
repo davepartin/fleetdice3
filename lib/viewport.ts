@@ -23,11 +23,12 @@ export function visibleViewport(): VisibleViewport {
   }
   const view = window.visualViewport;
   const scale = view?.scale || 1;
-  const cssWidth = view?.width ?? window.innerWidth;
-  const cssHeight = view?.height ?? window.innerHeight;
+  // CSS pixels of the visible screen. Do not multiply by scale and then
+  // un-scale with a CSS transform — Safari will draw the WebGL canvas over
+  // the menus, leaving only the floating dice.
   return {
-    width: cssWidth * scale,
-    height: cssHeight * scale,
+    width: view?.width ?? window.innerWidth,
+    height: view?.height ?? window.innerHeight,
     offsetLeft: view?.offsetLeft ?? 0,
     offsetTop: view?.offsetTop ?? 0,
     scale,
@@ -41,14 +42,10 @@ export function isPhoneLayout(): boolean {
   return Math.min(view.width, view.height) <= 640;
 }
 
-/** Write the visible screen onto :root so CSS can follow it. */
+/** Write the visible screen onto :root and notify the renderer. */
 export function syncViewportCss(root: HTMLElement = document.documentElement): VisibleViewport {
   const view = visibleViewport();
-  const inverse = view.scale ? 1 / view.scale : 1;
-  root.style.setProperty("--vv-left", `${view.offsetLeft}px`);
-  root.style.setProperty("--vv-top", `${view.offsetTop}px`);
   root.style.setProperty("--vv-width", `${view.width}px`);
   root.style.setProperty("--vv-height", `${view.height}px`);
-  root.style.setProperty("--vv-inv-scale", String(inverse));
   return view;
 }

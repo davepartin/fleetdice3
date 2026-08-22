@@ -52,11 +52,6 @@
   color-scheme: dark;
   --hud-safe-top: env(safe-area-inset-top, 0px);
   --hud-safe-bottom: env(safe-area-inset-bottom, 0px);
-  --vv-left: 0px;
-  --vv-top: 0px;
-  --vv-width: 100%;
-  --vv-height: 100dvh;
-  --vv-inv-scale: 1;
   --ease-snap: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-slam: cubic-bezier(0.34, 1.56, 0.64, 1);
 }
@@ -69,7 +64,6 @@ html,
 body {
   height: 100%;
   height: 100dvh;
-  height: var(--vv-height, 100dvh);
   margin: 0;
   background: var(--color-void);
   color: var(--color-hull-100);
@@ -507,31 +501,31 @@ button {
 
 .stage-canvas {
   position: fixed;
-  left: var(--vv-left, 0px);
-  top: var(--vv-top, 0px);
-  width: var(--vv-width, 100%);
-  height: var(--vv-height, 100dvh);
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  height: 100dvh;
   display: block;
   z-index: 0;
   touch-action: none;
-  transform: scale(var(--vv-inv-scale, 1));
-  transform-origin: top left;
+  /* Safari paints a CSS-transformed WebGL canvas over every menu. The dice
+     stay in the back by never transforming this element. Two-finger pinch
+     on the board still moves the camera; that lives in the renderer. */
 }
 
 .hud {
-  position: fixed;
-  left: var(--vv-left, 0px);
-  top: var(--vv-top, 0px);
+  position: relative;
   z-index: 10;
-  width: var(--vv-width, 100%);
-  height: var(--vv-height, 100dvh);
+  height: 100%;
+  height: 100dvh;
   display: flex;
   flex-direction: column;
   padding-top: var(--hud-safe-top);
   padding-bottom: var(--hud-safe-bottom);
   pointer-events: none;
-  transform: scale(var(--vv-inv-scale, 1));
-  transform-origin: top left;
+  /* Keep this HTML layer in its own compositor so iOS cannot tuck it
+     behind the dice canvas. translateZ is safe here; it is not on the canvas. */
+  transform: translateZ(0);
 }
 .hud > * {
   pointer-events: auto;
