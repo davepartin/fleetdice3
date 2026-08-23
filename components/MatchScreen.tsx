@@ -262,12 +262,15 @@ export function MatchScreen({ controller, onExit, title, subtitle }: Props) {
     const focus: Focus =
       phase === "shop"
         ? "fleet"
-        : phase === "brace" || phase === "report"
+        : phase === "report"
           ? "both"
           : phase === "over"
             ? "wide"
             : phase === "submitted"
               ? "both"
+              // Brace is a decision about your own ships, not a look at the
+              // enemy's — the wider "both" framing only made the dice you can
+              // actually tap smaller and harder to read.
               : "fleet";
     arena.setFocus(focus);
   }, [phase, arenaReady]);
@@ -1077,6 +1080,24 @@ function EnergyBolt() {
   );
 }
 
+/** One number in the brace screen's HP arithmetic — "Now − Damage = After". */
+function EquationTerm({
+  value,
+  label,
+  tone,
+}: {
+  value: number;
+  label: string;
+  tone?: "attack" | "repair";
+}) {
+  return (
+    <div className="flex flex-col items-center leading-none">
+      <span className={`t-num text-xl ${tone ? `c-${tone}` : "text-white"}`}>{value}</span>
+      <span className="t-eyebrow mt-0.5 text-[0.6rem] c-dim">{label}</span>
+    </div>
+  );
+}
+
 function BraceDock({
   you,
   chosen,
@@ -1091,12 +1112,12 @@ function BraceDock({
   busy: boolean;
 }) {
   const available = activeShips(you, you.round);
-  const soak = available
+  const blocked = available
     .filter((ship) => chosen.has(ship.id))
     .reduce((sum, ship) => sum + ship.sides, 0);
-  const landing = Math.max(0, you.incoming - soak) + you.directIncoming;
-  const after = you.hp - landing + (you.tally?.heal ?? 0);
-  const maxAfter = Math.max(you.maxHp, after);
+  const landing = Math.max(0, you.incoming - blocked) + you.directIncoming;
+  const heal = you.tally?.heal ?? 0;
+  const after = you.hp - landing + heal;
   const fatal = after <= 0;
   const war = you.round > TUNING.escalateAfterRound ? escalationFor(you.round) : 0;
 
@@ -1121,7 +1142,7 @@ function BraceDock({
           </p>
         )}
         <p className="brace-explanation mt-1 text-sm leading-snug c-dim">
-          Throw ships in front of it. Each one soaks its own size and sits out the next round.
+          Throw ships in front of it. Each one blocks its own size and sits out the next round.
           Nothing stops Direct.
         </p>
         <p className="brace-mobile-guide mt-1 text-sm font-semibold c-attack">
@@ -1150,15 +1171,18 @@ function BraceDock({
         })}
       </div>
 
-      <div className="brace-summary flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-black/30 px-3 py-2.5">
-        <div className="text-sm c-dim">
-          Soaked <b className="c-shield t-num">{Math.min(soak, you.incoming)}</b> · landing{" "}
-          <b className="c-attack t-num">{landing}</b>
-        </div>
-        <div className="t-num text-right text-sm">
-          <span className={fatal ? "c-attack" : "text-white"}>{Math.max(0, after)}</span>
-          <span className="c-dim"> / {maxAfter}</span>
-        </div>
+      <div className="brace-summary flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-black/30 px-2 py-2.5">
+        <EquationTerm value={you.hp} label="Now" />
+        <span className="t-num c-dim text-lg">−</span>
+        <EquationTerm value={landing} label="Damage" tone="attack" />
+        {heal > 0 && (
+          <>
+            <span className="t-num c-dim text-lg">+</span>
+            <EquationTerm value={heal} label="Repair" tone="repair" />
+          </>
+        )}
+        <span className="t-num c-dim text-lg">=</span>
+        <EquationTerm value={Math.max(0, after)} label="After" tone={fatal ? "attack" : "repair"} />
       </div>
 
       {fatal && (
