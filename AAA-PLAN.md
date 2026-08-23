@@ -48,7 +48,7 @@ is fully saturated.**
 | Repair | `#45e08b` | Dice marks, Repair readouts |
 | Direct | `#b07dff` | Dice marks, Direct readouts |
 | Straight / formation | `#ff9d2e` | The run bar and formation lines only |
-| Flagship | `#a8842f` bronze | The flagship hull only. Nothing else is bronze. |
+| Flagship | black rim | The flagship hull only. The coloured inset is the bonus; the outside is black so the reroll ring can be seen. |
 
 **The primary action is not a colour. It is bone white, `#f4f1e8`, on every
 screen without exception.** Green, red and blue buttons all collide with
@@ -766,6 +766,11 @@ Add anything discovered mid-task here rather than fixing it out of order.
   button at phone width, clipping to `PEN THIS BAY · 7 ENERGY · NOT ENOUG`.
   Found while verifying 4.2, unrelated to visual-language consistency.
   Not fixed — out of scope for the item that found it.
+
+- After 4.1 shipped, the flagship's bronze rim and 1.3× size hid the reroll
+  outline on the phone. The owner asked for a smaller cube with a black
+  outside so the cyan ring can be seen. That overrides the bronze row in
+  the colour table.
 
 ---
 

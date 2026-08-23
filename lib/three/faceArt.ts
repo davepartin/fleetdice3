@@ -39,14 +39,11 @@ export type FaceSpec = {
 
 const HIT = { ink: "#ffffff", top: "#ff6075", bottom: "#c92342", glow: "#ff7182", deep: "#5e0b1b" };
 /**
- * The flagship's outer resin shell — bronze, close to AAA-PLAN.md's design
- * table ("Flagship | #a8842f bronze"), which has no CSS token of its own:
- * the one hull colour reserved for the flagship alone. The face inset still
- * carries the active bonus colour; the bronze frame around it is what makes
- * the flagship identifiable at a glance even with that colour and its
- * labels stripped away.
+ * The flagship's outer resin shell — a black rim. Bronze crowded the cube
+ * and hid the reroll outline; black reads as the hull and leaves the
+ * coloured inset to say which bonus is showing.
  */
-const FLAG_SHELL = { top: "#c9a24a", bottom: "#8a6b22", deep: "#2b1f08" };
+const FLAG_SHELL = { top: "#1a1a20", bottom: "#08080c", deep: "#000000" };
 
 /** A cheap repeatable hash, so the resin speckle is identical on every build. */
 function pseudo(n: number): number {
@@ -273,12 +270,12 @@ function paintFace(
         ctx.beginPath();
         ctx.roundRect(inset, inset, size - inset * 2, size - inset * 2, size * 0.15);
         ctx.fill();
-        // A dark seat under the panel so it reads as set into the brass.
-        ctx.strokeStyle = "rgba(14,9,0,0.85)";
+        // A dark seat under the panel so it reads as set into the black rim.
+        ctx.strokeStyle = "rgba(0,0,0,0.9)";
         ctx.lineWidth = size * 0.034;
         ctx.stroke();
-        // and a bright top edge where the brass catches the light.
-        ctx.strokeStyle = "rgba(255,238,180,0.85)";
+        // A thin cool edge, not brass — the owner asked the outside to stay black.
+        ctx.strokeStyle = "rgba(255,255,255,0.22)";
         ctx.lineWidth = size * 0.014;
         ctx.beginPath();
         ctx.roundRect(inset - size * 0.012, inset - size * 0.012, size - inset * 2 + size * 0.024, size - inset * 2 + size * 0.024, size * 0.16);
