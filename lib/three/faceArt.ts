@@ -512,6 +512,50 @@ export function buildAtlas(
   };
 }
 
+/**
+ * A hull's facedown face: no roll to show yet, so instead of a blank plate
+ * every face carries the hull's own size — "D8", not a number — so a fleet
+ * sitting unrolled still tells you which bay holds which die. The fill is
+ * baked into the texture (not left to the material's own colour) so this can
+ * sit on the same near-black hull tint the game already used before this
+ * carried any text.
+ */
+export function buildFacedownAtlas(sides: number, cell: number, numeralFont: string): THREE.CanvasTexture {
+  const { columns, rows } = atlasLayout(sides);
+  const canvas = document.createElement("canvas");
+  canvas.width = columns * cell;
+  canvas.height = rows * cell;
+  const ctx = canvas.getContext("2d")!;
+  ctx.fillStyle = "#2b3450"; // the facedown-hull blue-grey; no matching token — 3D-only
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  const label = `D${sides}`;
+  for (let index = 0; index < sides; index += 1) {
+    const column = index % columns;
+    const row = Math.floor(index / columns);
+    const cx = column * cell + cell / 2;
+    const cy = row * cell + cell / 2;
+    ctx.save();
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.font = `700 ${cell * 0.2}px ${numeralFont}`;
+    // A dark keyline first, same reasoning as every other face: without it
+    // the label loses its edge against a hull this flat and this dark.
+    ctx.strokeStyle = "rgba(4,9,20,0.7)";
+    ctx.lineWidth = cell * 0.05;
+    ctx.lineJoin = "round";
+    ctx.strokeText(label, cx, cy);
+    ctx.fillStyle = "rgba(182,193,220,0.55)"; // --color-hull-200, dimmed for the idle hull
+    ctx.fillText(label, cx, cy);
+    ctx.restore();
+  }
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.anisotropy = 8;
+  return texture;
+}
+
 /* ------------------------------------------------------------------ */
 /* What each face pays — mirrors lib/engine.ts                         */
 /* ------------------------------------------------------------------ */

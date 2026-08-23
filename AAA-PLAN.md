@@ -922,6 +922,26 @@ Add anything discovered mid-task here rather than fixing it out of order.
   outside so the cyan ring can be seen. That overrides the bronze row in
   the colour table.
 
+- A d4 and a d8 show the exact same equilateral-triangle silhouette to this
+  game's fixed near-overhead camera — shape alone cannot tell them apart, and
+  size alone (the 5.2-adjacent displayScale fix above) only helps in direct
+  side-by-side comparison, not at a glance during play. The owner asked for a
+  clearer tell. Considered and set aside: a rim-light/edge-highlight shader
+  tracing the hull's true geometry to hint at hidden facets — feasible, but
+  it would not actually change the outline shape from directly overhead, so
+  it reads as "faceted" without reading as "d8 specifically," and it touches
+  a shared material shader the owner did not want disturbed. Shipped instead:
+  every hull's facedown (unrolled) state now bakes its own size — "D4",
+  "D6", "D8", "D10" — into the idle-hull texture (`buildFacedownAtlas` in
+  `lib/three/faceArt.ts`, wired into the cached `hidden` material in
+  `lib/three/die.ts`), so a fleet sitting unrolled tells you which bay holds
+  which die before you ever throw it, independent of camera angle or size
+  comparison. The flagship is excluded — it is not a hull tier a player
+  needs to remember by size. Verified live: a real solo match's pre-roll
+  board shows "D4" centered on every unrolled bay with no new console
+  errors; `tsc --noEmit`, `pnpm lint`, `pnpm test` (29/29), and
+  `BASE_PATH= pnpm build` all pass.
+
 ---
 
 ## What "AAA" actually means here, so we know when to stop

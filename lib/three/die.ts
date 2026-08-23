@@ -9,7 +9,7 @@
 
 import * as THREE from "three";
 import { buildDie, type BuiltDie } from "./polyhedron";
-import { buildAtlas, faceSpec, flagFaceSpec, type Atlas } from "./faceArt";
+import { buildAtlas, buildFacedownAtlas, faceSpec, flagFaceSpec, type Atlas } from "./faceArt";
 import { numeralFontFamily } from "./fonts";
 
 export type DieKind = 4 | 6 | 8 | 10 | "flag";
@@ -52,6 +52,8 @@ type Shared = {
   material: THREE.MeshPhysicalMaterial;
   /** A blank hull, for a fleet that has not shown its roll yet. */
   hidden: THREE.MeshPhysicalMaterial;
+  /** The "D4"/"D6"/"D8"/"D10" label baked onto that blank hull. Hulls only — the flagship has no size to label. */
+  hiddenMap: THREE.CanvasTexture | null;
   outline: THREE.Material;
   outlineGeometry: THREE.BufferGeometry;
 };
@@ -103,8 +105,15 @@ function sharedFor(kind: DieKind, font: string): Shared {
     side: THREE.BackSide,
   });
 
+  // A fleet dice sitting unrolled still says which bay holds which hull —
+  // that shape (and now its label) is information a player would have across
+  // a real table, unlike the number it is about to roll.
+  const hiddenMap = kind === "flag" ? null : buildFacedownAtlas(sides, 384, numeralFontFamily());
   const hidden = new THREE.MeshPhysicalMaterial({
-    color: new THREE.Color(0x2b3450), // a facedown-hull blue-grey; no matching token — 3D-only
+    map: hiddenMap ?? undefined,
+    // The tint used to live on the material; now it is baked into the label
+    // texture instead, so the material itself stays neutral white.
+    color: new THREE.Color(hiddenMap ? 0xffffff : 0x2b3450), // a facedown-hull blue-grey; no matching token — 3D-only
     metalness: 0.35,
     roughness: 0.52,
     clearcoat: 0.7,
@@ -112,7 +121,7 @@ function sharedFor(kind: DieKind, font: string): Shared {
     envMapIntensity: 0.9,
   });
 
-  const shared: Shared = { built, atlas, material, hidden, outline, outlineGeometry };
+  const shared: Shared = { built, atlas, material, hidden, hiddenMap, outline, outlineGeometry };
   CACHE.set(key, shared);
   return shared;
 }
@@ -124,6 +133,7 @@ export function clearDieCache() {
     shared.atlas.dispose();
     shared.material.dispose();
     shared.hidden.dispose();
+    shared.hiddenMap?.dispose();
     (shared.outline as THREE.Material).dispose();
   }
   CACHE.clear();
