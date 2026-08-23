@@ -73,7 +73,9 @@ const D6: DieShape = {
   ],
   artRadius: 0.44,
   textureRotation: 0,
-  displayScale: 1.3,
+  // A cube carries more visual mass than a pointed hull at the same radius.
+  // Keep it a little smaller, with the painted bevel preserving its d6 read.
+  displayScale: 1.16,
 };
 
 /** An octahedron. Eight triangles. */
