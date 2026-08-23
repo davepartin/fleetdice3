@@ -484,6 +484,9 @@ export function createArena(canvas: HTMLCanvasElement, options: ArenaOptions = {
   if (typeof window !== "undefined") {
     (window as unknown as { __fd3?: unknown }).__fd3 = {
       arena,
+      tap(id: string) {
+        options.onTapDie?.(id);
+      },
       debug() {
         const out: Record<string, unknown> = {};
         for (const [key, deck] of Object.entries(decks)) {
