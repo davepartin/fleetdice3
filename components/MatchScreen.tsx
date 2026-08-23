@@ -79,6 +79,8 @@ export function MatchScreen({ controller, onExit, title, subtitle }: Props) {
   const pendingThrowRef = useRef<PendingThrow | null>(null);
 
   const { state, you, them, act, busy, error, clearError, waitingOnEnemy, cancel } = controller;
+  const youRef = useRef(you);
+  youRef.current = you;
   const phase = you?.phase ?? "waiting";
   const tally = useMemo(
     () => (you && you.dice.length ? previewTally(you) : null),
@@ -202,8 +204,9 @@ export function MatchScreen({ controller, onExit, title, subtitle }: Props) {
 
   const diceFingerprint = you?.dice.map((die) => `${die.id}:${die.value}`).join(",") ?? "";
   useEffect(() => {
-    if (!you) return;
-    const run = you.dice.length ? bestRun(you.dice) : null;
+    const current = youRef.current;
+    if (!current) return;
+    const run = current.dice.length ? bestRun(current.dice) : null;
     const key = run ? `${run.start}:${run.top}:${run.length}:${diceFingerprint}` : "";
 
     if (phase !== "rolling") {
@@ -233,18 +236,22 @@ export function MatchScreen({ controller, onExit, title, subtitle }: Props) {
     void (async () => {
       if (arena) await arena.whenSettled("you");
       if (cancelled) return;
+      const live = youRef.current;
+      if (!live) return;
+      const liveRun = live.dice.length ? bestRun(live.dice) : null;
+      if (!liveRun) return;
       straightEventRef.current = key;
       setRunMarksOn(true);
       if (!arena) return;
-      const points = runWorldPoints(arena, you, run);
-      arena.vfx.straightSweep(points, run.taken, 0.7);
+      const points = runWorldPoints(arena, live, liveRun);
+      arena.vfx.straightSweep(points, liveRun.taken, 0.7);
       audio.play("straight");
     })();
 
     return () => {
       cancelled = true;
     };
-  }, [you, phase, arenaReady, diceFingerprint]);
+  }, [diceFingerprint, phase, arenaReady]);
 
   /* Point the camera at whatever matters right now ------------------- */
 
