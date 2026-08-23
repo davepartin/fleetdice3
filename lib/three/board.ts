@@ -86,6 +86,30 @@ export function createBoard(side: BoardSide, font: string): Board {
   slab.receiveShadow = true;
   group.add(slab);
 
+  // The deck used to just end at its own edge and hang there — a flat plate
+  // in black space. A glow plate sitting just under it, wider than the deck
+  // itself, bleeds a lit fringe out past the slab's own silhouette on every
+  // side — the cue that reads as "resting on a lit platform" from directly
+  // overhead (this game's normal phone angle occludes a true underside view,
+  // so anything placed *under* the slab only helps if it peeks out past its
+  // edges) as well as from the shallower wide result-screen camera.
+  const padTexture = padGlowTexture();
+  const pad = new THREE.Mesh(
+    new THREE.PlaneGeometry(DECK_SIZE * 1.28, DECK_SIZE * 1.28),
+    new THREE.MeshBasicMaterial({
+      map: padTexture,
+      color: rim,
+      transparent: true,
+      opacity: 0.5,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+    }),
+  );
+  pad.rotation.x = -Math.PI / 2;
+  pad.position.y = -DECK_THICKNESS - 0.16;
+  pad.renderOrder = -3;
+  group.add(pad);
+
   // The painted play mat is the frame. An additional emissive strip and halo
   // outside it created a second cyan rectangle and wasted the phone's edge
   // pixels on decoration instead of dice.
@@ -351,6 +375,7 @@ export function createBoard(side: BoardSide, font: string): Board {
       emissive.dispose();
       lockTexture.dispose();
       emptyTexture.dispose();
+      padTexture.dispose();
       group.traverse((object) => {
         if (object instanceof THREE.Mesh) {
           object.geometry.dispose();
@@ -368,6 +393,28 @@ export function createBoard(side: BoardSide, font: string): Board {
 }
 
 /* ------------------------------------------------------------------ */
+
+/**
+ * A ring of light, bright toward the outer edge and fading to nothing past
+ * it. The deck's own opaque slab covers the centre of this texture — only
+ * the ring past the slab's own radius is ever seen — so the centre stays
+ * dim and the visible band is tuned to sit right where the slab's edge cuts
+ * across it.
+ */
+function padGlowTexture(): THREE.CanvasTexture {
+  const size = 256;
+  const canvas = document.createElement("canvas");
+  canvas.width = canvas.height = size;
+  const ctx = canvas.getContext("2d")!;
+  const gradient = ctx.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
+  gradient.addColorStop(0, "rgba(255,255,255,0.2)");
+  gradient.addColorStop(0.62, "rgba(255,255,255,0.85)");
+  gradient.addColorStop(0.86, "rgba(255,255,255,0.85)");
+  gradient.addColorStop(1, "rgba(255,255,255,0)");
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, size, size);
+  return new THREE.CanvasTexture(canvas);
+}
 
 function softBar(horizontal: boolean): THREE.CanvasTexture {
   const size = 128;

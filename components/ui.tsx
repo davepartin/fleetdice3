@@ -153,6 +153,7 @@ export function Stat({
   bare,
   showGlyph = true,
   colorLabel = false,
+  animate = false,
 }: {
   kind: StatKind;
   value: number | string;
@@ -161,11 +162,18 @@ export function Stat({
   bare?: boolean;
   showGlyph?: boolean;
   colorLabel?: boolean;
+  /** Count up from zero on mount instead of appearing at its final value — a
+   * match-end summary, not a round-by-round readout. Numeric values only. */
+  animate?: boolean;
 }) {
   const text = size === "lg" ? "text-xl" : size === "sm" ? "text-sm" : "text-base";
-  const body = (
-    <span className={`c-${kind} glow-${kind} t-num ${text} leading-none`}>{value}</span>
-  );
+  const numClass = `c-${kind} glow-${kind} ${text} leading-none`;
+  const body =
+    animate && typeof value === "number" ? (
+      <Ticker value={value} from={0} className={numClass} />
+    ) : (
+      <span className={`${numClass} t-num`}>{value}</span>
+    );
   if (bare) return body;
   return (
     <div className="flex flex-col items-center gap-1">
@@ -196,13 +204,20 @@ export function Ticker({
   value,
   className = "",
   duration = 520,
+  from,
 }: {
   value: number;
   className?: string;
   duration?: number;
+  /**
+   * Start the count here instead of at `value`, so it visibly counts up the
+   * moment it first mounts — a match-end summary, say — rather than only
+   * animating on a later change to an already-mounted number.
+   */
+  from?: number;
 }) {
-  const [shown, setShown] = useState(value);
-  const fromRef = useRef(value);
+  const [shown, setShown] = useState(from ?? value);
+  const fromRef = useRef(shown);
   const startedRef = useRef(0);
   const rafRef = useRef(0);
 

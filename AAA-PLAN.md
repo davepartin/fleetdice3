@@ -764,10 +764,44 @@ Only after everything above.
   plan). `tsc --noEmit`, `pnpm lint`, `pnpm test` (29/29), and
   `BASE_PATH= pnpm build` all pass.
 
-- [ ] **5.3 — Victory feels earned.**
+- [x] **5.3 — Victory feels earned.**
   **DONE when:** the losing flagship breaks on camera, the stat card counts up
   rather than appearing, and the two boards sit on something rather than
   floating.
+  **Proved:** all three pieces already had most of the machinery built and
+  disconnected or unused, same shape as 5.2.
+  *Breaks on camera* — `vfx.flagshipBreak()` already played at match end, but
+  the camera's `phase === "over"` framing jumps straight to `wide`, a neutral
+  establishing shot centred between both decks, so the break played off in
+  the background of a shot that was not looking at it. `components/
+  MatchScreen.tsx`'s victory/defeat effect now holds the camera on the
+  loser's own deck (`fleet` if the player lost, `enemy` if they won) for the
+  break, then widens once `flagshipBreak()`'s own promise resolves (~1.5s).
+  *Stat card counts up* — `Ticker` (`components/ui.tsx`) already existed and
+  already drove the live HP bar, but it only animates on a value *change*
+  after mount; a screen that mounts once at its final value never animates.
+  Gave it an optional `from` prop that seeds its initial state below the
+  target so it counts up the moment it first appears, and gave `Stat` a
+  matching `animate` prop that swaps its plain span for a `from={0}` Ticker.
+  Turned on only for `ResultDock`'s four match-end stats — the per-round
+  numbers in `RoundReport.tsx` stay as they were, on purpose.
+  *Two boards sit on something* — the deck was a bare slab in black space
+  with nothing under it. Placing a support directly underneath does not
+  help at this game's actual camera angles (all 34°+ pitch, steep enough
+  that an underside is never visible) — what reads is a glow plate sized
+  wider than the deck and positioned just beneath it, so a lit ring bleeds
+  out past the slab's own silhouette on every side, at any pitch including
+  near-overhead. `board.ts`'s new `padGlowTexture()` + a `pad` plane, in
+  each side's own rim colour (cyan/red). Confirmed via the `?view=board`
+  lab bench at both the real gameplay pitch (subtle, present) and a
+  shallower pitch matching the wide result-screen camera (a clear lit ring
+  around both decks).
+  Verified live rather than trusting the diff: a scripted solo match played
+  to a real loss captured mid-break with the camera on the losing deck, the
+  glow ring visible around both boards, then settled to the wide result
+  screen with the same rings clearly visible on both — `tsc --noEmit`,
+  `pnpm lint`, `pnpm test` (29/29), and `BASE_PATH= pnpm build` all pass,
+  with no new console errors beyond the pre-existing unrelated 404.
 
 - [ ] **5.4 — The sound has been heard by a human.**
   Every cue is generated in the browser and nobody has ever listened to one.

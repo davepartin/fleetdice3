@@ -408,7 +408,14 @@ export function MatchScreen({ controller, onExit, title, subtitle }: Props) {
     audio.play(won ? "victory" : "defeat");
     if (arena) {
       const loser = won ? "enemy" : "you";
-      void arena.vfx.flagshipBreak(arena.flagshipWorld(loser));
+      // The default "over" framing is a wide establishing shot of both decks
+      // — fine for reading the result, wrong for watching a flagship break.
+      // Hold on the loser's own deck for the break, then widen once the
+      // dust has settled (~1.5s, per vfx.flagshipBreak's own timing).
+      arena.setFocus(loser === "you" ? "fleet" : "enemy", true);
+      void arena.vfx.flagshipBreak(arena.flagshipWorld(loser)).then(() => {
+        arena.setFocus("wide");
+      });
       arena.stage.shake(1.3);
       arena.stage.flash(won ? 0x45e08b : 0xff4d4d, 0.6);
     }
@@ -1204,10 +1211,10 @@ function ResultDock({
       </div>
 
       <div className="grid grid-cols-4 gap-1 border-y border-white/10 py-3">
-        <Stat kind="attack" value={you.stats.damageDealt} label="Damage" size="sm" />
-        <Stat kind="direct" value={you.stats.directDealt} label="Direct" size="sm" />
-        <Stat kind="repair" value={you.stats.repaired} label="Repaired" size="sm" />
-        <Stat kind="run" value={you.stats.straights} label="Straights" size="sm" />
+        <Stat kind="attack" value={you.stats.damageDealt} label="Damage" size="sm" animate />
+        <Stat kind="direct" value={you.stats.directDealt} label="Direct" size="sm" animate />
+        <Stat kind="repair" value={you.stats.repaired} label="Repaired" size="sm" animate />
+        <Stat kind="run" value={you.stats.straights} label="Straights" size="sm" animate />
       </div>
 
       <div className="flex gap-2">
