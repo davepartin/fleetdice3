@@ -816,12 +816,19 @@ button {
     overflow-x: hidden;
     overflow-y: auto;
   }
+  .match-hud-solo .straight-prizes {
+    gap: 8px;
+  }
   .match-hud-solo .straight-prize {
     gap: 0;
     padding: 8px;
   }
-  .match-hud-solo .straight-prizes {
+  .match-hud-solo .straight-prizes-one .straight-prize {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
     gap: 8px;
+    padding: 8px 12px;
   }
 
   .match-hud-solo .commander-rail {

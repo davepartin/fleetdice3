@@ -709,11 +709,30 @@ This is the single biggest visual win available and it costs nothing to run.
 
 Only after everything above.
 
-- [ ] **5.1 — The straight is an event.**
+- [x] **5.1 — The straight is an event.**
   The most exciting thing in the game is currently a plain text list that looks
   like a settings menu.
   **DONE when:** the run lights up on the board itself, the choice reads as a
   choice between two prizes, and the sequence takes 700ms.
+  **Proved:** The chip wrap ("Straight — cash it as", one button per legal
+  length) is gone. A run now waits for the dice to land (`arena.whenSettled`),
+  then lights the existing orange bars on the board and plays `straightSweep`
+  pinned to 700ms (draw 60% / fade+burst 40%, no more variable "higher tiers
+  run longer"). The dock shows prize cards, not a list: a five-long run is one
+  card; anything longer is two cards — short cash (`TUNING.runMin`, Energy)
+  versus long cash (the capped length, Attack). Selected card is bone white.
+  The first pass never showed the cards in solo: the enemy rewrites match
+  state every 420ms, which is a new `you` object with the same dice, and the
+  effect treated that as a new event and cancelled the sequence. Fixed by
+  keying the event on the dice fingerprint, not the player object.
+  Verified: `tsc --noEmit`, `pnpm lint`, `pnpm test` (28/28 — new test
+  "the board offers at most two straight prizes — short cash vs long cash"
+  locks `[5]`, `[5, 6]`, `[5, 7]`, `[5, 7]` for lengths 5/6/7/9). Live
+  playtest at 375×812, 3×: a real 2–3–4–5–6 run on round 4 of a solo match
+  produced one prize card ("5 IN A ROW / 15 / ENERGY"), computed style
+  `animation-duration: 0.7s`, no chip list. A six-long run (the two-card
+  case) did not come up in the playthroughs; the two-card layout is the same
+  `.straight-prizes` grid with both takes, covered by the unit test.
 
 - [ ] **5.2 — The volley lands.**
   **DONE when:** damage arriving has anticipation, impact and settle, the screen
