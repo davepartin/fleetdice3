@@ -563,6 +563,32 @@ export function bestRun(dice: DieValue[], chosenTake?: number | null): Straight 
 }
 
 /**
+ * The actual dice that make up a straight, one die per number.
+ *
+ * Duplicates still pay their ordinary face value, but only one die may stand
+ * for a number in the straight. The largest hull wins because it is the hull
+ * the reward already measures. The flagship bridges only when no ship shows
+ * that number. The id tie-break keeps a marker from hopping between equal dice.
+ */
+export function runMemberIds(
+  dice: DieValue[],
+  run: Pick<Straight, "start" | "top">,
+): Set<string> {
+  const members = new Set<string>();
+  for (let value = run.start; value <= run.top; value += 1) {
+    const chosen = dice
+      .filter((die) => die.value === value)
+      .sort((a, b) => {
+        const aSize = a.flag ? 0 : a.sides;
+        const bSize = b.flag ? 0 : b.sides;
+        return bSize - aSize || a.id.localeCompare(b.id);
+      })[0];
+    if (chosen) members.add(chosen.id);
+  }
+  return members;
+}
+
+/**
  * The prizes the commander actually chooses between. A five-long run is one
  * prize. Anything longer is the short cash (Energy) versus the long cash
  * (Attack). The rungs in between stay legal in the engine; they are not a
