@@ -39,11 +39,14 @@ export type FaceSpec = {
 
 const HIT = { ink: "#ffffff", top: "#ff6075", bottom: "#c92342", glow: "#ff7182", deep: "#5e0b1b" };
 /**
- * The flagship's outer resin shell. The face inset carries the active bonus
- * colour; keeping the surrounding hull nearly black makes that inset read as
- * one rounded die face instead of a yellow tile mounted on a brown box.
+ * The flagship's outer resin shell — bronze, close to AAA-PLAN.md's design
+ * table ("Flagship | #a8842f bronze"), which has no CSS token of its own:
+ * the one hull colour reserved for the flagship alone. The face inset still
+ * carries the active bonus colour; the bronze frame around it is what makes
+ * the flagship identifiable at a glance even with that colour and its
+ * labels stripped away.
  */
-const FLAG_SHELL = { top: "#171c27", bottom: "#03060c", deep: "#000207" };
+const FLAG_SHELL = { top: "#c9a24a", bottom: "#8a6b22", deep: "#2b1f08" };
 
 /** A cheap repeatable hash, so the resin speckle is identical on every build. */
 function pseudo(n: number): number {

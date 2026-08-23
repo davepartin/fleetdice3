@@ -556,11 +556,54 @@ This is the single biggest visual win available and it costs nothing to run.
 
 ## Phase 4 — Identity
 
-- [ ] **4.1 — The flagship is unmistakable.**
+- [x] **4.1 — The flagship is unmistakable.**
   It currently reads as one more blue die among blue dice.
   **DONE when:** the flagship's hull is bronze on every face, its silhouette or
   size differs from any ship, and it is identifiable in a greyscale screenshot
   with the labels blurred out.
+  **Proved:** Found the flagship shares its exact cube geometry with every d6
+  hull ship (`lib/three/die.ts`'s `sides = kind === "flag" ? 6 : kind`, fed
+  into the same `buildDie`) and its face-art shell (`FLAG_SHELL` in
+  `lib/three/faceArt.ts`) was near-black, not bronze — only its per-face
+  colour inset and its always-centre board position set it apart, neither of
+  which survives "labels blurred, greyscale" the DONE test asks for.
+  Recoloured `FLAG_SHELL` to a bronze gradient (`#c9a24a`/`#8a6b22`/`#2b1f08`,
+  close to AAA-PLAN.md's own "Flagship #a8842f bronze" — no CSS token, since
+  this lives in `lib/three/`'s own 3D-only palette) framing the same
+  informative per-value bonus inset. Since a new silhouette (bespoke
+  geometry) was the higher-risk option, took the DONE test's "or" literally
+  and gave the flagship a 1.3× size boost instead, applied only at its
+  `createDie` call site in `arena.ts`.
+  That boost crossed a threshold a `/code-review` pass caught before
+  shipping: `die.ts` picked the phone-vs-desktop face-lean angle by checking
+  `scale >= 1.45`, using scale as a proxy for "which camera is this die
+  seen from" — on desktop (base scale 1.14) the flagship's boosted
+  1.14×1.3=1.482 crossed that threshold, so it would have silently rendered
+  at the phone's near-overhead face angle while every other desktop die
+  used the normal command-camera angle. Fixed by decoupling the two: added
+  an explicit `phoneFraming` parameter to `createDie` so the lean angle is
+  never inferred from scale again, verified against a real desktop-viewport
+  screenshot showing the flagship's face at the same angle as the rest of
+  the fleet. The same pass flagged a comment falsely implying a
+  `--color-flagship` CSS token exists; corrected to point at the design
+  table instead.
+  Also checked `HeroStage.tsx` and `app/lab/page.tsx`, the only other
+  `createDie` callers — `HeroStage`'s flagship (scale 1.5) crosses the old
+  threshold too and previously got the phone lean incidentally, now gets
+  the normal one by default; verified visually on both phone and desktop
+  home-screen renders that the decorative tumbling-dice scene still reads
+  correctly, since these dice were never meant to sit flat to a fixed
+  camera.
+  Verified: `tsc --noEmit`, `pnpm lint`, `pnpm test` (27/27), and
+  `BASE_PATH= pnpm build` all pass. `node tools/playtest.mjs 3 phone`
+  (full 3-round real match) passes clean but for the same pre-existing 404.
+  Verified visually against a real solo match at 375×812: the flagship is
+  bronze-framed and clearly larger than every hull ship around it. Ran the
+  DONE test's exact literal check — greyscale plus a 6px blur over that
+  screenshot — and the flagship is still unmistakable: the largest shape on
+  the board, with a distinct rounded-square silhouette against the
+  triangular hull dice around it. `/code-review` passed clean on the final
+  diff after one round of real findings, both fixed.
 
 - [ ] **4.2 — The shipyard is the same game.**
   It is currently a bright blue card UI against a dark space battle.

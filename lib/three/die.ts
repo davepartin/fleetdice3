@@ -182,13 +182,16 @@ const FACE_LEAN = 0.66;
 // face and the number/marks receive the maximum possible phone pixels.
 const PHONE_FACE_LEAN = 1.535;
 
-export function createDie(kind: DieKind, font: string, scale = 1, cellSize = 0): Die {
+export function createDie(kind: DieKind, font: string, scale = 1, cellSize = 0, phoneFraming = false): Die {
   const shared = sharedFor(kind, font);
   const sides = kind === "flag" ? 6 : kind;
   // Phone dice are deliberately oversized and viewed from a near-overhead
   // command camera. Aim their resolved face upward as well so the number and
-  // payoff marks stay square to the player's eye.
-  const faceLean = scale >= 1.45 ? PHONE_FACE_LEAN : FACE_LEAN;
+  // payoff marks stay square to the player's eye. Which camera is showing
+  // this die is an explicit flag rather than inferred from scale, since any
+  // die (the flagship, most notably) can be scaled up for reasons that have
+  // nothing to do with which camera is watching it.
+  const faceLean = phoneFraming ? PHONE_FACE_LEAN : FACE_LEAN;
   const lean = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), -faceLean);
 
   const object = new THREE.Group();
