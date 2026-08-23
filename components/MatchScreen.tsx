@@ -26,7 +26,7 @@ import {
   type PlayerState,
 } from "@/lib/engine";
 import { rollHint } from "@/lib/ai";
-import { FLAGSHIP_FACES } from "@/lib/reference";
+import { FLAGSHIP_FACES, NOUN } from "@/lib/reference";
 import { isPhoneLayout } from "@/lib/viewport";
 import type { MatchController } from "@/lib/useMatch";
 import { pendingThrow, pendingThrowReady, type PendingThrow } from "@/lib/throwSync";
@@ -413,7 +413,7 @@ export function MatchScreen({ controller, onExit, title, subtitle }: Props) {
             tone="ghost"
             size="sm"
             className="match-leave"
-            ariaLabel="Back to home"
+            ariaLabel={`Back to ${NOUN.home}`}
             onClick={() => {
               if (cancel && state.status !== "finished") {
                 setLeaveOpen(true);
@@ -422,8 +422,8 @@ export function MatchScreen({ controller, onExit, title, subtitle }: Props) {
               onExit();
             }}
           >
-            <span className="leave-label-full">‹ Back to home</span>
-            <span className="leave-label-short">‹ Home</span>
+            <span className="leave-label-full">‹ Back to {NOUN.home}</span>
+            <span className="leave-label-short">‹ {NOUN.home}</span>
           </Button>
 
           <div className="panel panel-enemy panel-flush min-w-0 flex-1 px-3 py-2">
@@ -593,7 +593,7 @@ export function MatchScreen({ controller, onExit, title, subtitle }: Props) {
       <Sheet
         open={leaveOpen}
         onClose={() => setLeaveOpen(false)}
-        title="Leave this game?"
+        title={`Leave this ${NOUN.game}?`}
         footer={
           <div className="flex flex-col gap-2">
             <Button
@@ -604,7 +604,7 @@ export function MatchScreen({ controller, onExit, title, subtitle }: Props) {
                 onExit();
               }}
             >
-              Back to home
+              Back to {NOUN.home}
             </Button>
             <Button
               tone="primary"
@@ -616,17 +616,17 @@ export function MatchScreen({ controller, onExit, title, subtitle }: Props) {
                 onExit();
               }}
             >
-              Cancel game
+              Cancel {NOUN.game}
             </Button>
           </div>
         }
       >
         <p className="text-base leading-relaxed c-dim-bright">
-          <b className="text-white">Back to home</b> leaves this screen. The game stays open —
-          open it again from Your games.
+          <b className="text-white">Back to {NOUN.home}</b> leaves this screen. The {NOUN.game} stays open —
+          open it again from Your {NOUN.games}.
         </p>
         <p className="mt-3 text-base leading-relaxed c-dim-bright">
-          <b className="text-white">Cancel game</b> ends it for both of you. The four-digit code
+          <b className="text-white">Cancel {NOUN.game}</b> ends it for both of you. The four-digit code
           dies, and neither of you can come back to this battle.
         </p>
       </Sheet>
@@ -703,7 +703,7 @@ function YourHealth({ you }: { you: PlayerState }) {
     <div className="commander-rail flex items-center gap-2">
       <span className="commander-name t-eyebrow shrink-0">
         <span className="commander-name-full">{you.name}</span>
-        <span className="commander-name-mobile">Ship</span>
+        <span className="commander-name-mobile">{NOUN.flagship}</span>
       </span>
       <HealthBar className="commander-hpbar min-w-0 flex-1" value={you.hp} max={you.maxHp} />
       <span className="t-num shrink-0 text-sm text-white">
@@ -841,7 +841,7 @@ function RollDock({
 
       {tokenOpen && you.flag.token && you.phase === "rolling" && (
         <div className="flagship-token-popover panel" role="dialog" aria-label="Flagship weapon controls">
-          <p className="t-eyebrow c-energy">Flagship weapon · once per match</p>
+          <p className="t-eyebrow c-energy">Flagship weapon · once per {NOUN.game}</p>
           <p className="mt-1 text-sm text-white">Turn the flagship one face.</p>
           <div className="mt-3 grid grid-cols-3 gap-2">
             <Button tone="ghost" size="lg" onClick={() => { onToken(-1); setTokenOpen(false); }} disabled={busy}>
@@ -996,7 +996,7 @@ function BraceDock({
               }`}
             >
               d{ship.sides}
-              <span className="ml-1 text-xs opacity-70">cell {cellForSlot(ship.slot) + 1}</span>
+              <span className="ml-1 text-xs opacity-70">{NOUN.bay} {cellForSlot(ship.slot) + 1}</span>
             </button>
           );
         })}
@@ -1055,8 +1055,8 @@ function ResultDock({
         <h2 className={`t-display text-3xl ${cancelled ? "text-white" : won ? "c-repair" : draw ? "text-white" : "c-attack"}`}>
           {cancelled
             ? youCancelled
-              ? "You ended the game"
-              : `${cancelledBy} ended the game`
+              ? `You ended the ${NOUN.game}`
+              : `${cancelledBy} ended the ${NOUN.game}`
             : draw
               ? "A draw"
               : won
@@ -1074,7 +1074,7 @@ function ResultDock({
 
       <div className="flex gap-2">
         <Button tone="ghost" size="lg" full onClick={onExit}>
-          Back to home
+          Back to {NOUN.home}
         </Button>
         {onRestart && !cancelled && (
           <Button tone="primary" size="lg" full onClick={onRestart}>

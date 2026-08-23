@@ -15,6 +15,7 @@ import { Button, Panel } from "@/components/ui";
 import { HowToPlaySheet } from "@/components/HowToPlay";
 import { useSoloMatch } from "@/lib/useMatch";
 import { DIFFICULTY, PLAN_BLURB, PLAN_LABEL, PLANS, type Difficulty, type Plan } from "@/lib/ai";
+import { NOUN } from "@/lib/reference";
 
 export default function SoloPage() {
   const router = useRouter();
@@ -82,7 +83,7 @@ function SoloSetup({
           <div className="mx-auto flex w-full max-w-[30rem] flex-col gap-4 px-4 pb-10 pt-6">
             <div className="flex items-center gap-2">
               <Button tone="ghost" size="sm" onClick={onBack}>
-                ‹ Back to home
+                ‹ Back to {NOUN.home}
               </Button>
               <span className="flex-1" />
               <Button tone="ghost" size="sm" onClick={onHelp}>
@@ -124,7 +125,7 @@ function SoloSetup({
               <PlanRow
                 active={plan === "surprise"}
                 title="Surprise me"
-                blurb="A different plan every match. You will not know what it is building until you see it."
+                blurb="A different plan every game. You will not know what it is building until you see it."
                 onClick={() => onPlan("surprise")}
               />
               {PLANS.map((entry) => (

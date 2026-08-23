@@ -22,6 +22,7 @@ import {
   watchRoom,
   type CreatedRoom,
 } from "@/lib/rooms";
+import { NOUN } from "@/lib/reference";
 
 export default function VersusPage() {
   const router = useRouter();
@@ -117,7 +118,7 @@ export default function VersusPage() {
               size="sm"
               onClick={() => (room ? abandon() : router.push("/"))}
             >
-              ‹ {room ? "Cancel game" : "Back to home"}
+              ‹ {room ? `Cancel ${NOUN.game}` : `Back to ${NOUN.home}`}
             </Button>
             <span className="flex-1" />
             <Button tone="ghost" size="sm" onClick={() => setHelpOpen(true)}>
@@ -129,10 +130,10 @@ export default function VersusPage() {
             <>
               <header>
                 <p className="t-eyebrow">Two commanders</p>
-                <h1 className="t-display text-3xl">Start a game</h1>
+                <h1 className="t-display text-3xl">Start a {NOUN.game}</h1>
                 <p className="mt-2 text-base leading-relaxed c-dim">
                   You get a four-digit code and a link. Send either one to your friend. You can run
-                  as many games at once as you like — each one gets its own code.
+                  as many {NOUN.games} at once as you like — each one gets its own code.
                 </p>
               </header>
 

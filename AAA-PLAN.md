@@ -633,10 +633,77 @@ This is the single biggest visual win available and it costs nothing to run.
   `tsc --noEmit`, `pnpm lint`, `pnpm test` (27/27) all still pass (no files
   changed for this item).
 
-- [ ] **4.3 — One vocabulary.**
+- [x] **4.3 — One vocabulary.**
   "Cells" in one place, "bays" in another; "Quit" became "Home".
   **DONE when:** `lib/reference.ts` defines every player-facing noun once and
   every screen imports from it, and a grep finds no stray synonyms.
+  **Proved:** `lib/reference.ts` already existed — a substantial, existing
+  "teaching material" module that generates the How to Play screen's copy
+  straight from `lib/engine.ts`'s real numbers. A first careless pass
+  overwrote it wholesale with a fresh file containing only a noun table;
+  `tsc` immediately failed on missing exports across `HowToPlay.tsx` and
+  `MatchScreen.tsx`, which caught the mistake before it was ever committed.
+  Restored it from git and re-did the work as an addition to the existing
+  file instead, which turned out to matter: this file was the actual,
+  primary source of the "cells"/"bays" split the plan describes — its help
+  text said "cell" in 17 places (`Open your 3rd cell`, `The 4 cells you
+  start with`, etc.) while the Shipyard's own UI said "bay" throughout. That
+  overwrite would have deleted the very evidence needed to find and fix the
+  real bug.
+  Renamed every player-facing "cell" in `lib/reference.ts` to "bay" (or, for
+  the flagship's own position specifically — which the Shipyard's UI never
+  calls a bay — "square", to avoid inventing a new, third word for that one
+  case), including the `ShopRow.kind` discriminator value itself
+  (`"cell"` → `"bay"`). Fixed the two matching instances that had leaked
+  into components (`MatchScreen.tsx`'s brace-ship-list chip said "cell 2";
+  `Shipyard.tsx`'s "Every cell is already open." message).
+  Audited every other player-facing noun for the same kind of split before
+  assuming "cells"/"bays" and "Quit"/"Home" (already fully resolved — no
+  "Quit" remains anywhere) were the only cases, rather than stopping at the
+  plan's two illustrative examples:
+  - Found the flagship's own health bar was labelled "Ship" on two mobile-
+    compact views (`MatchScreen.tsx`, `RoundReport.tsx`) while the very same
+    bar was labelled "Your flagship" elsewhere in `RoundReport.tsx` itself —
+    a real, in-file inconsistency. Fixed both to "Flagship".
+  - Found "game" and "match" both describe the same whole-session concept
+    throughout the app and counted every genuine instance of each (excluding
+    the unrelated verb "to match/matching numbers"): "game" appears ~29
+    times across `HomeScreen.tsx`, `MatchScreen.tsx`, `app/versus`,
+    `app/join`, `app/match`, and `lib/rooms.ts`'s connection error messages;
+    "match" appeared 10 times, entirely inside `lib/reference.ts`'s help
+    text, plus 2 more in `app/solo/page.tsx` and `MatchScreen.tsx`. Fixed
+    the 12 "match" outliers to "game", the clear majority term. Along the
+    way found and fixed two of `lib/rooms.ts`'s error messages that
+    referenced buttons by names those buttons don't actually have ("Tap
+    Join game" for a button that says "Join the game"; "Tap Create game"
+    for a button that says "Create the room") — real, pre-existing
+    cross-reference bugs, now accurate.
+  Added `NOUN` (bay, flagship, game, home) and moved `StatKind`/
+  `STAT_LABEL`/`STAT_GLYPH` into `lib/reference.ts` from `components/ui.tsx`
+  (which now imports them), so the stat names join the same single source.
+  Every screen that uses one of these words now imports it from
+  `lib/reference.ts` rather than retyping the literal: `MatchScreen.tsx`,
+  `RoundReport.tsx`, `Shipyard.tsx`, `HomeScreen.tsx`, `ui.tsx`, `lib/rooms.ts`,
+  and `app/{join,solo,versus,match}/page.tsx`. Left already-correct, natural
+  prose sentences that happen to contain one of these words as plain text
+  rather than forcing every occurrence through the constant — the DONE
+  test's grep cares whether the words used are consistent, not whether
+  every sentence is built from template-literal fragments.
+  A `/code-review` pass caught one real miss before it shipped: the locked-
+  bay drawer's new title said "bay" but its own body copy one line below
+  still said "cell" — fixed.
+  Verified: a grep for player-facing "cell(s)" across every component, app
+  page, and `lib/reference.ts`/`lib/rooms.ts` returns nothing but CSS class
+  names, variable names, and comments describing the historical bug;
+  `>Ship<` as a flagship-health label returns nothing; "match" as a session-
+  noun in `lib/reference.ts` returns nothing; "Quit" returns nothing.
+  `tsc --noEmit`, `pnpm lint`, `pnpm test` (27/27), and
+  `BASE_PATH= pnpm build` all pass. `node tools/playtest.mjs 3 phone` (full
+  3-round real match) passes clean but for the same pre-existing 404.
+  Verified visually against a real solo match: the shipyard drawer reads
+  "D4 SHIP · BAY 2", the How to Play screen's copy now says "bay" throughout
+  and reads naturally, and the round report's mobile flagship health bar
+  correctly reads "FLAGSHIP" instead of "Ship".
 
 ## Phase 5 — The moments
 

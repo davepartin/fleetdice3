@@ -58,6 +58,7 @@ import {
   type MatchState,
   type SideId,
 } from "./engine";
+import { NOUN } from "./reference";
 
 /* ------------------------------------------------------------------ */
 /* Names, sizes and timings                                            */
@@ -171,31 +172,31 @@ export type BattleResultRow = {
  * anonymous browser identity asked for a seat in a room built for two.
  */
 export const ROOM_FULL_MESSAGE =
-  "That room already has two commanders. If you started this game, go back to the tab you created it in and carry on there — a new tab counts as a different person, so it cannot take a seat.";
+  `That room already has two commanders. If you started this ${NOUN.game}, go back to the tab you created it in and carry on there — a new tab counts as a different person, so it cannot take a seat.`;
 
 const ROOM_GONE_MESSAGE =
-  "That room is not there any more. Ask your friend for a new four-digit code, or start a new game.";
+  `That room is not there any more. Ask your friend for a new four-digit code, or start a new ${NOUN.game}.`;
 
 const NOT_YOUR_ROOM_MESSAGE =
-  "You are not one of the two commanders in that room. If you started it, reopen it from Your games on the same phone and browser you used before.";
+  `You are not one of the two commanders in that room. If you started it, reopen it from Your ${NOUN.games} on the same phone and browser you used before.`;
 
 const MATCH_OVER_MESSAGE =
-  "That game has already finished. Start a new one, or join a friend's with their four-digit code.";
+  `That ${NOUN.game} has already finished. Start a new one, or join a friend's with their four-digit code.`;
 
 const JOIN_FIRST_MESSAGE =
-  "Tap Join game first — you have not taken a seat in that room yet.";
+  `Tap Join the ${NOUN.game} first — you have not taken a seat in that room yet.`;
 
 const NEED_FOUR_DIGITS_MESSAGE =
   "Type the four numbers showing on your friend's screen, for example 0525.";
 
 const CODE_NOT_FOUND_MESSAGE =
-  "No game is using that four-digit code. Check the numbers on your friend's screen — codes are reused, so an old one may have gone.";
+  `No ${NOUN.game} is using that four-digit code. Check the numbers on your friend's screen — codes are reused, so an old one may have gone.`;
 
 const CODES_EXHAUSTED_MESSAGE =
-  "Every room code was busy just then. Tap Create game once more.";
+  "Every room code was busy just then. Tap Create the room once more.";
 
 const RULES_NOT_DEPLOYED_MESSAGE =
-  "Two-player games are not switched on in the database yet. The site can sign you in, but it cannot open a room until the Fleet Dice 3 rules are published. On a computer signed into the space-tribes Google account, run: npx -y firebase-tools@latest deploy --only firestore:rules --project space-tribes";
+  `Two-player ${NOUN.games} are not switched on in the database yet. The site can sign you in, but it cannot open a room until the Fleet Dice 3 rules are published. On a computer signed into the space-tribes Google account, run: npx -y firebase-tools@latest deploy --only firestore:rules --project space-tribes`;
 
 /* ------------------------------------------------------------------ */
 /* Creating, joining, entering                                         */
@@ -978,10 +979,10 @@ export function friendlyRoomError(error: unknown): Error {
     return new Error(OFFLINE_MESSAGE);
   }
   if (code.includes("deadline-exceeded") || code.includes("aborted")) {
-    return new Error("The game did not answer in time. Check your connection and try that again.");
+    return new Error(`The ${NOUN.game} did not answer in time. Check your connection and try that again.`);
   }
   if (code.includes("resource-exhausted")) {
-    return new Error("The game is busy right now. Wait a moment and try again.");
+    return new Error(`The ${NOUN.game} is busy right now. Wait a moment and try again.`);
   }
   if (code.includes("unauthenticated")) {
     return new Error("This browser lost its player badge. Reload the page and try again.");
@@ -996,10 +997,10 @@ export function friendlyRoomError(error: unknown): Error {
 function friendlyBoardError(error: unknown): Error {
   const code = errorCode(error);
   if (code.includes("failed-precondition")) {
-    return new Error("The list of recent games is not ready yet. Try again in a minute.");
+    return new Error(`The list of recent ${NOUN.games} is not ready yet. Try again in a minute.`);
   }
   if (code.includes("unavailable") || code.includes("permission-denied")) {
-    return new Error("Could not load the list of games right now. It will reappear on its own.");
+    return new Error(`Could not load the list of ${NOUN.games} right now. It will reappear on its own.`);
   }
   return friendlyRoomError(error);
 }

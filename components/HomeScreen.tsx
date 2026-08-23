@@ -23,6 +23,7 @@ import {
   type RememberedRoomCard,
 } from "@/lib/rooms";
 import { basePath } from "@/lib/paths";
+import { NOUN } from "@/lib/reference";
 
 export function HomeScreen() {
   const [name, setName] = useState("Commander");
@@ -187,7 +188,7 @@ export function HomeScreen() {
             {/* Your games in progress */}
             {cards.length > 0 && (
               <Panel className="p-4">
-                <p className="t-eyebrow mb-2">Your games</p>
+                <p className="t-eyebrow mb-2">Your {NOUN.games}</p>
                 <div className="flex flex-col gap-2">
                   {cards.map((card) => (
                     <div
@@ -252,7 +253,7 @@ export function HomeScreen() {
                 {showBoard && (
                   <Panel className="p-4">
                     {battles.length === 0 ? (
-                      <p className="text-sm c-dim">No games running right now. Start one.</p>
+                      <p className="text-sm c-dim">No {NOUN.games} running right now. Start one.</p>
                     ) : (
                       <ul className="flex flex-col gap-1.5">
                         {battles.map((row) => (
@@ -304,21 +305,21 @@ export function HomeScreen() {
       <Sheet
         open={Boolean(pendingCancel)}
         onClose={() => !closing && setPendingCancel(null)}
-        title="Cancel this game?"
+        title={`Cancel this ${NOUN.game}?`}
         footer={
           <div className="flex flex-col gap-2">
             <Button tone="ghost" full disabled={closing} onClick={() => setPendingCancel(null)}>
               Keep it
             </Button>
             <Button tone="primary" full disabled={closing} onClick={() => void confirmCancel()}>
-              {closing ? "Ending…" : "Cancel game"}
+              {closing ? "Ending…" : `Cancel ${NOUN.game}`}
             </Button>
           </div>
         }
       >
         <p className="text-base leading-relaxed c-dim-bright">
           This ends{" "}
-          {pendingCancel?.enemyName ? `the game vs ${pendingCancel.enemyName}` : "this game"} for
+          {pendingCancel?.enemyName ? `the ${NOUN.game} vs ${pendingCancel.enemyName}` : `this ${NOUN.game}`} for
           both of you. The four-digit code dies.
         </p>
       </Sheet>

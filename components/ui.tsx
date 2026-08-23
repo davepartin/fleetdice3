@@ -9,6 +9,7 @@
  */
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import { STAT_GLYPH, STAT_LABEL, type StatKind } from "@/lib/reference";
 
 /* ------------------------------------------------------------------ */
 /* Buttons                                                             */
@@ -141,25 +142,7 @@ export function HealthBar({
 /* Numbers                                                             */
 /* ------------------------------------------------------------------ */
 
-export type StatKind = "attack" | "shield" | "energy" | "repair" | "direct" | "run";
-
-export const STAT_LABEL: Record<StatKind, string> = {
-  attack: "Attack",
-  shield: "Shields",
-  energy: "Energy",
-  repair: "Repair",
-  direct: "Direct",
-  run: "Straight",
-};
-
-export const STAT_GLYPH: Record<StatKind, string> = {
-  attack: "▲",
-  shield: "◆",
-  energy: "⚡",
-  repair: "✚",
-  direct: "⌁",
-  run: "⋯",
-};
+export type { StatKind };
 
 /** A single score, coloured by what it means. Colours never change meaning. */
 export function Stat({

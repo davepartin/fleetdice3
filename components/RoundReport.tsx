@@ -10,6 +10,7 @@
 
 import { useState } from "react";
 import type { PlayerState, RoundReport as Report } from "@/lib/engine";
+import { NOUN } from "@/lib/reference";
 import { Button, HealthBar, Rule, Stat, Ticker } from "./ui";
 
 function Row({
@@ -79,7 +80,7 @@ export function RoundReportCard({
           <Stat kind="repair" value={t.heal} label="Repair" size="sm" />
         </div>
         <div className="round-report-mobile-hp flex items-center gap-2">
-          <span className="t-eyebrow">Ship</span>
+          <span className="t-eyebrow">{NOUN.flagship}</span>
           <HealthBar className="min-w-0 flex-1" value={report.hpAfter} max={you.maxHp} />
           <span className="t-num text-white"><Ticker value={Math.max(0, report.hpAfter)} />/{you.maxHp}</span>
         </div>

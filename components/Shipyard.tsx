@@ -31,6 +31,7 @@ import {
   upgradeCost,
   upgradeTarget,
 } from "@/lib/engine";
+import { NOUN } from "@/lib/reference";
 import { HullShape } from "./HullShape";
 import { Button, Chip } from "./ui";
 
@@ -190,8 +191,8 @@ export function Shipyard({ player, onAction, onDone, busy }: Props) {
 
       <div className="yard-stats">
         <Chip>{player.ships.length} ships</Chip>
-        <Chip>{openSlotCount(player)}/8 bays</Chip>
-        <Chip tone="energy">Flagship L{player.flag.level}</Chip>
+        <Chip>{openSlotCount(player)}/8 {NOUN.bays}</Chip>
+        <Chip tone="energy">{NOUN.flagship} L{player.flag.level}</Chip>
       </div>
 
       {/* ---------------- the board ---------------- */}
@@ -258,11 +259,11 @@ function CellButton({
     cost = offer.cost;
     affordable = cost !== null && cost <= energy;
     state = "flag";
-    label = `Flagship, level ${offer.level}`;
+    label = `${NOUN.flagship}, level ${offer.level}`;
     body = (
       <>
         <span className="yard-cell-art yard-cell-flag">★</span>
-        <span className="yard-cell-name">Flagship</span>
+        <span className="yard-cell-name">{NOUN.flagship}</span>
         <span className="yard-cell-sub">
           {cost === null ? "Level 3 · max" : `L${offer.level} → L${offer.level + 1}`}
         </span>
@@ -286,11 +287,11 @@ function CellButton({
     cost = offer.cheapest;
     affordable = cost <= energy;
     state = "empty";
-    label = "Open bay, add a ship";
+    label = `Open ${NOUN.bay}, add a ship`;
     body = (
       <>
         <span className="yard-cell-art yard-cell-empty-art">+</span>
-        <span className="yard-cell-name">Open bay</span>
+        <span className="yard-cell-name">Open {NOUN.bay}</span>
         <span className="yard-cell-sub">add a ship</span>
       </>
     );
@@ -298,7 +299,7 @@ function CellButton({
     cost = offer.cost;
     affordable = cost !== null && cost <= energy;
     state = "locked";
-    label = "Locked bay";
+    label = `Locked ${NOUN.bay}`;
     body = (
       <>
         <span className="yard-cell-art yard-cell-lock"><LockIcon /></span>
@@ -384,7 +385,7 @@ function Drawer({
     const cost = offer.cost;
     return (
       <section className="yard-drawer anim-rise">
-        <DrawerHead title={`d${offer.ship.sides} ship · bay ${offer.cell + 1}`} onClose={onClose} />
+        <DrawerHead title={`d${offer.ship.sides} ship · ${NOUN.bay} ${offer.cell + 1}`} onClose={onClose} />
         {offer.next === null || cost === null ? (
           <p className="yard-copy">A d10 is the biggest ship there is. Nothing left to buy here.</p>
         ) : (
@@ -426,7 +427,7 @@ function Drawer({
   if (offer.kind === "empty") {
     return (
       <section className="yard-drawer anim-rise">
-        <DrawerHead title={`Open bay ${offer.cell + 1}`} onClose={onClose} />
+        <DrawerHead title={`Open ${NOUN.bay} ${offer.cell + 1}`} onClose={onClose} />
         <div className="yard-hulls">
           {HULLS.map((sides) => {
             const cost = priceOf(sides);
@@ -458,9 +459,9 @@ function Drawer({
   const cost = offer.cost;
   return (
     <section className="yard-drawer anim-rise">
-      <DrawerHead title={`Locked bay ${offer.cell + 1}`} onClose={onClose} />
+      <DrawerHead title={`Locked ${NOUN.bay} ${offer.cell + 1}`} onClose={onClose} />
       <p className="yard-copy">
-        Opening a cell gives you somewhere to park another ship.
+        Opening a {NOUN.bay} gives you somewhere to park another ship.
         {offer.opensLines.length > 0 && (
           <>
             {" "}
@@ -472,7 +473,7 @@ function Drawer({
         )}
       </p>
       {cost === null ? (
-        <p className="yard-copy">Every cell is already open.</p>
+        <p className="yard-copy">Every {NOUN.bay} is already open.</p>
       ) : (
         <Button
           tone="ghost"
@@ -512,7 +513,7 @@ export function ShipyardSummary({ player }: { player: PlayerState }) {
           {counts[sides]} × d{sides}
         </Chip>
       ))}
-      <Chip tone="energy">Flagship L{player.flag.level}</Chip>
+      <Chip tone="energy">{NOUN.flagship} L{player.flag.level}</Chip>
     </div>
   );
 }

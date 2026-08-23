@@ -14,6 +14,7 @@ import { Button, Notice, Panel, RoomCode, Spinner } from "@/components/ui";
 import { HowToPlaySheet } from "@/components/HowToPlay";
 import { commanderName, ensurePlayerIdentity, rememberCommanderName } from "@/lib/firebase";
 import { joinRoomByCode, joinRoomById } from "@/lib/rooms";
+import { NOUN } from "@/lib/reference";
 
 export default function JoinPage() {
   return (
@@ -69,7 +70,7 @@ function JoinInner() {
             your friend&apos;s screen.
           </Notice>
           <Button tone="primary" full onClick={() => router.push("/")}>
-            Home
+            {NOUN.home}
           </Button>
         </div>
       </div>
@@ -82,7 +83,7 @@ function JoinInner() {
         <div className="mx-auto flex w-full max-w-[30rem] flex-col gap-4 px-4 pb-10 pt-6">
           <div className="flex items-center gap-2">
             <Button tone="ghost" size="sm" onClick={() => router.push("/")}>
-              ‹ Back to home
+              ‹ Back to {NOUN.home}
             </Button>
             <span className="flex-1" />
             <Button tone="ghost" size="sm" onClick={() => setHelpOpen(true)}>
