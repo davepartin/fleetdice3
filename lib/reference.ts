@@ -41,7 +41,7 @@ const HULLS: DieSize[] = (Object.keys(TUNING.prices) as string[])
   .map(Number)
   .sort((a, b) => a - b) as DieSize[];
 
-/** The board is 3×3. One cell is the flagship, the rest hold ships. */
+/** The board is 3×3. One square is the flagship, the rest are bays that hold ships. */
 const BOARD_CELLS = 9;
 const BOARD_SIDE = Math.round(Math.sqrt(BOARD_CELLS));
 const FLEET_CELLS = Array.from({ length: BOARD_CELLS }, (_, cell) => slotForCell(cell)).filter(
@@ -72,7 +72,7 @@ function num(value: number): string {
   return String(Math.round(value * 100) / 100);
 }
 
-/** 5 → "5th". The board labels its own cells 1–9, so help never says "cell 5". */
+/** 5 → "5th". The shipyard numbers its own bays 1–8, so help never says "bay 5". */
 function ordinal(value: number): string {
   const tens = value % 100;
   if (tens >= 11 && tens <= 13) return `${value}th`;
@@ -233,7 +233,7 @@ function flagLevelText(face: number, bonus: number): string {
 function flagShort(face: number): string {
   switch (face) {
     case 1:
-      return "Raises your Energy income for the rest of the match";
+      return "Raises your Energy income for the rest of the game";
     case 2:
       return "Every 2 in your fleet fires more Direct";
     case 3:
@@ -250,7 +250,7 @@ function flagShort(face: number): string {
 function flagDetail(face: number): string {
   switch (face) {
     case 1:
-      return "Nothing lands this round. Instead your Energy income goes up for the rest of the match, and the raise is in the bank in time for next round's pay.";
+      return "Nothing lands this round. Instead your Energy income goes up for the rest of the game, and the raise is in the bank in time for next round's pay.";
     case 2:
       return "Counts the ships showing a 2 and adds Direct for each one.";
     case 3:
@@ -353,7 +353,7 @@ export const FORMATIONS: readonly FormationReference[] = [
     rule: `Three matching numbers down a column of your board pays ${TUNING.lineDownAttack} Attack.`,
     amount: TUNING.lineDownAttack,
     pays: "Attack",
-    note: "The middle column runs through your flagship too. Every cell in the line has to be open and hold a ship that rolled this round.",
+    note: "The middle column runs through your flagship too. Every bay in the line has to be open and hold a ship that rolled this round.",
   },
 ];
 
@@ -363,7 +363,7 @@ export const FORMATIONS: readonly FormationReference[] = [
 /* ------------------------------------------------------------------ */
 
 export type ShopRow = {
-  kind: "hull" | "upgrade" | "cell" | "flagship";
+  kind: "hull" | "upgrade" | "bay" | "flagship";
   name: string;
   cost: number;
   /** What the Energy actually buys you, in numbers. */
@@ -398,7 +398,7 @@ const UPGRADE_ROWS: ShopRow[] = HULLS.flatMap((sides) => {
   ];
 });
 
-const CELL_ROWS: ShopRow[] = Array.from(
+const BAY_ROWS: ShopRow[] = Array.from(
   { length: FLEET_CELLS - TUNING.startSlots },
   (_, index) => TUNING.startSlots + index,
 ).flatMap((openCount) => {
@@ -406,8 +406,8 @@ const CELL_ROWS: ShopRow[] = Array.from(
   if (cost === null) return [];
   return [
     {
-      kind: "cell" as const,
-      name: `Open your ${ordinal(openCount + 1)} cell`,
+      kind: "bay" as const,
+      name: `Open your ${ordinal(openCount + 1)} bay`,
       cost,
       gain: `One more place to park a ship, and one more line it can complete. The ship is a separate purchase, from ${priceOf(HULLS[0]!)} Energy.`,
     },
@@ -431,7 +431,7 @@ const FLAGSHIP_ROWS: ShopRow[] = [1, 2].flatMap((level) => {
 export const SHOP_ROWS: readonly ShopRow[] = [
   ...HULL_ROWS,
   ...UPGRADE_ROWS,
-  ...CELL_ROWS,
+  ...BAY_ROWS,
   ...FLAGSHIP_ROWS,
 ];
 
@@ -514,11 +514,11 @@ export const HOW_TO_PLAY: readonly HelpSection[] = [
     blocks: [
       {
         kind: "text",
-        text: `You and one other commander each keep a ${BOARD_SIDE} by ${BOARD_SIDE} board. The cell in the middle is your flagship. It starts with ${TUNING.hp} health and it never fights. The ${FLEET_CELLS} cells around it hold your ships, and a ship is simply a die: a ${joinWords(HULLS.map(die), "or")}. The size of the die is called its hull. You start with ${TUNING.startSlots} cells open and a ${die(START_HULL)} in each one.`,
+        text: `You and one other commander each keep a ${BOARD_SIDE} by ${BOARD_SIDE} board. The centre square is your flagship. It starts with ${TUNING.hp} health and it never fights. The ${FLEET_CELLS} bays around it hold your ships, and a ship is simply a die: a ${joinWords(HULLS.map(die), "or")}. The size of the die is called its hull. You start with ${TUNING.startSlots} bays open and a ${die(START_HULL)} in each one.`,
       },
       {
         kind: "text",
-        text: "Every round you both roll your fleet, keep what you want, and lock it in at the same time. Even faces hit, odd faces block, and whatever gets past the other commander's blocking comes off their flagship. Between rounds you spend Energy, the money of this game, on better dice and more cells. The first flagship to reach 0 loses.",
+        text: "Every round you both roll your fleet, keep what you want, and lock it in at the same time. Even faces hit, odd faces block, and whatever gets past the other commander's blocking comes off their flagship. Between rounds you spend Energy, the money of this game, on better dice and more bays. The first flagship to reach 0 loses.",
       },
     ],
   },
@@ -569,20 +569,20 @@ export const HOW_TO_PLAY: readonly HelpSection[] = [
   {
     id: "flagship",
     title: "Your flagship",
-    summary: `It never fights. Its face each round boosts your fleet, its level sets the size of that boost (${joinWords([1, 2, 3].map((level) => String(flagBonusSize(level))))}), and once a match you may turn it one number.`,
+    summary: `It never fights. Its face each round boosts your fleet, its level sets the size of that boost (${joinWords([1, 2, 3].map((level) => String(flagBonusSize(level))))}), and once a game you may turn it one number.`,
     blocks: [
       {
         kind: "text",
-        text: `Your flagship is a ${die(FLAG_SIDES)} in the centre cell. It rolls with the fleet every round, but it never hits and it never blocks. What it does is ring the ships around it. Its face decides which kind of help arrives, and its level decides how much.`,
+        text: `Your flagship is a ${die(FLAG_SIDES)} in the centre square. It rolls with the fleet every round, but it never hits and it never blocks. What it does is ring the ships around it. Its face decides which kind of help arrives, and its level decides how much.`,
       },
       FLAGSHIP_TABLE_BLOCK,
       {
         kind: "text",
-        text: `Two of those faces are wider than they look. A ${FLAGSHIP_FACES[4]!.face} lifts every odd ship you have, not only the ones showing a ${FLAGSHIP_FACES[4]!.face}, and a ${FLAGSHIP_FACES[5]!.face} lifts every even ship. At level 1 that is ${flagBonusSize(1)} each: four even ships under a ${FLAGSHIP_FACES[5]!.face} is ${4 * flagBonusSize(1)} more Attack. The ${FLAGSHIP_FACES[0]!.name} face is the odd one out. Nothing lands that round; instead your Energy income rises for the rest of the match, and the raise is there in time for the next round's pay.`,
+        text: `Two of those faces are wider than they look. A ${FLAGSHIP_FACES[4]!.face} lifts every odd ship you have, not only the ones showing a ${FLAGSHIP_FACES[4]!.face}, and a ${FLAGSHIP_FACES[5]!.face} lifts every even ship. At level 1 that is ${flagBonusSize(1)} each: four even ships under a ${FLAGSHIP_FACES[5]!.face} is ${4 * flagBonusSize(1)} more Attack. The ${FLAGSHIP_FACES[0]!.name} face is the odd one out. Nothing lands that round; instead your Energy income rises for the rest of the game, and the raise is there in time for the next round's pay.`,
       },
       {
         kind: "text",
-        text: `You also carry one Flagship Token. Once a match, after you have rolled, you may turn the flagship one number up or down. It wraps around, so ${FLAG_SIDES} can turn into 1 and 1 can turn into ${FLAG_SIDES}. That one nudge is often what completes a straight or a formation.`,
+        text: `You also carry one Flagship Token. Once a game, after you have rolled, you may turn the flagship one number up or down. It wraps around, so ${FLAG_SIDES} can turn into 1 and 1 can turn into ${FLAG_SIDES}. That one nudge is often what completes a straight or a formation.`,
       },
       {
         kind: "text",
@@ -600,7 +600,7 @@ export const HOW_TO_PLAY: readonly HelpSection[] = [
         steps: [
           {
             name: "1. The shipyard",
-            text: `You decide what to spend. Hulls, upgrades, cells and flagship levels all come out of the same Energy. Round one skips this, because you start with ${TUNING.startEnergy} Energy and ${TUNING.startSlots} ${die(START_HULL)}s already in place.`,
+            text: `You decide what to spend. Hulls, upgrades, bays and flagship levels all come out of the same Energy. Round one skips this, because you start with ${TUNING.startEnergy} Energy and ${TUNING.startSlots} ${die(START_HULL)}s already in place.`,
           },
           {
             name: "2. Roll",
@@ -608,7 +608,7 @@ export const HOW_TO_PLAY: readonly HelpSection[] = [
           },
           {
             name: "3. The Flagship Token",
-            text: "You decide whether this is the round. Turning the flagship one number is once a match, and it can only be done after you have rolled.",
+            text: "You decide whether this is the round. Turning the flagship one number is once a game, and it can only be done after you have rolled.",
           },
           {
             name: "4. Lock in",
@@ -633,7 +633,7 @@ export const HOW_TO_PLAY: readonly HelpSection[] = [
   {
     id: "shipyard",
     title: "The shipyard",
-    summary: `Energy buys hulls (${joinWords(HULLS.map((sides) => String(priceOf(sides))))}), upgrades (${joinWords(HULLS.map(upgradeCost).filter((cost): cost is number => cost !== null).map(String))}), cells (${slotCostAfter(TUNING.startSlots)} up to ${slotCostAfter(FLEET_CELLS - 1)}) and flagship levels (${flagshipUpgradeCost(1)} then ${flagshipUpgradeCost(2)}).`,
+    summary: `Energy buys hulls (${joinWords(HULLS.map((sides) => String(priceOf(sides))))}), upgrades (${joinWords(HULLS.map(upgradeCost).filter((cost): cost is number => cost !== null).map(String))}), bays (${slotCostAfter(TUNING.startSlots)} up to ${slotCostAfter(FLEET_CELLS - 1)}) and flagship levels (${flagshipUpgradeCost(1)} then ${flagshipUpgradeCost(2)}).`,
     blocks: [
       {
         kind: "text",
@@ -642,7 +642,7 @@ export const HOW_TO_PLAY: readonly HelpSection[] = [
       SHOP_TABLE_BLOCK,
       {
         kind: "text",
-        text: `Upgrading is cheaper than buying twice. A ${die(SMALL)} costs ${priceOf(SMALL)} and a ${die(NEXT_UP)} costs ${priceOf(NEXT_UP)}, but turning the ${die(SMALL)} you already own into a ${die(NEXT_UP)} costs ${upgradeCost(SMALL)}. Opening a cell only gives you the space; the ship that stands in it is a separate bill, and each cell costs 1 more than the last.`,
+        text: `Upgrading is cheaper than buying twice. A ${die(SMALL)} costs ${priceOf(SMALL)} and a ${die(NEXT_UP)} costs ${priceOf(NEXT_UP)}, but turning the ${die(SMALL)} you already own into a ${die(NEXT_UP)} costs ${upgradeCost(SMALL)}. Opening a bay only gives you the space; the ship that stands in it is a separate bill, and each bay costs 1 more than the last.`,
       },
     ],
   },
@@ -653,7 +653,7 @@ export const HOW_TO_PLAY: readonly HelpSection[] = [
     blocks: [
       {
         kind: "text",
-        text: `Both flagships start at ${TUNING.hp} health. The first one to reach 0 loses the match. Repair that would go past the current maximum raises that maximum — ${TUNING.hp} is where you begin, not a cap.`,
+        text: `Both flagships start at ${TUNING.hp} health. The first one to reach 0 loses the game. Repair that would go past the current maximum raises that maximum — ${TUNING.hp} is where you begin, not a cap.`,
       },
       {
         kind: "text",
@@ -661,7 +661,7 @@ export const HOW_TO_PLAY: readonly HelpSection[] = [
       },
       {
         kind: "text",
-        text: `If both fleets somehow survive to round ${TUNING.roundLimit}, the commander with more health wins, and equal health is a draw. If both flagships fall in the same volley, the heavier attack that round takes it; if those are equal, the most damage dealt across the whole match; and if that is equal too, it is a draw.`,
+        text: `If both fleets somehow survive to round ${TUNING.roundLimit}, the commander with more health wins, and equal health is a draw. If both flagships fall in the same volley, the heavier attack that round takes it; if those are equal, the most damage dealt across the whole game; and if that is equal too, it is a draw.`,
       },
     ],
   },
@@ -685,7 +685,7 @@ export const GLOSSARY: readonly GlossaryEntry[] = [
   },
   {
     term: "Energy",
-    text: `The money of the game. You earn it from marks, rows, straights and your flagship's income, and you spend it in the shipyard and on extra rerolls. You start a match with ${TUNING.startEnergy}.`,
+    text: `The money of the game. You earn it from marks, rows, straights and your flagship's income, and you spend it in the shipyard and on extra rerolls. You start a game with ${TUNING.startEnergy}.`,
   },
   {
     term: "Repair",
@@ -705,7 +705,7 @@ export const GLOSSARY: readonly GlossaryEntry[] = [
   },
   {
     term: "Flagship",
-    text: `The ${die(FLAG_SIDES)} in the centre cell. It starts at ${TUNING.hp} health and can grow, it never hits and never blocks, and its face each round boosts the ships around it.`,
+    text: `The ${die(FLAG_SIDES)} in the centre square. It starts at ${TUNING.hp} health and can grow, it never hits and never blocks, and its face each round boosts the ships around it.`,
   },
   {
     term: "Volley",
@@ -717,7 +717,7 @@ export const GLOSSARY: readonly GlossaryEntry[] = [
   },
   {
     term: "Escalation",
-    text: `Extra damage both flagships take once the match runs long. Shields cannot stop it; ships still can. It starts in round ${FIRST_ESCALATED_ROUND} at ${escalationFor(FIRST_ESCALATED_ROUND)} and grows ${TUNING.escalateStep} a round after that.`,
+    text: `Extra damage both flagships take once the game runs long. Shields cannot stop it; ships still can. It starts in round ${FIRST_ESCALATED_ROUND} at ${escalationFor(FIRST_ESCALATED_ROUND)} and grows ${TUNING.escalateStep} a round after that.`,
   },
 ];
 
@@ -734,7 +734,7 @@ const AVG_BIG = averagePerRoll(BIG);
 export const TIPS: readonly Tip[] = [
   {
     title: "Small hulls are the better earners",
-    text: `A ${die(SMALL)} averages ${num(AVG_SMALL.energy)} Energy a roll; a ${die(BIG)} averages ${num(AVG_BIG.energy)}. If you are saving for a cell or a flagship level, keeping a couple of small ships on the board pays for it.`,
+    text: `A ${die(SMALL)} averages ${num(AVG_SMALL.energy)} Energy a roll; a ${die(BIG)} averages ${num(AVG_BIG.energy)}. If you are saving for a bay or a flagship level, keeping a couple of small ships on the board pays for it.`,
   },
   {
     title: "One big hull lifts every straight you ever roll",
@@ -754,7 +754,7 @@ export const TIPS: readonly Tip[] = [
   },
   {
     title: "Your opening board can only make one formation",
-    text: `The ${TUNING.startSlots} cells you start with are the four around your flagship, so from the very first roll you can finish the middle row across (${TUNING.lineAcrossEnergy} Energy) or the middle column down (${TUNING.lineDownAttack} Attack) — and your flagship counts as the middle of both. Every cell you buy after that is a corner, and a corner opens whole new lines rather than finishing the ones you have.`,
+    text: `The ${TUNING.startSlots} bays you start with are the four around your flagship, so from the very first roll you can finish the middle row across (${TUNING.lineAcrossEnergy} Energy) or the middle column down (${TUNING.lineDownAttack} Attack) — and your flagship counts as the middle of both. Every bay you buy after that is a corner, and a corner opens whole new lines rather than finishing the ones you have.`,
   },
   {
     title: "Brace with the smallest ship that does the job",
@@ -769,7 +769,53 @@ export const TIPS: readonly Tip[] = [
     text: `Turning the flagship one number is worth a small bonus at best, but it can be the difference between no straight and ${straightReward(TUNING.runMax, BIG).label}. Hold it until the board is one number short of a run.`,
   },
   {
-    title: "Long matches are decided before they get long",
+    title: "Long games are decided before they get long",
     text: `Escalation adds ${TUNING.escalateStep} damage a round to both flagships from round ${FIRST_ESCALATED_ROUND}, and shields cannot eat it, so by round ${FIRST_ESCALATED_ROUND + 5} both sides take ${escalationFor(FIRST_ESCALATED_ROUND + 5)} before a single die is read. A fleet built only to block still has to throw ships in front or the flagship melts.`,
   },
 ];
+
+/* ------------------------------------------------------------------ */
+/* Short, reused nouns                                                 */
+/* Rendered by: every screen that names a stat, a bay, the flagship's  */
+/* own health bar, a game session, or the way home. Two words for one  */
+/* concept is a tax on the player — they have to notice the two words  */
+/* actually mean the same thing. It happened before: the shipyard      */
+/* called its slots "bays" while this file, generating the same help   */
+/* text, called them "cells"; a mobile label called the flagship's own */
+/* health bar "Ship" while the very next screen called that same bar   */
+/* "Your flagship." A screen that needs one of these words imports it  */
+/* rather than retyping the literal.                                   */
+/* ------------------------------------------------------------------ */
+
+export type StatKind = "attack" | "shield" | "energy" | "repair" | "direct" | "run";
+
+export const STAT_LABEL: Record<StatKind, string> = {
+  attack: "Attack",
+  shield: "Shields",
+  energy: "Energy",
+  repair: "Repair",
+  direct: "Direct",
+  run: "Straight",
+};
+
+export const STAT_GLYPH: Record<StatKind, string> = {
+  attack: "▲",
+  shield: "◆",
+  energy: "⚡",
+  repair: "✚",
+  direct: "⌁",
+  run: "⋯",
+};
+
+export const NOUN = {
+  /** One of the 8 slots around the flagship. Never "cell," never "slot." */
+  bay: "bay",
+  bays: "bays",
+  /** The one hull that never fights and never leaves the centre square. */
+  flagship: "Flagship",
+  /** A full session between two commanders, from room code to result. */
+  game: "game",
+  games: "games",
+  /** Where "‹ Back" and "Cancel" both eventually lead. */
+  home: "Home",
+} as const;

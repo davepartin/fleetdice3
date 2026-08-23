@@ -9,6 +9,7 @@
  */
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import { STAT_GLYPH, STAT_LABEL, type StatKind } from "@/lib/reference";
 
 /* ------------------------------------------------------------------ */
 /* Buttons                                                             */
@@ -18,7 +19,9 @@ type ButtonProps = {
   children: ReactNode;
   onClick?: () => void;
   disabled?: boolean;
-  tone?: "primary" | "confirm" | "energy" | "command" | "ghost";
+  /** Exactly one filled style exists: "primary", bone white, one per screen.
+   *  Everything else is "ghost" — outline-only. */
+  tone?: "primary" | "ghost";
   size?: "sm" | "md" | "lg";
   full?: boolean;
   className?: string;
@@ -139,25 +142,7 @@ export function HealthBar({
 /* Numbers                                                             */
 /* ------------------------------------------------------------------ */
 
-export type StatKind = "attack" | "shield" | "energy" | "repair" | "direct" | "run";
-
-export const STAT_LABEL: Record<StatKind, string> = {
-  attack: "Attack",
-  shield: "Shields",
-  energy: "Energy",
-  repair: "Repair",
-  direct: "Direct",
-  run: "Straight",
-};
-
-export const STAT_GLYPH: Record<StatKind, string> = {
-  attack: "▲",
-  shield: "◆",
-  energy: "⚡",
-  repair: "✚",
-  direct: "⌁",
-  run: "⋯",
-};
+export type { StatKind };
 
 /** A single score, coloured by what it means. Colours never change meaning. */
 export function Stat({
@@ -177,7 +162,7 @@ export function Stat({
   showGlyph?: boolean;
   colorLabel?: boolean;
 }) {
-  const text = size === "lg" ? "text-2xl" : size === "sm" ? "text-sm" : "text-lg";
+  const text = size === "lg" ? "text-xl" : size === "sm" ? "text-sm" : "text-base";
   const body = (
     <span className={`c-${kind} glow-${kind} t-num ${text} leading-none`}>{value}</span>
   );
@@ -186,13 +171,13 @@ export function Stat({
     <div className="flex flex-col items-center gap-1">
       <div className="flex w-full items-baseline justify-center gap-1 text-center">
         {showGlyph && (
-          <span className={`c-${kind} text-[0.7em] opacity-80`}>{STAT_GLYPH[kind]}</span>
+          <span className={`c-${kind} text-xs opacity-80`}>{STAT_GLYPH[kind]}</span>
         )}
         {body}
       </div>
       {label !== "" && (
         <span
-          className={`t-eyebrow text-[0.58rem] tracking-[0.16em] ${
+          className={`t-eyebrow text-xs tracking-[0.16em] ${
             colorLabel ? `c-${kind}` : ""
           }`}
         >
@@ -263,7 +248,7 @@ export function Chip({
       : "border-current/25 bg-current/[0.09]";
   return (
     <span
-      className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[0.68rem] font-semibold uppercase tracking-[0.1em] ${colour} ${border} ${className}`}
+      className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-semibold uppercase tracking-[0.1em] ${colour} ${border} ${className}`}
     >
       {children}
     </span>
@@ -305,10 +290,10 @@ export function Notice({
 }) {
   const colour =
     tone === "warn"
-      ? "border-[--color-attack]/35 bg-[--color-attack]/[0.09] text-[--color-attack-glow]"
+      ? "border-[--color-attack]/35 bg-[--color-attack]/[0.09] c-attack-glow"
       : tone === "good"
-        ? "border-[--color-repair]/35 bg-[--color-repair]/[0.09] text-[--color-repair-glow]"
-        : "border-white/12 bg-white/[0.04] text-[--color-hull-200]";
+        ? "border-[--color-repair]/35 bg-[--color-repair]/[0.09] c-repair-glow"
+        : "border-white/12 bg-white/[0.04] c-dim-bright";
   return (
     <div className={`rounded-xl border px-3.5 py-2.5 text-sm leading-snug ${colour} ${className}`}>
       {children}

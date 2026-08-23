@@ -184,6 +184,7 @@ export function buildDie(sides: number, radius: number, columns: number, rows: n
   const positions: number[] = [];
   const normals: number[] = [];
   const uvs: number[] = [];
+  const faceIndexes: number[] = [];
   const frames: FaceFrame[] = [];
 
   const cellW = 1 / columns;
@@ -285,6 +286,7 @@ export function buildDie(sides: number, radius: number, columns: number, rows: n
         normals.push(normal.x, normal.y, normal.z);
         const [u, v] = uvFor(point);
         uvs.push(u!, v!);
+        faceIndexes.push(faceIndex);
       }
     }
 
@@ -301,6 +303,9 @@ export function buildDie(sides: number, radius: number, columns: number, rows: n
   geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
   geometry.setAttribute("normal", new THREE.Float32BufferAttribute(normals, 3));
   geometry.setAttribute("uv", new THREE.Float32BufferAttribute(uvs, 2));
+  // Which face (0-based, matching `frames`) each vertex belongs to, so a
+  // die's material can dim every face but the one it rolled.
+  geometry.setAttribute("faceIndex", new THREE.Float32BufferAttribute(faceIndexes, 1));
   geometry.computeBoundingSphere();
 
   const seatHeight = frames.reduce(

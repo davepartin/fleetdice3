@@ -15,6 +15,8 @@ export type DeckPalette = {
   stencil: string;
 };
 
+// The deck's own paint: no matching token except each side's rim glow —
+// you: --color-shield. enemy: close to but distinct from --color-attack.
 export const DECK_PALETTE: Record<"you" | "enemy", DeckPalette> = {
   you: {
     plate: "#1b2436",
@@ -105,7 +107,7 @@ export function paintDeck(
   const emissive = mode === "emissive";
 
   if (emissive) {
-    ctx.fillStyle = "#000000";
+    ctx.fillStyle = "#000000"; // no glow by default; no matching token
     ctx.fillRect(0, 0, SIZE, SIZE);
   } else {
     const base = ctx.createLinearGradient(0, 0, SIZE * 0.6, SIZE);
@@ -216,7 +218,7 @@ export function paintDeck(
       ctx.rect(cx, cy, 92, 18);
       ctx.clip();
       for (let i = -20; i < 120; i += 14) {
-        ctx.strokeStyle = i % 28 === 0 ? "#ffd23d" : "#0a0d16";
+        ctx.strokeStyle = i % 28 === 0 ? "#ffd23d" : "#0a0d16"; // --color-energy : no matching token
         ctx.lineWidth = 8;
         ctx.beginPath();
         ctx.moveTo(cx + i, cy + 26);
@@ -227,6 +229,113 @@ export function paintDeck(
     }
     ctx.restore();
   }
+
+  return canvas;
+}
+
+const CAP_SIZE = 256;
+
+/**
+ * A locked cell: not a dim die, a sealed hatch. Amber hazard stripes around
+ * the rim (the same visual language as the deck's corner stencils) and a
+ * padlock at the centre — the shape a player already reads as "locked" from
+ * the shipyard list, so the board never has to teach it twice.
+ */
+export function paintLockCap(): HTMLCanvasElement {
+  const canvas = document.createElement("canvas");
+  canvas.width = canvas.height = CAP_SIZE;
+  const ctx = canvas.getContext("2d")!;
+  const size = CAP_SIZE;
+
+  ctx.fillStyle = "#0a0d16"; // near-void cap base; no matching token — 3D-only
+  ctx.fillRect(0, 0, size, size);
+
+  // Hazard stripes around the border only, so the padlock reads clearly
+  // against a plain centre.
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(0, 0, size, size);
+  ctx.rect(size * 0.16, size * 0.16, size * 0.68, size * 0.68);
+  ctx.clip("evenodd");
+  for (let i = -size; i < size * 2; i += size / 9) {
+    ctx.strokeStyle = Math.round(i / (size / 9)) % 2 === 0 ? "#c98a12" : "#0a0d16"; // dimmed --color-energy : cap base
+    ctx.lineWidth = size / 22;
+    ctx.beginPath();
+    ctx.moveTo(i, size);
+    ctx.lineTo(i + size, 0);
+    ctx.stroke();
+  }
+  ctx.restore();
+
+  // The padlock: the same shape as the shipyard's <LockIcon>, redrawn as
+  // canvas paths so a player never has to learn a second "locked" glyph.
+  ctx.save();
+  ctx.translate(size / 2, size / 2);
+  ctx.scale(size / 96, size / 96);
+  ctx.translate(-16, -19);
+  ctx.strokeStyle = "#f2ede0"; // --color-primary, close enough for a 3D-only glyph
+  ctx.fillStyle = "#f2ede0";
+  ctx.lineWidth = 4;
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  ctx.beginPath();
+  ctx.moveTo(8, 16);
+  ctx.bezierCurveTo(8, 5, 11.3, 2, 16, 2);
+  ctx.bezierCurveTo(20.7, 2, 24, 5, 24, 11);
+  ctx.lineTo(24, 16);
+  ctx.stroke();
+  const r = 5;
+  ctx.beginPath();
+  ctx.moveTo(4 + r, 15);
+  ctx.lineTo(28 - r, 15);
+  ctx.quadraticCurveTo(28, 15, 28, 15 + r);
+  ctx.lineTo(28, 35 - r);
+  ctx.quadraticCurveTo(28, 35, 28 - r, 35);
+  ctx.lineTo(4 + r, 35);
+  ctx.quadraticCurveTo(4, 35, 4, 35 - r);
+  ctx.lineTo(4, 15 + r);
+  ctx.quadraticCurveTo(4, 15, 4 + r, 15);
+  ctx.fill();
+  ctx.fillStyle = "#0a0d16";
+  ctx.beginPath();
+  ctx.arc(16, 24, 2.4, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = "#0a0d16";
+  ctx.lineWidth = 2.6;
+  ctx.beginPath();
+  ctx.moveTo(16, 25.5);
+  ctx.lineTo(16, 29.5);
+  ctx.stroke();
+  ctx.restore();
+
+  return canvas;
+}
+
+/**
+ * An open bay with no ship in it: a soft plus, matching the shipyard's own
+ * "Open bay / add a ship" glyph. Nothing die-shaped stands here — a plain
+ * marker on bare deck is exactly the difference from both a locked hatch and
+ * an actual hull.
+ */
+export function paintEmptyMarker(): HTMLCanvasElement {
+  const canvas = document.createElement("canvas");
+  canvas.width = canvas.height = CAP_SIZE;
+  const ctx = canvas.getContext("2d")!;
+  const size = CAP_SIZE;
+  const cx = size / 2;
+  const cy = size / 2;
+  const arm = size * 0.16;
+  const thickness = size * 0.07;
+
+  ctx.strokeStyle = "rgba(182, 193, 220, 0.55)"; // --color-hull-200, dimmed for bare deck
+  ctx.lineWidth = thickness;
+  ctx.lineCap = "round";
+  ctx.beginPath();
+  ctx.moveTo(cx - arm, cy);
+  ctx.lineTo(cx + arm, cy);
+  ctx.moveTo(cx, cy - arm);
+  ctx.lineTo(cx, cy + arm);
+  ctx.stroke();
 
   return canvas;
 }

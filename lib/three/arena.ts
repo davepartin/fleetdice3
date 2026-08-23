@@ -8,7 +8,7 @@
 
 import * as THREE from "three";
 import type { MatchState, PlayerState, SideId, Tally } from "../engine";
-import { activeShips, cellForSlot, opponentOf } from "../engine";
+import { activeShips, cellForSlot, emptyOpenSlots, opponentOf } from "../engine";
 import { createStage, type Quality, type Stage } from "./stage";
 import { CELL, createBoard, cellCentre, type Board } from "./board";
 import { createDie, type Die, type DieKind } from "./die";
@@ -62,7 +62,7 @@ function frameFor(focus: Focus, phone = false) {
       pitch: 88,
       // On tall browser states we intentionally crop a sliver of decorative
       // deck edge. The dice, not the metal frame, deserve those pixels.
-      fitWidth: 9.1,
+      fitWidth: 8.3,
       fitDepth: 10.1,
       target: new THREE.Vector3(0, 0, 5.2),
       parallax: 0,
@@ -107,6 +107,11 @@ export type SyncOptions = {
    * feels broken, and it happens about one time in four.
    */
   thrown?: Set<string>;
+  /**
+   * Light the straight on the board. Held off while the dice are still in
+   * the air so the run arriving is one beat, not a glow that appears mid-throw.
+   */
+  showRunMarks?: boolean;
 };
 
 export type Arena = {
@@ -119,6 +124,8 @@ export type Arena = {
   /** The flagship's position on a deck. */
   flagshipWorld(side: "you" | "enemy"): THREE.Vector3;
   boardOf(side: "you" | "enemy"): Board;
+  /** Resolves once every die on that deck has landed, or after a short cap. */
+  whenSettled(side?: "you" | "enemy"): Promise<void>;
   dispose(): void;
 };
 
@@ -138,6 +145,7 @@ export function createArena(canvas: HTMLCanvasElement, options: ArenaOptions = {
     enemy: makeDeck("enemy", ENEMY_DECK, font, stage),
   };
   const isPhone = () => isPhoneLayout();
+  let settledAlive = true;
 
   /* Tapping ---------------------------------------------------------- */
 
@@ -255,8 +263,13 @@ export function createArena(canvas: HTMLCanvasElement, options: ArenaOptions = {
       if (!die) {
         // On a phone the face, not the board decoration, is the product. The
         // larger hulls fill their cells while the atlas keeps their values and
-        // payoff marks clean at the steeper command angle.
-        die = createDie(spec.kind, font, isPhone() ? 1.66 : 1.14, CELL);
+        // payoff marks clean at the steeper command angle. The flagship gets
+        // a further boost on top of that — it shares its cube geometry with
+        // every d6 hull ship, so size is the one silhouette cue available
+        // without a bespoke shape, and it needs to survive a greyscale,
+        // label-blurred screenshot on its own.
+        const base = isPhone() ? 1.66 : 1.14;
+        die = createDie(spec.kind, font, spec.kind === "flag" ? base * 1.3 : base, CELL, isPhone());
         die.object.userData.shipId = id;
         die.object.traverse((node) => {
           node.userData.shipId = id;
@@ -276,8 +289,11 @@ export function createArena(canvas: HTMLCanvasElement, options: ArenaOptions = {
 
       // A ship that exists but has not rolled yet is shown blank, not removed.
       // Seeing the shape and size of the enemy fleet is information you would
-      // have across a table, and an empty enemy deck reads as a bug.
-      const facedown = !show || spec.value === 0;
+      // have across a table, and an empty enemy deck reads as a bug. A
+      // disabled ship never rolls this round at all, so its value stays 0
+      // for the whole round — without the disabled exception it would sit
+      // blank all round, indistinguishable from a ship about to roll.
+      const facedown = !show || (spec.value === 0 && !spec.disabled);
       die.object.visible = true;
       die.setState({ facedown });
 
@@ -286,7 +302,13 @@ export function createArena(canvas: HTMLCanvasElement, options: ArenaOptions = {
       // A second sync while the die is already flying to this face used to
       // yank it back into the air. Same number, same throw — leave it alone.
       const alreadyFlyingThere = die.rolling && spec.value === die.value;
-      if (!facedown && !alreadyFlyingThere && (changed || asked)) {
+      // A disabled ship never rolls this round, so spec.value sits at 0
+      // (clampFace floors a real die's value at 1) for as long as it stays
+      // disabled — without this exception every resync would read that as
+      // "changed" and keep re-throwing it to face 1, fighting the flattened
+      // pose it is meant to settle into. It just keeps showing whatever it
+      // last rolled.
+      if (!facedown && !spec.disabled && !alreadyFlyingThere && (changed || asked)) {
         if (opts.instant) die.setFace(spec.value);
         else {
           die.throwTo(spec.value, {
@@ -305,13 +327,17 @@ export function createArena(canvas: HTMLCanvasElement, options: ArenaOptions = {
       });
     }
 
+    const emptySlots = new Set(emptyOpenSlots(player));
     for (let cell = 0; cell < 9; cell += 1) {
       if (cell === 4) {
         deck.board.setCellOpen(cell, true);
+        deck.board.setCellEmpty(cell, false);
         continue;
       }
       const slot = cell < 4 ? cell : cell - 1;
-      deck.board.setCellOpen(cell, player.open[slot] ?? false);
+      const open = player.open[slot] ?? false;
+      deck.board.setCellOpen(cell, open);
+      deck.board.setCellEmpty(cell, emptySlots.has(slot));
     }
 
     applyScoreMarks(
@@ -319,6 +345,7 @@ export function createArena(canvas: HTMLCanvasElement, options: ArenaOptions = {
       player,
       show,
       deckKey === "you" ? opts.previewTally : undefined,
+      opts.showRunMarks !== false,
     );
   }
 
@@ -328,6 +355,7 @@ export function createArena(canvas: HTMLCanvasElement, options: ArenaOptions = {
     player: PlayerState,
     show: boolean,
     liveTally?: Tally | null,
+    showRun = true,
   ) {
     const tally: Tally | null = liveTally ?? player.tally;
     if (!show) {
@@ -337,7 +365,7 @@ export function createArena(canvas: HTMLCanvasElement, options: ArenaOptions = {
       return;
     }
 
-    const run = tally?.run ?? null;
+    const run = showRun ? (tally?.run ?? null) : null;
     const runCells: number[] = [];
     const lineCells = new Map<number, "row" | "col">();
     for (const line of tally?.lines ?? []) {
@@ -373,7 +401,7 @@ export function createArena(canvas: HTMLCanvasElement, options: ArenaOptions = {
         inRun,
         inLine: cell >= 0 ? (lineCells.get(cell) ?? null) : null,
         flagRing,
-        flagRingColor: FLAG_FACE_PALETTE[face]?.ring ?? 0xffd23d,
+        flagRingColor: FLAG_FACE_PALETTE[face]?.ring ?? 0xffd23d, // fallback: --color-energy
       });
     }
     deck.board.setRunCells(runCells);
@@ -421,7 +449,23 @@ export function createArena(canvas: HTMLCanvasElement, options: ArenaOptions = {
     boardOf(side) {
       return decks[side].board;
     },
+    whenSettled(side = "you") {
+      return new Promise<void>((resolve) => {
+        const started = performance.now();
+        const tick = () => {
+          if (!settledAlive) {
+            resolve();
+            return;
+          }
+          const flying = [...decks[side].dice.values()].some((die) => die.rolling);
+          if (!flying || performance.now() - started > 2200) resolve();
+          else requestAnimationFrame(tick);
+        };
+        requestAnimationFrame(tick);
+      });
+    },
     dispose() {
+      settledAlive = false;
       window.removeEventListener("resize", refreshFrame);
       canvas.removeEventListener("pointerdown", onPointerDown);
       canvas.removeEventListener("pointerup", onPointerUp);
@@ -440,6 +484,9 @@ export function createArena(canvas: HTMLCanvasElement, options: ArenaOptions = {
   if (typeof window !== "undefined") {
     (window as unknown as { __fd3?: unknown }).__fd3 = {
       arena,
+      tap(id: string) {
+        options.onTapDie?.(id);
+      },
       debug() {
         const out: Record<string, unknown> = {};
         for (const [key, deck] of Object.entries(decks)) {

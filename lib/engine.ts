@@ -562,6 +562,18 @@ export function bestRun(dice: DieValue[], chosenTake?: number | null): Straight 
   return { ...best, taken, reward: straightReward(taken, best.biggest) };
 }
 
+/**
+ * The prizes the commander actually chooses between. A five-long run is one
+ * prize. Anything longer is the short cash (Energy) versus the long cash
+ * (Attack). The rungs in between stay legal in the engine; they are not a
+ * third button on the board.
+ */
+export function straightPrizeTakes(run: Pick<Straight, "length">): number[] {
+  const cap = Math.min(run.length, TUNING.runMax);
+  if (cap <= TUNING.runMin) return [TUNING.runMin];
+  return [TUNING.runMin, cap];
+}
+
 export function tally(
   dice: DieValue[],
   flagLevel: number,

@@ -7,7 +7,7 @@
  */
 
 import * as THREE from "three";
-import { DECK_PALETTE, PLAY_FRACTION, cellOffset, paintDeck } from "./deckArt";
+import { DECK_PALETTE, PLAY_FRACTION, cellOffset, paintDeck, paintEmptyMarker, paintLockCap } from "./deckArt";
 
 export type BoardSide = "you" | "enemy";
 
@@ -28,6 +28,8 @@ export type Board = {
   /** Local position of the centre of a 3×3 cell, 0–8, on the deck surface. */
   cellPosition(cell: number): THREE.Vector3;
   setCellOpen(cell: number, open: boolean): void;
+  /** An open cell with no ship in it yet: a soft plus, not a dark square. */
+  setCellEmpty(cell: number, empty: boolean): void;
   /** Highlight a row or column while a formation pays out. */
   flashLine(cells: number[], color: THREE.ColorRepresentation): void;
   /** Which cells are part of the straight. */
@@ -61,7 +63,7 @@ export function createBoard(side: BoardSide, font: string): Board {
   const topMaterial = new THREE.MeshPhysicalMaterial({
     map: albedo,
     emissiveMap: emissive,
-    emissive: new THREE.Color(0xffffff),
+    emissive: new THREE.Color(0xffffff), // --color-white
     emissiveIntensity: 0.48,
     roughness: 0.46,
     metalness: 0.45,
@@ -88,9 +90,12 @@ export function createBoard(side: BoardSide, font: string): Board {
   // outside it created a second cyan rectangle and wasted the phone's edge
   // pixels on decoration instead of dice.
 
-  // Locked cells get a dark cap so they read as sealed rather than empty.
+  // Locked cells get a sealed hatch — hazard stripes and a padlock, not just
+  // a dark square that could be mistaken for an empty or unlit cell.
+  const lockTexture = new THREE.CanvasTexture(paintLockCap());
+  lockTexture.colorSpace = THREE.SRGBColorSpace;
   const capMaterial = new THREE.MeshPhysicalMaterial({
-    color: new THREE.Color(0x05080f),
+    map: lockTexture,
     roughness: 0.85,
     metalness: 0.2,
     transparent: true,
@@ -110,13 +115,36 @@ export function createBoard(side: BoardSide, font: string): Board {
     caps.push(cap);
   }
 
+  // An open cell with no ship yet: a soft plus on bare deck, matching the
+  // shipyard's own "Open bay" glyph — never a locked hatch, never a hull.
+  const emptyTexture = new THREE.CanvasTexture(paintEmptyMarker());
+  emptyTexture.colorSpace = THREE.SRGBColorSpace;
+  const emptyMaterial = new THREE.MeshBasicMaterial({
+    map: emptyTexture,
+    transparent: true,
+    depthWrite: false,
+  });
+  const emptyMarkers: THREE.Mesh[] = [];
+  for (let cell = 0; cell < 9; cell += 1) {
+    const marker = new THREE.Mesh(
+      new THREE.PlaneGeometry(CELL * 0.55, CELL * 0.55),
+      emptyMaterial.clone(),
+    );
+    marker.rotation.x = -Math.PI / 2;
+    const centre = cellCentre(cell);
+    marker.position.set(centre.x, 0.008, centre.z);
+    marker.visible = false;
+    group.add(marker);
+    emptyMarkers.push(marker);
+  }
+
   // The orange bar that marks a die as part of the straight.
   const runBars: THREE.Mesh[] = [];
   for (let cell = 0; cell < 9; cell += 1) {
     const bar = new THREE.Mesh(
       new THREE.PlaneGeometry(CELL * 0.7, 0.13),
       new THREE.MeshBasicMaterial({
-        color: 0xff9d2e,
+        color: 0xff9d2e, // --color-run
         transparent: true,
         opacity: 0,
         blending: THREE.AdditiveBlending,
@@ -156,6 +184,7 @@ export function createBoard(side: BoardSide, font: string): Board {
     const first = cellCentre(formation.cells[0]!);
     const last = cellCentre(formation.cells[formation.cells.length - 1]!);
     const row = formation.kind === "row";
+    // row: --color-energy. column: close to but distinct from --color-attack.
     const colour = row ? 0xffd23d : 0xff4d5f;
 
     // A wide light channel runs through the actual centres of the matching
@@ -216,6 +245,10 @@ export function createBoard(side: BoardSide, font: string): Board {
     setCellOpen(cell, open) {
       const cap = caps[cell];
       if (cap) cap.visible = !open;
+    },
+    setCellEmpty(cell, empty) {
+      const marker = emptyMarkers[cell];
+      if (marker) marker.visible = empty;
     },
     flashLine(cells, color) {
       if (cells.length < 2) return;
@@ -316,6 +349,8 @@ export function createBoard(side: BoardSide, font: string): Board {
       clearFormations();
       albedo.dispose();
       emissive.dispose();
+      lockTexture.dispose();
+      emptyTexture.dispose();
       group.traverse((object) => {
         if (object instanceof THREE.Mesh) {
           object.geometry.dispose();
@@ -359,6 +394,7 @@ function formationBadgeTexture(
   canvas.width = 384;
   canvas.height = 192;
   const ctx = canvas.getContext("2d")!;
+  // row: --color-energy. column: close to but distinct from --color-attack.
   const colour = kind === "row" ? "#ffd23d" : "#ff5a69";
 
   ctx.clearRect(0, 0, canvas.width, canvas.height);

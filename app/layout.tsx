@@ -1,4 +1,4 @@
-import type { Metadata, Viewport } from "next";
+import type { Metadata } from "next";
 import localFont from "next/font/local";
 import { ViewportSync } from "@/components/ViewportSync";
 import "./globals.css";
@@ -31,6 +31,20 @@ const body = localFont({
   fallback: ["system-ui", "sans-serif"],
 });
 
+/**
+ * Dice numerals only — never referenced by any CSS rule that touches real
+ * page text. A numeral is read at ~40px, tilted away from the eye, on a
+ * saturated field: it needs the plainest, heaviest, most closed shapes
+ * available, which is exactly what a display face like Oxanium gives up at
+ * that size.
+ */
+const numeral = localFont({
+  src: [{ path: "../public/fonts/archivoblack-latin-900-normal.woff2", weight: "900", style: "normal" }],
+  variable: "--font-numeral-face",
+  display: "block",
+  fallback: ["Arial Black", "sans-serif"],
+});
+
 export const metadata: Metadata = {
   title: "Fleet Dice 3",
   description:
@@ -44,19 +58,11 @@ export const metadata: Metadata = {
   },
 };
 
-export const viewport: Viewport = {
-  themeColor: "#04060d",
-  width: "device-width",
-  initialScale: 1,
-  minimumScale: 1,
-  maximumScale: 1,
-  userScalable: false,
-  viewportFit: "cover",
-};
+export { viewport } from "./viewport";
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${display.variable} ${body.variable}`}>
+    <html lang="en" className={`${display.variable} ${body.variable} ${numeral.variable}`}>
       <body>
         <ViewportSync />
         {children}

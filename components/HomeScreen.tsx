@@ -23,6 +23,7 @@ import {
   type RememberedRoomCard,
 } from "@/lib/rooms";
 import { basePath } from "@/lib/paths";
+import { NOUN } from "@/lib/reference";
 
 export function HomeScreen() {
   const [name, setName] = useState("Commander");
@@ -103,7 +104,7 @@ export function HomeScreen() {
             {/* Wordmark */}
             <header className="anim-rise text-center">
               <p className="t-eyebrow">Build the fleet · Break the flagship</p>
-              <h1 className="t-display mt-1 text-[clamp(2.8rem,13vw,4.4rem)] text-white">
+              <h1 className="t-display mt-1 text-3xl text-white">
                 Fleet Dice<span className="c-energy"> 3</span>
               </h1>
             </header>
@@ -118,7 +119,7 @@ export function HomeScreen() {
                 value={name}
                 maxLength={20}
                 onChange={(event) => saveName(event.target.value)}
-                className="t-num w-full rounded-xl border border-white/12 bg-black/40 px-3 py-2.5 text-lg text-white outline-none focus:border-white/40"
+                className="t-num w-full rounded-xl border border-white/12 bg-black/40 px-3 py-2.5 text-base text-white outline-none focus:border-white/40"
               />
             </Panel>
 
@@ -129,7 +130,7 @@ export function HomeScreen() {
                   <ModeIcon kind="solo" />
                   <span className="min-w-0 flex-1">
                     <span className="t-display block text-xl text-white">Play solo</span>
-                    <span className="mt-0.5 block text-[0.84rem] leading-snug c-dim">
+                    <span className="mt-0.5 block text-sm leading-snug c-dim">
                       Straight into a battle against the ship&apos;s computer. Pick how hard it plays.
                     </span>
                   </span>
@@ -144,7 +145,7 @@ export function HomeScreen() {
                   <ModeIcon kind="versus" />
                   <span className="min-w-0 flex-1">
                     <span className="t-display block text-xl text-white">Play a friend</span>
-                    <span className="mt-0.5 block text-[0.84rem] leading-snug c-dim">
+                    <span className="mt-0.5 block text-sm leading-snug c-dim">
                       Get a four-digit code and send them the link. Start as many games as you like.
                     </span>
                   </span>
@@ -171,9 +172,9 @@ export function HomeScreen() {
                   }}
                   onKeyDown={(event) => event.key === "Enter" && join()}
                   aria-label="Four digit game code"
-                  className="t-num min-w-0 flex-1 rounded-xl border border-white/12 bg-black/40 px-3 py-3 text-center text-2xl tracking-[0.4em] text-white outline-none focus:border-white/40"
+                  className="t-num min-w-0 flex-1 rounded-xl border border-white/12 bg-black/40 px-3 py-3 text-center text-xl tracking-[0.4em] text-white outline-none focus:border-white/40"
                 />
-                <Button tone="confirm" onClick={join} disabled={joining || code.length !== 4}>
+                <Button tone="ghost" onClick={join} disabled={joining || code.length !== 4}>
                   {joining ? "…" : "Join"}
                 </Button>
               </div>
@@ -187,7 +188,7 @@ export function HomeScreen() {
             {/* Your games in progress */}
             {cards.length > 0 && (
               <Panel className="p-4">
-                <p className="t-eyebrow mb-2">Your games</p>
+                <p className="t-eyebrow mb-2">Your {NOUN.games}</p>
                 <div className="flex flex-col gap-2">
                   {cards.map((card) => (
                     <div
@@ -199,11 +200,11 @@ export function HomeScreen() {
                         className="flex min-w-0 flex-1 items-center gap-3 px-3 py-2.5 transition hover:bg-white/[0.07]"
                       >
                         <span className="t-num rounded-lg bg-white/8 px-2 py-1 text-sm">{card.code}</span>
-                        <span className="min-w-0 flex-1 text-[0.86rem]">
+                        <span className="min-w-0 flex-1 text-sm">
                           <b className="text-white">
                             {card.enemyName ? `vs ${card.enemyName}` : "Waiting for a friend"}
                           </b>
-                          <span className="block text-[0.72rem] c-dim">
+                          <span className="block text-xs c-dim">
                             {card.status === "waiting" ? "Not started" : `Round ${card.round}`}
                           </span>
                         </span>
@@ -213,7 +214,7 @@ export function HomeScreen() {
                       </Link>
                       <button
                         type="button"
-                        className="min-h-[44px] shrink-0 border-l border-white/10 px-3 text-[0.72rem] font-bold uppercase tracking-wide text-[--color-attack-glow]"
+                        className="min-h-[44px] shrink-0 border-l border-white/10 px-3 text-xs font-bold uppercase tracking-wide c-attack-glow"
                         onClick={() => {
                           setError(null);
                           setPendingCancel(card);
@@ -252,15 +253,15 @@ export function HomeScreen() {
                 {showBoard && (
                   <Panel className="p-4">
                     {battles.length === 0 ? (
-                      <p className="text-sm c-dim">No games running right now. Start one.</p>
+                      <p className="text-sm c-dim">No {NOUN.games} running right now. Start one.</p>
                     ) : (
                       <ul className="flex flex-col gap-1.5">
                         {battles.map((row) => (
-                          <li key={row.id} className="flex items-center gap-2 text-[0.84rem]">
+                          <li key={row.id} className="flex items-center gap-2 text-sm">
                             <Chip tone={row.status === "active" ? "attack" : "neutral"}>
                               {row.status === "active" ? `Round ${row.round}` : "Waiting"}
                             </Chip>
-                            <span className="truncate text-[--color-hull-200]">
+                            <span className="truncate c-dim-bright">
                               {row.hostName}
                               {row.guestName ? ` vs ${row.guestName}` : ""}
                             </span>
@@ -274,7 +275,7 @@ export function HomeScreen() {
                         <p className="t-eyebrow mb-2">Recent results</p>
                         <ul className="flex flex-col gap-1">
                           {results.map((row) => (
-                            <li key={row.id} className="text-[0.82rem] c-dim">
+                            <li key={row.id} className="text-sm c-dim">
                               <b className="c-repair">{row.winnerName}</b> beat {row.loserName}
                             </li>
                           ))}
@@ -293,7 +294,7 @@ export function HomeScreen() {
               </Notice>
             )}
 
-            <p className="pt-2 text-center text-[0.72rem] c-dim">
+            <p className="pt-2 text-center text-xs c-dim">
               Fleet Dice 3 · every number in this game was measured, not guessed
             </p>
           </div>
@@ -304,21 +305,21 @@ export function HomeScreen() {
       <Sheet
         open={Boolean(pendingCancel)}
         onClose={() => !closing && setPendingCancel(null)}
-        title="Cancel this game?"
+        title={`Cancel this ${NOUN.game}?`}
         footer={
           <div className="flex flex-col gap-2">
             <Button tone="ghost" full disabled={closing} onClick={() => setPendingCancel(null)}>
               Keep it
             </Button>
             <Button tone="primary" full disabled={closing} onClick={() => void confirmCancel()}>
-              {closing ? "Ending…" : "Cancel game"}
+              {closing ? "Ending…" : `Cancel ${NOUN.game}`}
             </Button>
           </div>
         }
       >
-        <p className="text-[0.94rem] leading-relaxed text-[--color-hull-200]">
+        <p className="text-base leading-relaxed c-dim-bright">
           This ends{" "}
-          {pendingCancel?.enemyName ? `the game vs ${pendingCancel.enemyName}` : "this game"} for
+          {pendingCancel?.enemyName ? `the ${NOUN.game} vs ${pendingCancel.enemyName}` : `this ${NOUN.game}`} for
           both of you. The four-digit code dies.
         </p>
       </Sheet>

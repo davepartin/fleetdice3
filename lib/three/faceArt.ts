@@ -11,6 +11,13 @@ import * as THREE from "three";
 
 export type MarkKind = "energy" | "repair" | "direct";
 
+// Every colour in this file — MARK_COLOR, HIT, FLAG_SHELL, BLOCK,
+// FLAG_FACE_PALETTE, and the keylines/shadows/highlights painted in
+// paintGlyph and paintFace below — is the die-face art's own bespoke
+// palette (plate gradients, per-value flagship insets, mark glyphs, ink and
+// shine passes), not the UI's --color-* tokens. None has a 1:1 token match
+// in app/globals.css, so none is named against one, except where a value is
+// literally reused — e.g. "#ffffff" below is always --color-white.
 export const MARK_COLOR: Record<MarkKind, string> = {
   // These stay intentionally lighter than their matching HUD colours. Tiny
   // marks are viewed on a steeply projected face, so the symbol needs a bright
@@ -32,11 +39,14 @@ export type FaceSpec = {
 
 const HIT = { ink: "#ffffff", top: "#ff6075", bottom: "#c92342", glow: "#ff7182", deep: "#5e0b1b" };
 /**
- * The flagship's outer resin shell. The face inset carries the active bonus
- * colour; keeping the surrounding hull nearly black makes that inset read as
- * one rounded die face instead of a yellow tile mounted on a brown box.
+ * The flagship's outer resin shell — bronze, close to AAA-PLAN.md's design
+ * table ("Flagship | #a8842f bronze"), which has no CSS token of its own:
+ * the one hull colour reserved for the flagship alone. The face inset still
+ * carries the active bonus colour; the bronze frame around it is what makes
+ * the flagship identifiable at a glance even with that colour and its
+ * labels stripped away.
  */
-const FLAG_SHELL = { top: "#171c27", bottom: "#03060c", deep: "#000207" };
+const FLAG_SHELL = { top: "#c9a24a", bottom: "#8a6b22", deep: "#2b1f08" };
 
 /** A cheap repeatable hash, so the resin speckle is identical on every build. */
 function pseudo(n: number): number {
@@ -187,7 +197,8 @@ function paintFace(
   sides: number,
   size: number,
   mode: "albedo" | "emissive",
-  numberFont: string,
+  numeralFont: string,
+  captionFont: string,
   layout?: FaceLayout,
 ) {
   const isFlag = spec.role === "flag";
@@ -313,7 +324,7 @@ function paintFace(
   ctx.save();
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  ctx.font = `900 ${numberSize}px ${numberFont}`;
+  ctx.font = `900 ${numberSize}px ${numeralFont}`;
   if (mode === "albedo") {
     ctx.shadowBlur = 0;
     ctx.lineJoin = "round";
@@ -375,7 +386,7 @@ function paintFace(
       ctx.roundRect(size * 0.155, capY - size * 0.082, size * 0.69, size * 0.164, size * 0.05);
       ctx.fill();
     }
-    ctx.font = `900 ${size * 0.105}px ${numberFont}`;
+    ctx.font = `900 ${size * 0.105}px ${captionFont}`;
     ctx.letterSpacing = `${size * 0.012}px`;
     ctx.fillStyle = mode === "albedo" ? "#fff6dd" : "#000000";
     ctx.shadowBlur = 0;
@@ -426,9 +437,10 @@ export function paintHelpFace(
   spec: FaceSpec,
   sides: number,
   size: number,
-  numberFont: string,
+  numeralFont: string,
+  captionFont: string,
 ) {
-  paintFace(ctx, spec, sides, size, "albedo", numberFont, HELP_HULL_LAYOUT[sides]);
+  paintFace(ctx, spec, sides, size, "albedo", numeralFont, captionFont, HELP_HULL_LAYOUT[sides]);
 }
 
 /* ------------------------------------------------------------------ */
@@ -458,7 +470,8 @@ export function buildAtlas(
   specs: FaceSpec[],
   sides: number,
   cell: number,
-  numberFont: string,
+  numeralFont: string,
+  captionFont: string,
 ): Atlas {
   const { columns, rows } = atlasLayout(sides);
   const width = columns * cell;
@@ -479,7 +492,7 @@ export function buildAtlas(
       ctx.beginPath();
       ctx.rect(0, 0, cell, cell);
       ctx.clip();
-      paintFace(ctx, spec, sides, cell, mode, numberFont);
+      paintFace(ctx, spec, sides, cell, mode, numeralFont, captionFont);
       ctx.restore();
     });
     const texture = new THREE.CanvasTexture(canvas);

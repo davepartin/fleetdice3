@@ -31,6 +31,7 @@ import {
   upgradeCost,
   upgradeTarget,
 } from "@/lib/engine";
+import { NOUN } from "@/lib/reference";
 import { HullShape } from "./HullShape";
 import { Button, Chip } from "./ui";
 
@@ -71,8 +72,8 @@ function LockIcon() {
     <svg viewBox="0 0 32 38" aria-hidden="true">
       <path d="M8 16v-5C8 5 11.3 2 16 2s8 3 8 9v5" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" />
       <rect x="4" y="15" width="24" height="20" rx="5" fill="currentColor" />
-      <circle cx="16" cy="24" r="2.4" fill="#090711" />
-      <path d="M16 25.5v4" stroke="#090711" strokeWidth="2.6" strokeLinecap="round" />
+      <circle cx="16" cy="24" r="2.4" fill="var(--color-lock-hole)" />
+      <path d="M16 25.5v4" stroke="var(--color-lock-hole)" strokeWidth="2.6" strokeLinecap="round" />
     </svg>
   );
 }
@@ -184,14 +185,14 @@ export function Shipyard({ player, onAction, onDone, busy }: Props) {
         </div>
         <div className="yard-bank">
           <span className="yard-bank-value t-num c-energy">{energy}</span>
-          <span className="t-eyebrow text-[0.55rem]">in the bank</span>
+          <span className="t-eyebrow text-xs">in the bank</span>
         </div>
       </header>
 
       <div className="yard-stats">
         <Chip>{player.ships.length} ships</Chip>
-        <Chip>{openSlotCount(player)}/8 bays</Chip>
-        <Chip tone="energy">Flagship L{player.flag.level}</Chip>
+        <Chip>{openSlotCount(player)}/8 {NOUN.bays}</Chip>
+        <Chip tone="energy">{NOUN.flagship} L{player.flag.level}</Chip>
       </div>
 
       {/* ---------------- the board ---------------- */}
@@ -225,7 +226,7 @@ export function Shipyard({ player, onAction, onDone, busy }: Props) {
 
       {/* ---------------- out ---------------- */}
       <div className="yard-foot">
-        <Button tone="command" size="lg" full onClick={onDone} disabled={busy}>
+        <Button tone="primary" size="lg" full onClick={onDone} disabled={busy}>
           Return to battle
         </Button>
       </div>
@@ -258,11 +259,11 @@ function CellButton({
     cost = offer.cost;
     affordable = cost !== null && cost <= energy;
     state = "flag";
-    label = `Flagship, level ${offer.level}`;
+    label = `${NOUN.flagship}, level ${offer.level}`;
     body = (
       <>
         <span className="yard-cell-art yard-cell-flag">★</span>
-        <span className="yard-cell-name">Flagship</span>
+        <span className="yard-cell-name">{NOUN.flagship}</span>
         <span className="yard-cell-sub">
           {cost === null ? "Level 3 · max" : `L${offer.level} → L${offer.level + 1}`}
         </span>
@@ -286,11 +287,11 @@ function CellButton({
     cost = offer.cheapest;
     affordable = cost <= energy;
     state = "empty";
-    label = "Open bay, add a ship";
+    label = `Open ${NOUN.bay}, add a ship`;
     body = (
       <>
         <span className="yard-cell-art yard-cell-empty-art">+</span>
-        <span className="yard-cell-name">Open bay</span>
+        <span className="yard-cell-name">Open {NOUN.bay}</span>
         <span className="yard-cell-sub">add a ship</span>
       </>
     );
@@ -298,7 +299,7 @@ function CellButton({
     cost = offer.cost;
     affordable = cost !== null && cost <= energy;
     state = "locked";
-    label = "Locked bay";
+    label = `Locked ${NOUN.bay}`;
     body = (
       <>
         <span className="yard-cell-art yard-cell-lock"><LockIcon /></span>
@@ -367,7 +368,7 @@ function Drawer({
               faces.
             </p>
             <Button
-              tone="command"
+              tone="ghost"
               full
               disabled={busy || cost > energy}
               onClick={() => onAct({ type: "shop", operation: "flagship" })}
@@ -384,7 +385,7 @@ function Drawer({
     const cost = offer.cost;
     return (
       <section className="yard-drawer anim-rise">
-        <DrawerHead title={`d${offer.ship.sides} ship · bay ${offer.cell + 1}`} onClose={onClose} />
+        <DrawerHead title={`d${offer.ship.sides} ship · ${NOUN.bay} ${offer.cell + 1}`} onClose={onClose} />
         {offer.next === null || cost === null ? (
           <p className="yard-copy">A d10 is the biggest ship there is. Nothing left to buy here.</p>
         ) : (
@@ -410,7 +411,7 @@ function Drawer({
             </div>
             <p className="yard-copy">{HULL_BLURB[offer.next]}</p>
             <Button
-              tone="command"
+              tone="ghost"
               full
               disabled={busy || cost > energy}
               onClick={() => onAct({ type: "shop", operation: "upgrade", shipId: offer.ship.id })}
@@ -426,7 +427,7 @@ function Drawer({
   if (offer.kind === "empty") {
     return (
       <section className="yard-drawer anim-rise">
-        <DrawerHead title={`Open bay ${offer.cell + 1}`} onClose={onClose} />
+        <DrawerHead title={`Open ${NOUN.bay} ${offer.cell + 1}`} onClose={onClose} />
         <div className="yard-hulls">
           {HULLS.map((sides) => {
             const cost = priceOf(sides);
@@ -458,9 +459,9 @@ function Drawer({
   const cost = offer.cost;
   return (
     <section className="yard-drawer anim-rise">
-      <DrawerHead title={`Locked bay ${offer.cell + 1}`} onClose={onClose} />
+      <DrawerHead title={`Locked ${NOUN.bay} ${offer.cell + 1}`} onClose={onClose} />
       <p className="yard-copy">
-        Opening a cell gives you somewhere to park another ship.
+        Opening a {NOUN.bay} gives you somewhere to park another ship.
         {offer.opensLines.length > 0 && (
           <>
             {" "}
@@ -472,10 +473,10 @@ function Drawer({
         )}
       </p>
       {cost === null ? (
-        <p className="yard-copy">Every cell is already open.</p>
+        <p className="yard-copy">Every {NOUN.bay} is already open.</p>
       ) : (
         <Button
-          tone="command"
+          tone="ghost"
           full
           disabled={busy || cost > energy}
           onClick={() => onAct({ type: "shop", operation: "slot", slotIndex: offer.slot })}
@@ -490,7 +491,7 @@ function Drawer({
 function DrawerHead({ title, onClose }: { title: string; onClose(): void }) {
   return (
     <div className="yard-drawer-head">
-      <h3 className="t-display text-base">{title}</h3>
+      <h3 className="t-display text-xl">{title}</h3>
       <button type="button" className="yard-drawer-close" onClick={onClose} aria-label="Close">
         ✕
       </button>
@@ -512,7 +513,7 @@ export function ShipyardSummary({ player }: { player: PlayerState }) {
           {counts[sides]} × d{sides}
         </Chip>
       ))}
-      <Chip tone="energy">Flagship L{player.flag.level}</Chip>
+      <Chip tone="energy">{NOUN.flagship} L{player.flag.level}</Chip>
     </div>
   );
 }

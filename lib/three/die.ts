@@ -10,6 +10,7 @@
 import * as THREE from "three";
 import { buildDie, type BuiltDie } from "./polyhedron";
 import { buildAtlas, faceSpec, flagFaceSpec, type Atlas } from "./faceArt";
+import { numeralFontFamily } from "./fonts";
 
 export type DieKind = 4 | 6 | 8 | 10 | "flag";
 
@@ -38,8 +39,8 @@ export type DieState = {
   facedown?: boolean;
 };
 
-const HULL_COLOR = 0xffffff;
-const HULL_ENEMY = 0xfff2f2;
+const HULL_COLOR = 0xffffff; // --color-white
+const HULL_ENEMY = 0xfff2f2; // a warm-white tint; no matching token — 3D-only
 
 /* ------------------------------------------------------------------ */
 /* Shared, cached across every die of a size                           */
@@ -69,14 +70,17 @@ function sharedFor(kind: DieKind, font: string): Shared {
       : Array.from({ length: sides }, (_, index) => faceSpec(index + 1));
 
   // 384px per face keeps glyph edges clean after the steep phone-camera
-  // projection without the large memory jump of a 512px d10 atlas.
-  const atlas = buildAtlas(specs, sides, 384, font);
+  // projection without the large memory jump of a 512px d10 atlas. The
+  // numeral gets its own face — Archivo Black, plain and heavy enough to
+  // survive at ~40px, tilted, on a saturated field — while `font` (Oxanium)
+  // still sets the flagship's small word caption.
+  const atlas = buildAtlas(specs, sides, 384, numeralFontFamily(), font);
   const built = buildDie(sides, 1, atlas.columns, atlas.rows);
 
   const material = new THREE.MeshPhysicalMaterial({
     map: atlas.map,
     emissiveMap: atlas.emissive,
-    emissive: new THREE.Color(0xffffff),
+    emissive: new THREE.Color(0xffffff), // --color-white
     emissiveIntensity: kind === "flag" ? 0.04 : 0.14,
     color: new THREE.Color(HULL_COLOR),
     // Gaming dice are resin, not chrome. A metal die in a dark room is a black
@@ -95,12 +99,12 @@ function sharedFor(kind: DieKind, font: string): Shared {
   // is what stops the dice dissolving into the background at phone size.
   const outlineGeometry = built.geometry.clone();
   const outline = new THREE.MeshBasicMaterial({
-    color: 0x020409,
+    color: 0x020409, // near-void rim; no matching token — 3D-only
     side: THREE.BackSide,
   });
 
   const hidden = new THREE.MeshPhysicalMaterial({
-    color: new THREE.Color(0x2b3450),
+    color: new THREE.Color(0x2b3450), // a facedown-hull blue-grey; no matching token — 3D-only
     metalness: 0.35,
     roughness: 0.52,
     clearcoat: 0.7,
@@ -178,13 +182,16 @@ const FACE_LEAN = 0.66;
 // face and the number/marks receive the maximum possible phone pixels.
 const PHONE_FACE_LEAN = 1.535;
 
-export function createDie(kind: DieKind, font: string, scale = 1, cellSize = 0): Die {
+export function createDie(kind: DieKind, font: string, scale = 1, cellSize = 0, phoneFraming = false): Die {
   const shared = sharedFor(kind, font);
   const sides = kind === "flag" ? 6 : kind;
   // Phone dice are deliberately oversized and viewed from a near-overhead
   // command camera. Aim their resolved face upward as well so the number and
-  // payoff marks stay square to the player's eye.
-  const faceLean = scale >= 1.45 ? PHONE_FACE_LEAN : FACE_LEAN;
+  // payoff marks stay square to the player's eye. Which camera is showing
+  // this die is an explicit flag rather than inferred from scale, since any
+  // die (the flagship, most notably) can be scaled up for reasons that have
+  // nothing to do with which camera is watching it.
+  const faceLean = phoneFraming ? PHONE_FACE_LEAN : FACE_LEAN;
   const lean = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), -faceLean);
 
   const object = new THREE.Group();
@@ -192,6 +199,39 @@ export function createDie(kind: DieKind, font: string, scale = 1, cellSize = 0):
   object.add(pivot);
 
   const material = shared.material.clone();
+  let activeFaceUniform: { value: number } | null = null;
+  material.onBeforeCompile = (shader) => {
+    // onBeforeCompile fires lazily, on this die's first real draw call — by
+    // then `value` (declared below) already holds whatever face was set
+    // before anything was ever rendered, so read it rather than assuming 1.
+    shader.uniforms.uActiveFace = { value: value - 1 };
+    activeFaceUniform = shader.uniforms.uActiveFace;
+    shader.vertexShader = shader.vertexShader
+      .replace(
+        "#include <common>",
+        "attribute float faceIndex;\nvarying float vFaceIndex;\n#include <common>",
+      )
+      .replace("#include <begin_vertex>", "#include <begin_vertex>\nvFaceIndex = faceIndex;");
+    shader.fragmentShader = shader.fragmentShader
+      .replace(
+        "#include <common>",
+        "uniform float uActiveFace;\nvarying float vFaceIndex;\n#include <common>",
+      )
+      .replace(
+        "#include <emissivemap_fragment>",
+        `#include <emissivemap_fragment>
+        {
+          // A real d10 shows its neighbours; a readable one does not. Every
+          // face but the one that was rolled sits at a third of its lit
+          // brightness, flattened to grey, with its marks' glow switched off
+          // — so a fleet of dice reads as one legible number each, not nine.
+          float lit = abs(vFaceIndex - uActiveFace) < 0.5 ? 1.0 : 0.0;
+          float luma = dot(diffuseColor.rgb, vec3(0.299, 0.587, 0.114));
+          diffuseColor.rgb = mix(vec3(luma) * 0.3, diffuseColor.rgb, lit);
+          totalEmissiveRadiance *= lit;
+        }`,
+      );
+  };
   const mesh = new THREE.Mesh(shared.built.geometry, material);
   mesh.castShadow = true;
   mesh.receiveShadow = false;
@@ -205,7 +245,7 @@ export function createDie(kind: DieKind, font: string, scale = 1, cellSize = 0):
   // a sprite turns to face the camera and ends up painted over the die's face.
   const glowMaterial = new THREE.MeshBasicMaterial({
     map: radialSprite(),
-    color: new THREE.Color(0x4db4ff),
+    color: new THREE.Color(0x4db4ff), // --color-shield
     transparent: true,
     opacity: 0,
     blending: THREE.AdditiveBlending,
@@ -225,7 +265,7 @@ export function createDie(kind: DieKind, font: string, scale = 1, cellSize = 0):
   // not read as resting on the deck — it reads as hovering over it.
   const contactMaterial = new THREE.MeshBasicMaterial({
     map: softShadowTexture(),
-    color: new THREE.Color(0x000000),
+    color: new THREE.Color(0x000000), // pure black shadow decal, not a design token
     transparent: true,
     opacity: 0.42,
     depthWrite: false,
@@ -241,7 +281,7 @@ export function createDie(kind: DieKind, font: string, scale = 1, cellSize = 0):
 
   // The orange bar that says "this die is in the straight".
   const barMaterial = new THREE.MeshBasicMaterial({
-    color: 0xff9d2e,
+    color: 0xff9d2e, // --color-run
     transparent: true,
     opacity: 0,
     blending: THREE.AdditiveBlending,
@@ -268,7 +308,7 @@ export function createDie(kind: DieKind, font: string, scale = 1, cellSize = 0):
   /** The flagship's link: a pale wash filling the cell, in the flagship's colour. */
   const linkMaterial = new THREE.MeshBasicMaterial({
     map: squareTexture("fill"),
-    color: 0xffd23d,
+    color: 0xffd23d, // --color-energy
     transparent: true,
     opacity: 0,
     depthWrite: false,
@@ -292,7 +332,7 @@ export function createDie(kind: DieKind, font: string, scale = 1, cellSize = 0):
   /** Picked for a reroll. */
   const selectionMaterial = new THREE.MeshBasicMaterial({
     map: squareTexture("outline"),
-    color: 0x69e6ff,
+    color: 0x69e6ff, // a brighter reroll-selection cyan; no matching token — 3D-only
     transparent: true,
     opacity: 0,
     depthWrite: false,
@@ -300,7 +340,7 @@ export function createDie(kind: DieKind, font: string, scale = 1, cellSize = 0):
   });
   const selectionFillMaterial = new THREE.MeshBasicMaterial({
     map: squareTexture("fill"),
-    color: 0x37cfff,
+    color: 0x37cfff, // a brighter reroll-selection cyan; no matching token — 3D-only
     transparent: true,
     opacity: 0,
     depthWrite: false,
@@ -328,7 +368,7 @@ export function createDie(kind: DieKind, font: string, scale = 1, cellSize = 0):
   /** This ship will take the hit. */
   const damageMaterial = new THREE.MeshBasicMaterial({
     map: squareTexture("outline"),
-    color: 0xff4056,
+    color: 0xff4056, // a hotter damage-target red; no matching token — 3D-only
     transparent: true,
     opacity: 0,
     depthWrite: false,
@@ -398,6 +438,7 @@ export function createDie(kind: DieKind, font: string, scale = 1, cellSize = 0):
       return;
     }
     const even = value % 2 === 0;
+    // --color-energy : --color-attack : --color-shield
     const accent = kind === "flag" ? 0xffd23d : even ? 0xff4d4d : 0x4db4ff;
     glowMaterial.color.setHex(accent);
     // Keep the authored face colours intact. The old peach multiplier on the
@@ -405,8 +446,16 @@ export function createDie(kind: DieKind, font: string, scale = 1, cellSize = 0):
     material.color.setHex(state.enemy ? HULL_ENEMY : HULL_COLOR);
 
     if (state.disabled) {
-      material.emissiveIntensity = 0.05;
-      material.color.setHex(0x39414f);
+      // Zeroed, not dimmed: the emissive map still carries whatever colour
+      // that face last rolled, and any nonzero intensity lets it bleed
+      // through the tint below.
+      material.emissiveIntensity = 0;
+      // Crushed near-black rather than a specific tint — the base map is
+      // whatever colour the die last rolled, and multiplying it by a hue
+      // (even a dim one) mostly reproduces that colour, darker. Only a
+      // near-neutral multiplier reliably drains it on every hull, on top of
+      // the flattened shape the update loop settles it into.
+      material.color.setHex(0x14161c);
       material.roughness = 0.9;
       material.metalness = 0.02;
       glowMaterial.opacity = 0;
@@ -429,14 +478,22 @@ export function createDie(kind: DieKind, font: string, scale = 1, cellSize = 0):
     for (const damageBar of damageBars) {
       (damageBar.material as THREE.MeshBasicMaterial).opacity = damageMaterial.opacity;
     }
-    barMaterial.opacity = state.inRun ? 0.92 : 0;
-    if (state.inLine) {
+    // A disabled die keeps whatever value it last rolled — it never rolls
+    // again while sat out — so without this guard a frozen value that
+    // happens to fall in this round's run or line could still light up a
+    // scoring highlight on a ship that took no part in it.
+    barMaterial.opacity = !state.disabled && state.inRun ? 0.92 : 0;
+    if (state.disabled) {
+      linkMaterial.opacity = 0;
+    } else if (state.inLine) {
+      // A column/row completion tint — close to but distinct from
+      // --color-attack-glow / --color-energy-glow; no exact token match.
       linkMaterial.color.setHex(state.inLine === "col" ? 0xff8090 : 0xffe07a);
       linkMaterial.opacity = 0.72;
     } else if (state.flagRing) {
       // A light tint of the flagship's own face colour, so the connection is
       // obvious at a glance and obviously comes from the flagship.
-      linkMaterial.color.setHex(lighten(state.flagRingColor ?? 0xffd23d, 0.34));
+      linkMaterial.color.setHex(lighten(state.flagRingColor ?? 0xffd23d, 0.34)); // fallback: --color-energy
       linkMaterial.opacity = 0.6;
     } else {
       linkMaterial.opacity = 0;
@@ -461,12 +518,14 @@ export function createDie(kind: DieKind, font: string, scale = 1, cellSize = 0):
     },
     setFace(next) {
       value = clampFace(next, sides);
+      if (activeFaceUniform) activeFaceUniform.value = value - 1;
       pivot.quaternion.copy(frameFor(value));
       rolling = false;
       applyStateColours();
     },
     throwTo(next, options = {}) {
       value = clampFace(next, sides);
+      if (activeFaceUniform) activeFaceUniform.value = value - 1;
       targetQuaternion = frameFor(value);
       flightDelay = options.delay ?? 0;
       flightDuration = options.duration ?? 0.78;
@@ -548,14 +607,26 @@ export function createDie(kind: DieKind, font: string, scale = 1, cellSize = 0):
         object.position.y += (targetY - object.position.y) * Math.min(1, dt * 12);
       }
 
-      // Squash on landing, then spring back.
+      // Squash on landing, then spring back — or settle flat and stay there
+      // while damaged. A ship that sat out the round is not just a dim die;
+      // it is a collapsed one, so it never reads as merely "off."
       if (landPunch > 0) {
         landPunch = Math.max(0, landPunch - dt * 3.4);
         const punch = EASE_OUT_BACK(1 - landPunch);
         const squash = 1 + (1 - punch) * 0.26;
         pivot.scale.set(squash, 2 - squash, squash);
-      } else if (pivot.scale.x !== 1) {
-        pivot.scale.setScalar(1);
+      } else {
+        const restY = state.disabled ? 0.32 : 1;
+        const restXZ = state.disabled ? 1.18 : 1;
+        if (
+          Math.abs(pivot.scale.x - restXZ) > 0.001 ||
+          Math.abs(pivot.scale.y - restY) > 0.001
+        ) {
+          const ease = Math.min(1, dt * 6);
+          pivot.scale.x += (restXZ - pivot.scale.x) * ease;
+          pivot.scale.z += (restXZ - pivot.scale.z) * ease;
+          pivot.scale.y += (restY - pivot.scale.y) * ease;
+        }
       }
 
       // Nothing on this board pulses. Selection, damage and the flagship link
@@ -648,7 +719,7 @@ function squareTexture(kind: "fill" | "outline"): THREE.CanvasTexture {
     ctx.roundRect(pad, pad, size - pad * 2, size - pad * 2, radius);
     ctx.stroke();
   } else {
-    ctx.strokeStyle = "#ffffff";
+    ctx.strokeStyle = "#ffffff"; // --color-white
     ctx.lineWidth = size * 0.038;
     ctx.lineJoin = "round";
     ctx.beginPath();

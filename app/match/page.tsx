@@ -8,6 +8,7 @@ import { MatchScreen } from "@/components/MatchScreen";
 import { Button, Notice, RoomCode, Spinner } from "@/components/ui";
 import { useRoomMatch } from "@/lib/useMatch";
 import { cancelRoom } from "@/lib/rooms";
+import { NOUN } from "@/lib/reference";
 
 export default function MatchPage() {
   return (
@@ -51,7 +52,7 @@ function MatchInner() {
         <div className="mx-auto flex w-full max-w-[30rem] flex-col gap-4 px-4 pt-8">
           <Notice tone="warn">{controller.error ?? "That room could not be opened."}</Notice>
           <Button tone="primary" full onClick={home}>
-            Back to home
+            Back to {NOUN.home}
           </Button>
         </div>
       </div>
@@ -73,10 +74,10 @@ function MatchInner() {
           <div className="mx-auto flex w-full max-w-[30rem] flex-col gap-4 px-4 pb-10 pt-6">
             <div className="flex flex-wrap items-center gap-2">
               <Button tone="ghost" size="sm" onClick={home} className="self-start">
-                ‹ Back to home
+                ‹ Back to {NOUN.home}
               </Button>
               <Button tone="ghost" size="sm" onClick={closeRoom} disabled={closing} className="self-start">
-                {closing ? "Closing…" : "Cancel game"}
+                {closing ? "Closing…" : `Cancel ${NOUN.game}`}
               </Button>
             </div>
             <header className="text-center">
@@ -86,7 +87,7 @@ function MatchInner() {
             <div className="flex justify-center py-2">
               <RoomCode code={controller.state.code} />
             </div>
-            <p className="text-center text-[0.92rem] leading-relaxed c-dim">
+            <p className="text-center text-base leading-relaxed c-dim">
               Give them these four numbers, or send the link again. This screen turns into the
               battle the moment they sit down — the same board you already know from solo.
             </p>

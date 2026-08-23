@@ -10,6 +10,7 @@
 
 import { useState } from "react";
 import type { PlayerState, RoundReport as Report } from "@/lib/engine";
+import { NOUN } from "@/lib/reference";
 import { Button, HealthBar, Rule, Stat, Ticker } from "./ui";
 
 function Row({
@@ -27,11 +28,11 @@ function Row({
 }) {
   return (
     <div className="flex items-baseline justify-between gap-3 py-1.5">
-      <span className={`text-[0.88rem] ${strong ? "font-semibold text-white" : "text-[--color-hull-300]"}`}>
+      <span className={`text-sm ${strong ? "font-semibold text-white" : "c-dim"}`}>
         {label}
-        {note && <span className="block text-[0.72rem] leading-tight c-dim">{note}</span>}
+        {note && <span className="block text-xs leading-tight c-dim">{note}</span>}
       </span>
-      <span className={`t-num shrink-0 text-[0.98rem] ${tone ? `c-${tone}` : "text-white"}`}>
+      <span className={`t-num shrink-0 text-base ${tone ? `c-${tone}` : "text-white"}`}>
         {value}
       </span>
     </div>
@@ -64,7 +65,7 @@ export function RoundReportCard({
       <div className="flex items-baseline justify-between">
         <div>
           <p className="t-eyebrow">Round {report.round}</p>
-          <h2 className="t-display text-2xl">
+          <h2 className="t-display text-xl">
             {took === 0 ? "Nothing got through" : `You took ${took}`}
           </h2>
         </div>
@@ -79,9 +80,9 @@ export function RoundReportCard({
           <Stat kind="repair" value={t.heal} label="Repair" size="sm" />
         </div>
         <div className="round-report-mobile-hp flex items-center gap-2">
-          <span className="t-eyebrow">Ship</span>
+          <span className="t-eyebrow">{NOUN.flagship}</span>
           <HealthBar className="min-w-0 flex-1" value={report.hpAfter} max={you.maxHp} />
-          <span className="t-num text-white"><Ticker value={report.hpAfter} />/{you.maxHp}</span>
+          <span className="t-num text-white"><Ticker value={Math.max(0, report.hpAfter)} />/{you.maxHp}</span>
         </div>
       </div>
 
@@ -182,13 +183,13 @@ export function RoundReportCard({
         <section className="mt-3 px-1">
           <div className="mb-1.5 flex items-baseline justify-between">
             <span className="t-eyebrow">Your flagship</span>
-            <span className="t-num text-lg text-white">
-              <Ticker value={report.hpAfter} /> / {you.maxHp}
+            <span className="t-num text-base text-white">
+              <Ticker value={Math.max(0, report.hpAfter)} /> / {you.maxHp}
             </span>
           </div>
           <HealthBar value={report.hpAfter} max={you.maxHp} />
           {!survived && (
-            <p className="mt-2 text-sm text-[--color-attack-glow]">Your flagship is gone.</p>
+            <p className="mt-2 text-sm c-attack-glow">Your flagship is gone.</p>
           )}
         </section>
         </div>

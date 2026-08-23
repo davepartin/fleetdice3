@@ -15,6 +15,7 @@ import { Button, Panel } from "@/components/ui";
 import { HowToPlaySheet } from "@/components/HowToPlay";
 import { useSoloMatch } from "@/lib/useMatch";
 import { DIFFICULTY, PLAN_BLURB, PLAN_LABEL, PLANS, type Difficulty, type Plan } from "@/lib/ai";
+import { NOUN } from "@/lib/reference";
 
 export default function SoloPage() {
   const router = useRouter();
@@ -82,7 +83,7 @@ function SoloSetup({
           <div className="mx-auto flex w-full max-w-[30rem] flex-col gap-4 px-4 pb-10 pt-6">
             <div className="flex items-center gap-2">
               <Button tone="ghost" size="sm" onClick={onBack}>
-                ‹ Back to home
+                ‹ Back to {NOUN.home}
               </Button>
               <span className="flex-1" />
               <Button tone="ghost" size="sm" onClick={onHelp}>
@@ -92,7 +93,7 @@ function SoloSetup({
 
             <header>
               <p className="t-eyebrow">Solo</p>
-              <h1 className="t-display text-4xl">How hard should it play?</h1>
+              <h1 className="t-display text-3xl">How hard should it play?</h1>
             </header>
 
             <div className="flex flex-col gap-2.5">
@@ -103,7 +104,7 @@ function SoloSetup({
                     <Panel className="flex items-center gap-4 p-4 transition hover:border-white/25">
                       <span className="min-w-0 flex-1">
                         <span className="t-display block text-xl text-white">{entry.label}</span>
-                        <span className="mt-0.5 block text-[0.84rem] leading-snug c-dim">
+                        <span className="mt-0.5 block text-sm leading-snug c-dim">
                           {entry.blurb}
                         </span>
                       </span>
@@ -124,7 +125,7 @@ function SoloSetup({
               <PlanRow
                 active={plan === "surprise"}
                 title="Surprise me"
-                blurb="A different plan every match. You will not know what it is building until you see it."
+                blurb="A different plan every game. You will not know what it is building until you see it."
                 onClick={() => onPlan("surprise")}
               />
               {PLANS.map((entry) => (
@@ -165,10 +166,10 @@ function PlanRow({
       >
         <span className="min-w-0 flex-1">
           <span className="t-display block text-xl text-white">{title}</span>
-          <span className="mt-0.5 block text-[0.84rem] leading-snug c-dim">{blurb}</span>
+          <span className="mt-0.5 block text-sm leading-snug c-dim">{blurb}</span>
         </span>
         <span
-          className={`t-eyebrow shrink-0 text-[0.62rem] ${active ? "c-energy" : "c-dim"}`}
+          className={`t-eyebrow shrink-0 text-xs ${active ? "c-energy" : "c-dim"}`}
           aria-hidden
         >
           {active ? "On" : "Pick"}

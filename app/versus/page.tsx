@@ -22,6 +22,7 @@ import {
   watchRoom,
   type CreatedRoom,
 } from "@/lib/rooms";
+import { NOUN } from "@/lib/reference";
 
 export default function VersusPage() {
   const router = useRouter();
@@ -117,7 +118,7 @@ export default function VersusPage() {
               size="sm"
               onClick={() => (room ? abandon() : router.push("/"))}
             >
-              ‹ {room ? "Cancel game" : "Back to home"}
+              ‹ {room ? `Cancel ${NOUN.game}` : `Back to ${NOUN.home}`}
             </Button>
             <span className="flex-1" />
             <Button tone="ghost" size="sm" onClick={() => setHelpOpen(true)}>
@@ -129,10 +130,10 @@ export default function VersusPage() {
             <>
               <header>
                 <p className="t-eyebrow">Two commanders</p>
-                <h1 className="t-display text-4xl">Start a game</h1>
-                <p className="mt-2 text-[0.92rem] leading-relaxed text-[--color-hull-300]">
+                <h1 className="t-display text-3xl">Start a {NOUN.game}</h1>
+                <p className="mt-2 text-base leading-relaxed c-dim">
                   You get a four-digit code and a link. Send either one to your friend. You can run
-                  as many games at once as you like — each one gets its own code.
+                  as many {NOUN.games} at once as you like — each one gets its own code.
                 </p>
               </header>
 
@@ -145,7 +146,7 @@ export default function VersusPage() {
                   value={name}
                   maxLength={20}
                   onChange={(event) => setName(event.target.value)}
-                  className="t-num w-full rounded-xl border border-white/12 bg-black/40 px-3 py-2.5 text-lg text-white outline-none focus:border-white/40"
+                  className="t-num w-full rounded-xl border border-white/12 bg-black/40 px-3 py-2.5 text-base text-white outline-none focus:border-white/40"
                 />
               </Panel>
 
@@ -166,16 +167,16 @@ export default function VersusPage() {
                 <RoomCode code={room.match.state.code} />
               </div>
 
-              <Button tone="confirm" size="lg" full onClick={share}>
+              <Button tone="primary" size="lg" full onClick={share}>
                 {copied ? "Link copied" : "Send the link"}
               </Button>
 
               <Panel className="p-4">
-                <p className="text-[0.9rem] leading-relaxed text-[--color-hull-200]">
+                <p className="text-sm leading-relaxed c-dim-bright">
                   Your friend types those four numbers on the home page, or opens the link. The
                   moment they sit down, this screen turns into the battle.
                 </p>
-                <p className="mt-2 text-[0.86rem] leading-relaxed c-dim">
+                <p className="mt-2 text-sm leading-relaxed c-dim">
                   <b className="text-white">Stay on this page.</b> Do not open your own link — a
                   second tab counts as a third person, and the room only has two seats.
                 </p>

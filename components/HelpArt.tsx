@@ -4,7 +4,7 @@ import { useEffect, useRef } from "react";
 import { addHullPath } from "@/components/HullShape";
 import { hullForFace } from "@/lib/reference";
 import { faceSpec, flagFaceSpec, paintHelpFace } from "@/lib/three/faceArt";
-import { displayFontFamily, waitForFonts } from "@/lib/three/fonts";
+import { displayFontFamily, numeralFontFamily, waitForFonts } from "@/lib/three/fonts";
 import type { DieSize } from "@/lib/engine";
 
 function HelpCanvas({
@@ -32,14 +32,15 @@ function HelpCanvas({
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
     const spec = role === "flag" ? flagFaceSpec(value) : faceSpec(value);
-    const font = displayFontFamily();
+    const captionFont = displayFontFamily();
+    const numeralFont = numeralFontFamily();
     const draw = () => {
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.clearRect(0, 0, size, size);
       ctx.save();
       addHullPath(ctx, hull, size);
       ctx.clip();
-      paintHelpFace(ctx, spec, hull, size, font);
+      paintHelpFace(ctx, spec, hull, size, numeralFont, captionFont);
       ctx.lineJoin = "round";
       ctx.strokeStyle = "rgba(255,255,255,0.32)";
       ctx.lineWidth = Math.max(1.2, size * 0.028);

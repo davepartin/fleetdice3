@@ -22,11 +22,13 @@ import {
   escalationFor,
   flagBonusSize,
   previewTally,
+  straightPrizeTakes,
   type MatchAction,
   type PlayerState,
+  type Straight,
 } from "@/lib/engine";
 import { rollHint } from "@/lib/ai";
-import { FLAGSHIP_FACES } from "@/lib/reference";
+import { FLAGSHIP_FACES, NOUN, STAT_LABEL } from "@/lib/reference";
 import { isPhoneLayout } from "@/lib/viewport";
 import type { MatchController } from "@/lib/useMatch";
 import { pendingThrow, pendingThrowReady, type PendingThrow } from "@/lib/throwSync";
@@ -65,12 +67,20 @@ export function MatchScreen({ controller, onExit, title, subtitle }: Props) {
   const [cinematic, setCinematic] = useState<null | "reveal" | "volley">(null);
   const [leaveOpen, setLeaveOpen] = useState(false);
   /**
+   * The straight's board lights stay off until the dice land, so the run
+   * arriving is one 700ms beat instead of a glow that appears mid-throw.
+   */
+  const [runMarksOn, setRunMarksOn] = useState(false);
+  const straightEventRef = useRef("");
+  /**
    * Dice the player just sent back. Held until the new numbers actually
    * arrive — otherwise solo and versus both toss the old faces, then toss again.
    */
   const pendingThrowRef = useRef<PendingThrow | null>(null);
 
   const { state, you, them, act, busy, error, clearError, waitingOnEnemy, cancel } = controller;
+  const youRef = useRef(you);
+  youRef.current = you;
   const phase = you?.phase ?? "waiting";
   const tally = useMemo(
     () => (you && you.dice.length ? previewTally(you) : null),
@@ -111,7 +121,7 @@ export function MatchScreen({ controller, onExit, title, subtitle }: Props) {
       // rectangles move when the address bar or a pinch-zoom shifts the screen.
       const top = Math.max(0, header.offsetHeight + 10);
       const bottomInset = Math.max(0, bottom.offsetHeight + 14);
-      arena.stage.setViewportInsets({ top, right: 8, bottom: bottomInset, left: 8 });
+      arena.stage.setViewportInsets({ top, right: 3, bottom: bottomInset, left: 3 });
     };
 
     const observer = new ResizeObserver(updateInsets);
@@ -184,10 +194,64 @@ export function MatchScreen({ controller, onExit, title, subtitle }: Props) {
       previewTally: tally,
       revealEnemy: phase === "brace" || phase === "report" || phase === "over",
       thrown: throwReady ? pending?.ids : undefined,
+      showRunMarks: phase !== "rolling" || runMarksOn,
     });
     if (throwReady) pendingThrowRef.current = null;
     firstSyncRef.current = false;
-  }, [state, you, selected, braceShips, phase, controller.side, arenaReady, tally]);
+  }, [state, you, selected, braceShips, phase, controller.side, arenaReady, tally, runMarksOn]);
+
+  /* The straight is an event — lights and prize cards after the dice land */
+
+  const diceFingerprint = you?.dice.map((die) => `${die.id}:${die.value}`).join(",") ?? "";
+  useEffect(() => {
+    const current = youRef.current;
+    if (!current) return;
+    const run = current.dice.length ? bestRun(current.dice) : null;
+    const key = run ? `${run.start}:${run.top}:${run.length}:${diceFingerprint}` : "";
+
+    if (phase !== "rolling") {
+      if (phase === "ready" || phase === "shop") {
+        straightEventRef.current = "";
+        setRunMarksOn(false);
+      } else {
+        setRunMarksOn(Boolean(run));
+      }
+      return;
+    }
+
+    if (!run) {
+      straightEventRef.current = "";
+      setRunMarksOn(false);
+      return;
+    }
+
+    if (straightEventRef.current === key) {
+      setRunMarksOn(true);
+      return;
+    }
+
+    let cancelled = false;
+    setRunMarksOn(false);
+    const arena = arenaRef.current;
+    void (async () => {
+      if (arena) await arena.whenSettled("you");
+      if (cancelled) return;
+      const live = youRef.current;
+      if (!live) return;
+      const liveRun = live.dice.length ? bestRun(live.dice) : null;
+      if (!liveRun) return;
+      straightEventRef.current = key;
+      setRunMarksOn(true);
+      if (!arena) return;
+      const points = runWorldPoints(arena, live, liveRun);
+      arena.vfx.straightSweep(points, liveRun.taken, 0.7);
+      audio.play("straight");
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [diceFingerprint, phase, arenaReady]);
 
   /* Point the camera at whatever matters right now ------------------- */
 
@@ -302,7 +366,7 @@ export function MatchScreen({ controller, onExit, title, subtitle }: Props) {
         .map((die) =>
           arena.cellWorld("you", die.flag ? 4 : cellForSlot(die.slot ?? 0)),
         );
-      arena.vfx.straightSweep(points, run.taken);
+      arena.vfx.straightSweep(points, run.taken, 0.7);
       audio.play("straight");
     }
   }, [you]);
@@ -413,7 +477,7 @@ export function MatchScreen({ controller, onExit, title, subtitle }: Props) {
             tone="ghost"
             size="sm"
             className="match-leave"
-            ariaLabel="Back to home"
+            ariaLabel={`Back to ${NOUN.home}`}
             onClick={() => {
               if (cancel && state.status !== "finished") {
                 setLeaveOpen(true);
@@ -422,18 +486,18 @@ export function MatchScreen({ controller, onExit, title, subtitle }: Props) {
               onExit();
             }}
           >
-            <span className="leave-label-full">‹ Back to home</span>
-            <span className="leave-label-short">‹ Home</span>
+            <span className="leave-label-full">‹ Back to {NOUN.home}</span>
+            <span className="leave-label-short">‹ {NOUN.home}</span>
           </Button>
 
           <div className="panel panel-enemy panel-flush min-w-0 flex-1 px-3 py-2">
             <div className="flex items-baseline justify-between gap-2">
-              <span className="min-w-0 flex-1 truncate text-[0.8rem] font-semibold text-[--color-attack-glow]">
+              <span className="min-w-0 flex-1 truncate text-sm font-semibold c-attack-glow">
                 {enemyName}
               </span>
-              <span className="t-eyebrow shrink-0 text-[0.58rem]">Round {you.round}</span>
-              <span className="t-num text-[0.8rem] text-white">
-                {them ? <Ticker value={them.hp} /> : 0}
+              <span className="t-eyebrow shrink-0 text-xs">Round {you.round}</span>
+              <span className="t-num text-sm text-white">
+                {them ? <Ticker value={Math.max(0, them.hp)} /> : 0}
                 <span className="c-dim"> / {them?.maxHp ?? TUNING.hp}</span>
               </span>
             </div>
@@ -572,6 +636,7 @@ export function MatchScreen({ controller, onExit, title, subtitle }: Props) {
               waiting={waitingOnEnemy}
               waitingName={enemyName}
               busy={busy}
+              showPrizes={runMarksOn}
               onRollAll={rollAll}
               onReroll={rerollSelected}
               onSubmit={() => {
@@ -593,7 +658,7 @@ export function MatchScreen({ controller, onExit, title, subtitle }: Props) {
       <Sheet
         open={leaveOpen}
         onClose={() => setLeaveOpen(false)}
-        title="Leave this game?"
+        title={`Leave this ${NOUN.game}?`}
         footer={
           <div className="flex flex-col gap-2">
             <Button
@@ -604,7 +669,7 @@ export function MatchScreen({ controller, onExit, title, subtitle }: Props) {
                 onExit();
               }}
             >
-              Back to home
+              Back to {NOUN.home}
             </Button>
             <Button
               tone="primary"
@@ -616,17 +681,17 @@ export function MatchScreen({ controller, onExit, title, subtitle }: Props) {
                 onExit();
               }}
             >
-              Cancel game
+              Cancel {NOUN.game}
             </Button>
           </div>
         }
       >
-        <p className="text-[0.94rem] leading-relaxed text-[--color-hull-200]">
-          <b className="text-white">Back to home</b> leaves this screen. The game stays open —
-          open it again from Your games.
+        <p className="text-base leading-relaxed c-dim-bright">
+          <b className="text-white">Back to {NOUN.home}</b> leaves this screen. The {NOUN.game} stays open —
+          open it again from Your {NOUN.games}.
         </p>
-        <p className="mt-3 text-[0.94rem] leading-relaxed text-[--color-hull-200]">
-          <b className="text-white">Cancel game</b> ends it for both of you. The four-digit code
+        <p className="mt-3 text-base leading-relaxed c-dim-bright">
+          <b className="text-white">Cancel {NOUN.game}</b> ends it for both of you. The four-digit code
           dies, and neither of you can come back to this battle.
         </p>
       </Sheet>
@@ -640,12 +705,13 @@ export function MatchScreen({ controller, onExit, title, subtitle }: Props) {
 
 function TallyStrip({ tally }: { tally: ReturnType<typeof previewTally> | null }) {
   return (
-    <div className="tally-strip grid grid-cols-5 gap-1">
+    <div className="tally-strip grid gap-1">
       <div className="tally-cell tally-cell-attack">
         <Stat
           kind="attack"
           value={tally?.attack ?? 0}
           label="Attack"
+          size="lg"
           showGlyph={false}
           colorLabel
         />
@@ -655,6 +721,7 @@ function TallyStrip({ tally }: { tally: ReturnType<typeof previewTally> | null }
           kind="shield"
           value={tally?.defense ?? 0}
           label="Shields"
+          size="lg"
           showGlyph={false}
           colorLabel
         />
@@ -690,6 +757,57 @@ function TallyStrip({ tally }: { tally: ReturnType<typeof previewTally> | null }
   );
 }
 
+function runWorldPoints(arena: Arena, you: PlayerState, run: Straight) {
+  return you.dice
+    .filter((die) => die.value >= run.start && die.value <= run.top)
+    .sort((a, b) => a.value - b.value)
+    .map((die) => arena.cellWorld("you", die.flag ? 4 : cellForSlot(die.slot ?? 0)));
+}
+
+function StraightPrizes({
+  you,
+  run,
+  prizes,
+  chosenTake,
+  onTake,
+}: {
+  you: PlayerState;
+  run: Straight;
+  prizes: number[];
+  chosenTake: number;
+  onTake(take: number): void;
+}) {
+  const choosable = prizes.length > 1;
+  return (
+    <div
+      className={`straight-prizes${prizes.length === 1 ? " straight-prizes-one" : ""}`}
+      role={choosable ? "group" : undefined}
+      aria-label={choosable ? "Choose a straight prize" : "Straight prize"}
+    >
+      {prizes.map((take) => {
+        const reward = previewTally(you, take).run?.reward ?? run.reward;
+        const selected = take === chosenTake;
+        const kind = reward.kind === "attack" ? "attack" : "energy";
+        const amount = reward.kind === "attack" ? (reward.attack ?? 0) : (reward.energy ?? 0);
+        return (
+          <button
+            key={take}
+            type="button"
+            onClick={choosable ? () => onTake(take) : undefined}
+            className={`straight-prize straight-prize-${kind}${selected ? " straight-prize-on" : ""}`}
+            aria-pressed={choosable ? selected : undefined}
+            disabled={!choosable}
+          >
+            <span className="t-eyebrow straight-prize-length">{take} in a row</span>
+            <span className="t-display text-xl straight-prize-value">{amount}</span>
+            <span className="t-eyebrow straight-prize-kind">{STAT_LABEL[kind]}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 function YourHealth({ you }: { you: PlayerState }) {
   const reactorShowing = you.dice.some((die) => die.flag) && you.flag.face === 1;
   const projectedBase = reactorShowing
@@ -701,11 +819,11 @@ function YourHealth({ you }: { you: PlayerState }) {
     <div className="commander-rail flex items-center gap-2">
       <span className="commander-name t-eyebrow shrink-0">
         <span className="commander-name-full">{you.name}</span>
-        <span className="commander-name-mobile">Ship</span>
+        <span className="commander-name-mobile">{NOUN.flagship}</span>
       </span>
       <HealthBar className="commander-hpbar min-w-0 flex-1" value={you.hp} max={you.maxHp} />
-      <span className="t-num shrink-0 text-[0.82rem] text-white">
-        <Ticker value={you.hp} />
+      <span className="t-num shrink-0 text-sm text-white">
+        <Ticker value={Math.max(0, you.hp)} />
         <span className="c-dim">/{you.maxHp}</span>
       </span>
       <span className="commander-energy-cluster flex shrink-0 items-stretch gap-1">
@@ -744,6 +862,7 @@ function RollDock({
   onTake,
   onToken,
   onClearSelection,
+  showPrizes,
 }: {
   you: PlayerState;
   tally: ReturnType<typeof previewTally> | null;
@@ -754,6 +873,7 @@ function RollDock({
   waiting: boolean;
   waitingName?: string;
   busy: boolean;
+  showPrizes: boolean;
   onRollAll(): void;
   onReroll(): void;
   onSubmit(): void;
@@ -764,13 +884,8 @@ function RollDock({
   const [tokenOpen, setTokenOpen] = useState(false);
   const notRolled = you.phase === "ready";
   const run = you.dice.length ? bestRun(you.dice) : null;
-  const tiers = run
-    ? Array.from(
-        { length: Math.min(run.length, TUNING.runMax) - TUNING.runMin + 1 },
-        (_, index) => TUNING.runMin + index,
-      )
-    : [];
-  const chosenTake = you.straightTake ?? (run ? Math.min(run.length, TUNING.runMax) : 0);
+  const prizes = run ? straightPrizeTakes(run) : [];
+  const chosenTake = you.straightTake ?? (prizes.length ? prizes[prizes.length - 1]! : 0);
   const canAffordReroll = rerollCost === 0 || you.energy >= rerollCost;
 
   return (
@@ -778,38 +893,19 @@ function RollDock({
       <YourHealth you={you} />
       <TallyStrip tally={tally} />
 
-      {tiers.length > 1 && (
-        <div className="rounded-xl border border-[--color-run]/30 bg-[--color-run]/[0.08] p-2.5">
-          <p className="t-eyebrow mb-1.5 text-[--color-run]">
-            Straight — cash it as
-          </p>
-          <div className="flex flex-wrap gap-1.5">
-            {tiers.map((take) => {
-              const preview = previewTally(you, take);
-              const reward = preview.run?.reward;
-              return (
-                <button
-                  key={take}
-                  type="button"
-                  onClick={() => onTake(take)}
-                  className={`rounded-lg border px-2.5 py-1.5 text-[0.72rem] font-semibold transition ${
-                    take === chosenTake
-                      ? "border-[--color-run] bg-[--color-run]/25 text-white"
-                      : "border-white/12 text-[--color-hull-300] hover:bg-white/[0.06]"
-                  }`}
-                >
-                  {take} in a row
-                  <span className="ml-1.5 opacity-80">{reward?.label}</span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
+      {run && showPrizes && (
+        <StraightPrizes
+          you={you}
+          run={run}
+          prizes={prizes}
+          chosenTake={chosenTake}
+          onTake={onTake}
+        />
       )}
 
       {hint && (
         <p
-          className={`roll-hint text-[0.8rem] leading-snug ${
+          className={`roll-hint text-sm leading-snug ${
             hint.tone === "good"
               ? "c-repair"
               : hint.tone === "warn"
@@ -826,7 +922,7 @@ function RollDock({
 
         {you.flag.token && you.phase === "rolling" && (
           <Button
-            tone="energy"
+            tone="ghost"
             size="sm"
             onClick={() => setTokenOpen(true)}
             disabled={busy}
@@ -839,7 +935,7 @@ function RollDock({
 
       {tokenOpen && you.flag.token && you.phase === "rolling" && (
         <div className="flagship-token-popover panel" role="dialog" aria-label="Flagship weapon controls">
-          <p className="t-eyebrow c-energy">Flagship weapon · once per match</p>
+          <p className="t-eyebrow c-energy">Flagship weapon · once per {NOUN.game}</p>
           <p className="mt-1 text-sm text-white">Turn the flagship one face.</p>
           <div className="mt-3 grid grid-cols-3 gap-2">
             <Button tone="ghost" size="lg" onClick={() => { onToken(-1); setTokenOpen(false); }} disabled={busy}>
@@ -848,7 +944,7 @@ function RollDock({
             <Button tone="ghost" size="lg" onClick={() => setTokenOpen(false)}>
               Cancel
             </Button>
-            <Button tone="energy" size="lg" onClick={() => { onToken(1); setTokenOpen(false); }} disabled={busy}>
+            <Button tone="ghost" size="lg" onClick={() => { onToken(1); setTokenOpen(false); }} disabled={busy}>
               +1 face
             </Button>
           </div>
@@ -874,7 +970,7 @@ function RollDock({
                 Clear
               </Button>
               <Button
-                tone={rerollCost ? "energy" : "primary"}
+                tone="primary"
                 size="lg"
                 full
                 onClick={onReroll}
@@ -902,7 +998,7 @@ function RollDock({
             </>
           ) : (
             <>
-              <Button tone="confirm" size="lg" full onClick={onSubmit} disabled={busy}>
+              <Button tone="primary" size="lg" full onClick={onSubmit} disabled={busy}>
                 Lock in
               </Button>
             </>
@@ -954,7 +1050,7 @@ function BraceDock({
     <div className="brace-dock panel panel-you flex flex-col gap-3 p-3.5">
       <div>
         <p className="t-eyebrow">Incoming</p>
-        <h2 className="t-display text-2xl">
+        <h2 className="t-display text-xl">
           <span className="c-attack">{you.incoming}</span>
           <span className="c-dim text-base"> blockable</span>
           {you.directIncoming > 0 && (
@@ -966,15 +1062,15 @@ function BraceDock({
           )}
         </h2>
         {war > 0 && (
-          <p className="mt-1 text-[0.8rem] font-semibold c-attack">
+          <p className="mt-1 text-sm font-semibold c-attack">
             Includes war +{war} — shields cannot stop that extra.
           </p>
         )}
-        <p className="brace-explanation mt-1 text-[0.84rem] leading-snug c-dim">
+        <p className="brace-explanation mt-1 text-sm leading-snug c-dim">
           Throw ships in front of it. Each one soaks its own size and sits out the next round.
           Nothing stops Direct.
         </p>
-        <p className="brace-mobile-guide mt-1 text-[0.78rem] font-semibold c-attack">
+        <p className="brace-mobile-guide mt-1 text-sm font-semibold c-attack">
           Tap a ship die. A red damage target means it will take the hit.
         </p>
       </div>
@@ -990,18 +1086,18 @@ function BraceDock({
               className={`t-num rounded-lg border px-3 py-2 text-sm transition ${
                 picked
                   ? "border-[--color-shield] bg-[--color-shield]/20 text-white"
-                  : "border-white/12 text-[--color-hull-300] hover:bg-white/[0.06]"
+                  : "border-white/12 c-dim hover:bg-white/[0.06]"
               }`}
             >
               d{ship.sides}
-              <span className="ml-1 text-[0.66rem] opacity-70">cell {cellForSlot(ship.slot) + 1}</span>
+              <span className="ml-1 text-xs opacity-70">{NOUN.bay} {cellForSlot(ship.slot) + 1}</span>
             </button>
           );
         })}
       </div>
 
       <div className="brace-summary flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-black/30 px-3 py-2.5">
-        <div className="text-[0.8rem] c-dim">
+        <div className="text-sm c-dim">
           Soaked <b className="c-shield t-num">{Math.min(soak, you.incoming)}</b> · landing{" "}
           <b className="c-attack t-num">{landing}</b>
         </div>
@@ -1017,7 +1113,7 @@ function BraceDock({
         </Notice>
       )}
 
-      <Button tone={fatal ? "primary" : "confirm"} size="lg" full onClick={onConfirm} disabled={busy}>
+      <Button tone="primary" size="lg" full onClick={onConfirm} disabled={busy}>
         {chosen.size === 0 ? "Take it on the flagship" : `Send ${chosen.size} in front`}
       </Button>
     </div>
@@ -1050,11 +1146,11 @@ function ResultDock({
         <p className="t-eyebrow">
           {cancelled ? "Game cancelled" : draw ? "Both flagships fell" : won ? "Victory" : "Defeat"}
         </p>
-        <h2 className={`t-display text-4xl ${cancelled ? "text-white" : won ? "c-repair" : draw ? "text-white" : "c-attack"}`}>
+        <h2 className={`t-display text-3xl ${cancelled ? "text-white" : won ? "c-repair" : draw ? "text-white" : "c-attack"}`}>
           {cancelled
             ? youCancelled
-              ? "You ended the game"
-              : `${cancelledBy} ended the game`
+              ? `You ended the ${NOUN.game}`
+              : `${cancelledBy} ended the ${NOUN.game}`
             : draw
               ? "A draw"
               : won
@@ -1072,7 +1168,7 @@ function ResultDock({
 
       <div className="flex gap-2">
         <Button tone="ghost" size="lg" full onClick={onExit}>
-          Back to home
+          Back to {NOUN.home}
         </Button>
         {onRestart && !cancelled && (
           <Button tone="primary" size="lg" full onClick={onRestart}>
@@ -1112,7 +1208,7 @@ function RevealBanner({
             {them && <span className="c-dim text-base"> · {them.name} fired {incoming}</span>}
           </p>
         </div>
-        <span className="t-eyebrow shrink-0 text-[0.58rem]">Tap to skip</span>
+        <span className="t-eyebrow shrink-0 text-xs">Tap to skip</span>
       </div>
     </button>
   );
@@ -1159,7 +1255,7 @@ function FlagshipLine({ you }: { you: PlayerState }) {
       <span className="t-num shrink-0 rounded-md bg-current/20 px-2 py-0.5 text-sm">
         {face.face}
       </span>
-      <span className="min-w-0 text-[0.8rem] leading-snug">
+      <span className="min-w-0 text-sm leading-snug">
         <b>{face.name}</b>
         <span className="flagship-long"> — {level?.text ?? face.short}</span>
         <span className="flagship-compact"> · {compact}</span>
