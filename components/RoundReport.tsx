@@ -43,12 +43,15 @@ export function RoundReportCard({
   report,
   you,
   enemyName,
+  waitingForOpponent = false,
   onContinue,
   busy,
 }: {
   report: Report;
   you: PlayerState;
   enemyName: string;
+  /** The other commander is still choosing which ships absorb their volley. */
+  waitingForOpponent?: boolean;
   onContinue(): void;
   busy?: boolean;
 }) {
@@ -195,8 +198,13 @@ export function RoundReportCard({
         </div>
       </div>
 
-      <Button tone="primary" size="lg" full onClick={onContinue} disabled={busy}>
-        {survived ? "To the shipyard" : "See the result"}
+      {waitingForOpponent && survived && (
+        <p className="round-report-wait" role="status">
+          {enemyName} is choosing ships to take the hit. Your shipyard will open when they finish.
+        </p>
+      )}
+      <Button tone="primary" size="lg" full onClick={onContinue} disabled={busy || waitingForOpponent}>
+        {!survived ? "See the result" : waitingForOpponent ? `Waiting for ${enemyName}` : "To the shipyard"}
       </Button>
     </div>
   );
