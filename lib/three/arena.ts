@@ -8,7 +8,7 @@
 
 import * as THREE from "three";
 import type { MatchState, PlayerState, SideId, Tally } from "../engine";
-import { activeShips, cellForSlot, emptyOpenSlots, opponentOf } from "../engine";
+import { activeShips, cellForSlot, emptyOpenSlots, opponentOf, runMemberIds } from "../engine";
 import { createStage, type Quality, type Stage } from "./stage";
 import { CELL, createBoard, cellCentre, type Board } from "./board";
 import { createDie, type Die, type DieKind } from "./die";
@@ -364,20 +364,24 @@ export function createArena(canvas: HTMLCanvasElement, options: ArenaOptions = {
       return;
     }
 
-    const run = showRun ? (tally?.run ?? null) : null;
+    // The opponent's revealed fleet should not turn into a second HUD. Their
+    // orange/cyan score markers were easily mistaken for damage symbols.
+    const playerDeck = deck === decks.you;
+    const run = showRun && playerDeck ? (tally?.run ?? null) : null;
     const runCells: number[] = [];
     const lineCells = new Map<number, "row" | "col">();
-    for (const line of tally?.lines ?? []) {
+    for (const line of playerDeck ? (tally?.lines ?? []) : []) {
       for (const cell of line.idx) lineCells.set(cell, line.kind);
     }
     deck.board.setFormations(
-      (tally?.lines ?? []).map((line) => ({
+      (playerDeck ? (tally?.lines ?? []) : []).map((line) => ({
         kind: line.kind,
         cells: line.idx,
         amount: line.kind === "row" ? line.energy : line.attack,
       })),
     );
 
+    const runMembers = run ? runMemberIds(player.dice, run) : new Set<string>();
     const face = player.flag.face;
     const ringsAll = face === 5 || face === 6;
 
@@ -385,7 +389,7 @@ export function createArena(canvas: HTMLCanvasElement, options: ArenaOptions = {
       const value = die.value;
       const ship = player.ships.find((entry) => entry.id === id);
       const cell = id === "flag" ? 4 : ship ? cellForSlot(ship.slot) : -1;
-      const inRun = Boolean(run && value >= run.start && value <= run.top);
+      const inRun = runMembers.has(id);
       if (inRun && cell >= 0) runCells.push(cell);
 
       const flagRing =
