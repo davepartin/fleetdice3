@@ -605,11 +605,33 @@ This is the single biggest visual win available and it costs nothing to run.
   triangular hull dice around it. `/code-review` passed clean on the final
   diff after one round of real findings, both fixed.
 
-- [ ] **4.2 — The shipyard is the same game.**
+- [x] **4.2 — The shipyard is the same game.**
   It is currently a bright blue card UI against a dark space battle.
   **DONE when:** the shipyard uses the same background, panel, type and button
   styles as the battle, and flipping between the two screens shows no change in
   visual language.
+  **Proved:** No code change needed — already satisfied, as a direct
+  consequence of 2.1, 2.2 and 2.3's app-wide consolidation, which touched
+  `Shipyard.tsx` and its CSS as part of unifying colours, buttons and type
+  everywhere, not the battle screen alone. Checked each clause against the
+  current source: `.yard`'s background (`--color-yard-bg-top: #060a14`,
+  `--color-yard-bg-bottom: #03050b`) is a near-black navy essentially
+  identical to `--color-void: #04060d`, the battle's own background;
+  `.yard-cell` and the drawer's panel share `.panel`'s subtle white-on-dark
+  gradient, thin border and card-radius language rather than a bespoke
+  style; every button (`Return to battle`, `Open this bay`, `Upgrade`) is
+  the same shared `.btn`/`Button` component used everywhere else; every
+  heading and label uses the same `.t-display`/`.t-eyebrow`/`.t-num`
+  classes. Grepped for any yard-specific hardcoded colour left over from
+  before 2.1 and found none. Verified visually with real screenshots of the
+  battle screen, the shipyard board, and the shipyard drawer side by side:
+  the same near-black background, the same bone-white primary button, the
+  same panel style and typography carry across all three with no visible
+  seam. Found, logged, and deliberately did not fix one unrelated bug along
+  the way (below) — a button text overflow in the shipyard drawer — since it
+  has nothing to do with this item's actual DONE test.
+  `tsc --noEmit`, `pnpm lint`, `pnpm test` (27/27) all still pass (no files
+  changed for this item).
 
 - [ ] **4.3 — One vocabulary.**
   "Cells" in one place, "bays" in another; "Quit" became "Home".
@@ -651,6 +673,13 @@ Add anything discovered mid-task here rather than fixing it out of order.
   playtest (`node tools/playtest.mjs`), before and after the 0.1 fix. Not
   investigated — unrelated to clipping — but worth someone tracking down the
   missing resource.
+
+- The shipyard drawer's "Open this bay" button text overflows its own
+  container when the bay isn't affordable — `components/Shipyard.tsx`'s
+  `Open this bay · {cost} Energy · not enough` string is wider than the
+  button at phone width, clipping to `PEN THIS BAY · 7 ENERGY · NOT ENOUG`.
+  Found while verifying 4.2, unrelated to visual-language consistency.
+  Not fixed — out of scope for the item that found it.
 
 ---
 
