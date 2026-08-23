@@ -37,6 +37,7 @@ const {
   pendingThrowReady,
   publicMatchView,
   repairOf,
+  runMemberIds,
   setRng,
   slotForCell,
   straightPrizeTakes,
@@ -219,6 +220,20 @@ test("the board offers at most two straight prizes — short cash vs long cash",
   assert.deepEqual(straightPrizeTakes({ length: 6 }), [5, 6]);
   assert.deepEqual(straightPrizeTakes({ length: 7 }), [5, 7]);
   assert.deepEqual(straightPrizeTakes({ length: 9 }), [5, 7]);
+});
+
+test("a straight highlights one largest hull for each number, not every duplicate", () => {
+  const dice = [
+    { id: "small-2", sides: 4, value: 2, slot: 0 },
+    { id: "big-2", sides: 10, value: 2, slot: 1 },
+    { id: "three", sides: 6, value: 3, slot: 2 },
+    { id: "four", sides: 8, value: 4, slot: 3 },
+    { id: "five", sides: 10, value: 5, slot: 4 },
+    { id: "flag", sides: 6, value: 6, flag: true },
+  ];
+  const run = bestRun(dice);
+  assert.ok(run);
+  assert.deepEqual([...runMemberIds(dice, run)].sort(), ["big-2", "flag", "five", "four", "three"].sort());
 });
 
 /* ------------------------------------------------------------------ */
