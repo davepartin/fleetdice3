@@ -750,6 +750,64 @@ Only after everything above.
 
 ---
 
+## Phase 6 — Game display and interactions
+
+This phase continues the visual pass after the first phone play session. It is
+about making the board say one unambiguous thing at a time and keeping the next
+action reachable on a phone.
+
+- [x] **6.1 — A straight names one real die for each number.**
+  **DONE when:** duplicate values do not all light orange, the highlighted die
+  is the largest hull for that number, and the board and sweep use that same
+  membership.
+  **Proved:** `runMemberIds` in `lib/engine.ts` picks exactly one stable member
+  for each number, preferring the largest ship and using the flagship only as a
+  bridge. `arena.ts` and both straight sweeps use it. The new engine test locks
+  a duplicate d4/d10 pair to the d10 and proves five highlighted ids for a
+  five-number run.
+
+- [x] **6.2 — Straight marks are uniform and the choice explains itself.**
+  **DONE when:** the deck owns the orange straight marks rather than hull-sized
+  dice, and the dock says which run happened, which hull sets its size, and
+  what each of the at-most-two choices means.
+  **Proved:** the die-level orange bar is disabled, leaving the board-space
+  bars aligned to grid cells. The new straight card header names the range,
+  number count and best hull; two-card choices are labelled Quick cash and Full
+  run with their Energy or Attack result.
+
+- [x] **6.3 — A selected reroll and a damaged ship are unmistakable.**
+  **DONE when:** the cyan reroll outline clears every hull, including the cube,
+  and a ship that sat out is visibly marked as damaged rather than leaving an
+  ambiguous symbol.
+  **Proved:** non-flag reroll outlines now use 116% of a board cell, outside
+  all hull silhouettes. Disabled ships retain their collapsed dark hull and
+  receive the existing clear red X marker. The d6 display scale is reduced
+  from 1.30 to 1.16 while retaining its painted bevel, so it reads as a die
+  rather than a block crowding the fleet.
+
+- [x] **6.4 — Waiting for damage never looks like a broken button.**
+  **DONE when:** the round report explains that the opponent is choosing who
+  takes the hit, disables the shipyard action, and changes it back when that
+  choice is complete.
+  **Proved:** `RoundReportCard` now receives the enemy brace phase, shows a
+  status sentence, and changes its primary button to “Waiting for [name]”. It
+  returns to “To the shipyard” automatically when the shared match state moves
+  out of brace.
+
+- [x] **6.5 — The primary roll action cannot scroll away.**
+  **DONE when:** optional roll information scrolls inside the dock while the
+  Roll, Reroll or Lock in action stays pinned at its bottom.
+  **Proved:** `RollDock` now separates a scrollable `roll-dock-body` from a
+  fixed `roll-dock-action`; phone CSS makes only the information region scroll.
+
+**Verification note:** whitespace checks and Node syntax checks passed. The
+workspace could not install the repository’s locked dependencies because its
+package-network request is blocked, so `pnpm test`, lint, typecheck, build and
+the phone playtest remain the next required verification in a normal project
+checkout.
+
+---
+
 ## Found along the way
 
 Add anything discovered mid-task here rather than fixing it out of order.
