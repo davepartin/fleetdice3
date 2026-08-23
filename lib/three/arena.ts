@@ -264,12 +264,11 @@ export function createArena(canvas: HTMLCanvasElement, options: ArenaOptions = {
         // On a phone the face, not the board decoration, is the product. The
         // larger hulls fill their cells while the atlas keeps their values and
         // payoff marks clean at the steeper command angle. The flagship reads
-        // deliberately a size smaller than any hull ship — its cube already
-        // fills more of its cell than a pointed hull at the same scale, and
-        // shrinking it is what keeps its own cyan reroll ring from being
-        // swallowed by the hull underneath it.
+        // a touch smaller than a hull ship — just enough that its own cyan
+        // reroll ring, now the same size as every other ship's, still clears
+        // the cube underneath it.
         const base = isPhone() ? 1.66 : 1.14;
-        die = createDie(spec.kind, font, spec.kind === "flag" ? base * 0.85 : base, CELL, isPhone());
+        die = createDie(spec.kind, font, spec.kind === "flag" ? base * 0.93 : base, CELL, isPhone());
         die.object.userData.shipId = id;
         die.object.traverse((node) => {
           node.userData.shipId = id;

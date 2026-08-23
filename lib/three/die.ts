@@ -349,9 +349,11 @@ export function createDie(kind: DieKind, font: string, scale = 1, cellSize = 0, 
     side: THREE.DoubleSide,
     blending: THREE.AdditiveBlending,
   });
-  // The flagship cube fills most of its cell. Keep the reroll ring clearly
-  // outside that hull so a tap still shows.
-  const selectionScale = kind === "flag" ? 1.32 : 1.16;
+  // Every ship's reroll ring is the same size, flagship included — it is the
+  // flagship's hull that is scaled down (see arena.ts), not its ring. Sized
+  // just under one cell pitch so two adjacent selected dice's rings sit side
+  // by side instead of overlapping into a single deformed shape.
+  const selectionScale = 0.96;
   const selectionFill = new THREE.Mesh(
     new THREE.PlaneGeometry(markerSize * selectionScale, markerSize * selectionScale),
     selectionFillMaterial,

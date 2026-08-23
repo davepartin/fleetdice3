@@ -261,24 +261,22 @@ function paintFace(
     if (sides === 6) {
       if (isFlag) {
         // The coloured panel: this is what tells you what the flagship boosts.
+        // It very nearly fills the face — the black shell only shows through
+        // at the rounded corners, which is what reads as "rounded edges"
+        // rather than a frame around the colour.
         ctx.save();
-        const inset = size * 0.115;
+        const inset = size * 0.032;
         const panel = ctx.createLinearGradient(0, inset, 0, size - inset);
         panel.addColorStop(0, flagPalette.fill);
         panel.addColorStop(1, flagPalette.mid);
         ctx.fillStyle = panel;
         ctx.beginPath();
-        ctx.roundRect(inset, inset, size - inset * 2, size - inset * 2, size * 0.15);
+        ctx.roundRect(inset, inset, size - inset * 2, size - inset * 2, size * 0.17);
         ctx.fill();
-        // A dark seat under the panel so it reads as set into the black rim.
-        ctx.strokeStyle = "rgba(0,0,0,0.9)";
-        ctx.lineWidth = size * 0.034;
-        ctx.stroke();
-        // A thin cool edge, not brass — the owner asked the outside to stay black.
-        ctx.strokeStyle = "rgba(255,255,255,0.22)";
-        ctx.lineWidth = size * 0.014;
-        ctx.beginPath();
-        ctx.roundRect(inset - size * 0.012, inset - size * 0.012, size - inset * 2 + size * 0.024, size - inset * 2 + size * 0.024, size * 0.16);
+        // A hairline dark seat, just enough to separate the panel from the
+        // black corner it is set into — not a border around the whole face.
+        ctx.strokeStyle = "rgba(0,0,0,0.85)";
+        ctx.lineWidth = size * 0.012;
         ctx.stroke();
         ctx.restore();
       } else {

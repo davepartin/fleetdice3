@@ -836,6 +836,42 @@ Verified for real, closing the gap the blocked install had left open:
 all pass; `node tools/playtest.mjs 3 phone` (full 3-round real match) is
 clean but for the same pre-existing 404. `/code-review` came back clean.
 
+**Second follow-up:** the previous pass's own screenshot evidence (a phone
+photo, mid-match, with the flagship and a neighbour both selected for
+reroll) showed the two cyan rings had fused into one deformed blob rather
+than sitting as two clean squares — the "still touching" bug noted above
+was flagged but not actually root-caused that round. It also showed the
+flagship's face still carrying most of a full-width black margin around its
+coloured panel, reading as a large, deliberate border rather than a resin
+rim.
+**Proved:** the ring overlap was arithmetic, not rendering: a die's
+selection ring is drawn at `selectionScale × cellSize`, sized independently
+of the die's own object scale (see the `markerSize` normalisation in
+`lib/three/die.ts`) — so it lands in world units at whatever fraction of the
+board's fixed cell pitch (`CELL`, `lib/three/board.ts`) `selectionScale`
+says, however big or small the hull under it is. The flagship's ring was
+1.32× that pitch and every hull ship's was 1.16× — both bigger than one cell,
+so two adjacent selected dice's rings always overlapped, by a lot when one
+of them was the flagship. Replaced both with one constant, `0.96`, just
+under the cell pitch, so any two adjacent selected rings now sit apart with
+a visible gap instead of merging — verified by driving a real solo match
+with Playwright, rolling the fleet, and using the `window.__fd3.tap(id)`
+debug hatch to select the flagship plus its cell-1 neighbour simultaneously
+(the same pairing in the owner's screenshot): the rings render as two
+distinct rounded squares. Since every ship's ring is now the same size,
+`arena.ts`'s flagship-hull multiplier was bumped from 0.85× back up to
+0.93× — it had been shrunk that far specifically to clear the old, larger
+1.32× ring, and no longer needs to be. Shrank the flagship's face-art panel
+inset in `lib/three/faceArt.ts` from `size * 0.115` to `size * 0.032` and
+gave it a bigger corner radius, so the colour now fills almost the whole
+face and the near-black shell only shows through at the four rounded
+corners, in place of a full-width margin on every side — confirmed via the
+`?view=sheet` lab bench, cropped and zoomed on the flagship tile.
+Verified: `tsc --noEmit`, `pnpm lint`, and `pnpm test` (29/29) all pass;
+`BASE_PATH= pnpm build` succeeds; a real Playwright run through solo mode
+(home → Play Solo → Captain → Roll Fleet → select two adjacent dice)
+confirmed both fixes on the actual game screen, not just the bench.
+
 ---
 
 ## Found along the way
