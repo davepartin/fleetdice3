@@ -279,7 +279,9 @@ export function createDie(kind: DieKind, font: string, scale = 1, cellSize = 0, 
   contact.renderOrder = -2;
   object.add(contact);
 
-  // The orange bar that says "this die is in the straight".
+  // Straights are marked by the board, not by a second bar attached to every
+  // hull. Hull-sized markers vary with d4/d6/d8/d10 geometry and make a clean
+  // run look like a crooked stack of orange fragments.
   const barMaterial = new THREE.MeshBasicMaterial({
     color: 0xff9d2e, // --color-run
     transparent: true,
@@ -349,7 +351,7 @@ export function createDie(kind: DieKind, font: string, scale = 1, cellSize = 0, 
   });
   // The flagship cube fills most of its cell. Keep the reroll ring clearly
   // outside that hull so a tap still shows.
-  const selectionScale = kind === "flag" ? 1.32 : 0.98;
+  const selectionScale = kind === "flag" ? 1.32 : 1.16;
   const selectionFill = new THREE.Mesh(
     new THREE.PlaneGeometry(markerSize * selectionScale, markerSize * selectionScale),
     selectionFillMaterial,
@@ -476,7 +478,9 @@ export function createDie(kind: DieKind, font: string, scale = 1, cellSize = 0, 
     // The black flagship shell covers more of its cell than a triangular hull,
     // so it gets a larger steady cyan plate as well as the same outline.
     selectionFillMaterial.opacity = rerollSelected ? kind === "flag" ? 0.4 : 0.08 : 0;
-    damageMaterial.opacity = !state.disabled && state.damageSelected ? 0.94 : 0;
+    // A ship that took the hit gets a plain red X next round. That is a real
+    // state mark, not the ambiguous glow that made the enemy board look broken.
+    damageMaterial.opacity = !state.disabled && state.damageSelected ? 0.94 : state.disabled ? 0.62 : 0;
     for (const damageBar of damageBars) {
       (damageBar.material as THREE.MeshBasicMaterial).opacity = damageMaterial.opacity;
     }
@@ -484,7 +488,7 @@ export function createDie(kind: DieKind, font: string, scale = 1, cellSize = 0, 
     // again while sat out — so without this guard a frozen value that
     // happens to fall in this round's run or line could still light up a
     // scoring highlight on a ship that took no part in it.
-    barMaterial.opacity = !state.disabled && state.inRun ? 0.92 : 0;
+    barMaterial.opacity = 0;
     if (state.disabled) {
       linkMaterial.opacity = 0;
     } else if (state.inLine) {
