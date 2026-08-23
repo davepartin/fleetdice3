@@ -123,6 +123,12 @@ export type Arena = {
   cellWorld(side: "you" | "enemy", cell: number): THREE.Vector3;
   /** The flagship's position on a deck. */
   flagshipWorld(side: "you" | "enemy"): THREE.Vector3;
+  /**
+   * A punchy squash-bounce reaction on one ship's own hull, for the instant a
+   * volley lands on it — distinct from the flattened "sat out" pose it only
+   * settles into once next round's sync marks it disabled.
+   */
+  nudgeShip(side: "you" | "enemy", shipId: string, strength?: number): void;
   boardOf(side: "you" | "enemy"): Board;
   /** Resolves once every die on that deck has landed, or after a short cap. */
   whenSettled(side?: "you" | "enemy"): Promise<void>;
@@ -448,6 +454,9 @@ export function createArena(canvas: HTMLCanvasElement, options: ArenaOptions = {
       const at = arena.cellWorld(side, 4);
       at.y += 1.1;
       return at;
+    },
+    nudgeShip(side, shipId, strength = 1) {
+      decks[side].dice.get(shipId)?.nudge(strength);
     },
     boardOf(side) {
       return decks[side].board;

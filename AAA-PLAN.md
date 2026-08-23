@@ -734,9 +734,35 @@ Only after everything above.
   case) did not come up in the playthroughs; the two-card layout is the same
   `.straight-prizes` grid with both takes, covered by the unit test.
 
-- [ ] **5.2 — The volley lands.**
+- [x] **5.2 — The volley lands.**
   **DONE when:** damage arriving has anticipation, impact and settle, the screen
   reacts once, and a damaged ship visibly takes the hit rather than just greying.
+  **Proved:** most of this beat already existed (`arena.vfx.volley` for the
+  outbound flight, `impact`/`shieldBlock`/`shake`/`flash` for the landing) —
+  what was missing was the ship half. A braced ship only ever showed up
+  flattened and grey once the *next* round's sync marked it `disabled`; at the
+  actual moment of impact it did nothing. Two pieces already existed in the
+  code for exactly this and were simply never called: `Die.nudge()`
+  (`lib/three/die.ts`, a squash-bounce reaction) and `vfx.shipSacrifice()`
+  (`lib/three/vfx.ts`, a full "guard ring snaps shut, hard white spark, colour
+  drains out, dark puff lifts, dim ring left on the empty cell" sequence,
+  written and never wired to anything). Added `Arena.nudgeShip(side, shipId,
+  strength)` (`lib/three/arena.ts`) and called both, once per braced ship, at
+  the exact moment its side's incoming volley resolves — for the player's own
+  fleet from `report.bracedShips`, and symmetrically for the enemy fleet from
+  `them.report.bracedShips` when the player's own outgoing volley lands
+  (`components/MatchScreen.tsx`). `shake`/`flash` are `Math.max`-based in
+  `stage.ts`, not additive, so several braced ships still read as one screen
+  reaction, not a stutter of separate shakes.
+  Verified live rather than trusting the types: scripted a real solo match
+  with Playwright, played into round 1's brace choice, tapped a ship via the
+  `window.__fd3.tap(id)` hatch, confirmed it, and monkey-patched
+  `arena.vfx.shipSacrifice`/`arena.nudgeShip` before confirming to log every
+  call. Both fired once, on the tapped ship's id, at the same timestamp, the
+  moment the volley landed — with no new console errors (the one error
+  logged is the pre-existing, unrelated 404 already noted elsewhere in this
+  plan). `tsc --noEmit`, `pnpm lint`, `pnpm test` (29/29), and
+  `BASE_PATH= pnpm build` all pass.
 
 - [ ] **5.3 — Victory feels earned.**
   **DONE when:** the losing flagship breaks on camera, the stat card counts up

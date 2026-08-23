@@ -319,8 +319,30 @@ export function MatchScreen({ controller, onExit, title, subtitle }: Props) {
     const yourAttack = (you.tally?.attack ?? 0) + report.escalation;
     const yourDirect = you.tally?.direct ?? 0;
 
+    // A ship that braced against a volley reacts on its own cell — a guard
+    // ring, a hard white spark, then the colour draining out of it — instead
+    // of just turning up flattened and grey once the next round syncs.
+    const reactShips = (side: "you" | "enemy", player: PlayerState, braced: { id: string }[]) => {
+      braced.forEach((entry, index) => {
+        const ship = player.ships.find((candidate) => candidate.id === entry.id);
+        if (!ship) return;
+        const point = arena.cellWorld(side, cellForSlot(ship.slot));
+        window.setTimeout(() => {
+          arena.vfx.shipSacrifice(point);
+          arena.nudgeShip(side, entry.id, 1.1);
+          audio.play("impact-light", { pitch: 1.05 + index * 0.05 });
+        }, index * 90);
+      });
+    };
+
     audio.play("volley");
-    void arena.vfx.volley({ from: yourFlag, to: enemyFlag, amount: yourAttack, kind: "attack" });
+    void arena.vfx
+      .volley({ from: yourFlag, to: enemyFlag, amount: yourAttack, kind: "attack" })
+      .then(() => {
+        if (them?.report && them.report.round === report.round) {
+          reactShips("enemy", them, them.report.bracedShips);
+        }
+      });
     if (yourDirect > 0) {
       window.setTimeout(() => {
         void arena.vfx.volley({ from: yourFlag, to: enemyFlag, amount: yourDirect, kind: "direct" });
@@ -334,6 +356,7 @@ export function MatchScreen({ controller, onExit, title, subtitle }: Props) {
       void arena.vfx
         .volley({ from: enemyFlag, to: yourFlag, amount: incoming, kind: "attack" })
         .then(() => {
+          reactShips("you", you, report.bracedShips);
           if (report.soaked > 0) arena.vfx.shieldBlock(yourFlag, report.soaked);
           if (report.damage > 0) {
             arena.vfx.impact(yourFlag, report.damage, "attack");
@@ -371,7 +394,7 @@ export function MatchScreen({ controller, onExit, title, subtitle }: Props) {
       arena.vfx.straightSweep(points, run.taken, 0.7);
       audio.play("straight");
     }
-  }, [you]);
+  }, [you, them]);
 
   /* Victory / defeat -------------------------------------------------- */
 
