@@ -107,6 +107,11 @@ export type SyncOptions = {
    * feels broken, and it happens about one time in four.
    */
   thrown?: Set<string>;
+  /**
+   * Light the straight on the board. Held off while the dice are still in
+   * the air so the run arriving is one beat, not a glow that appears mid-throw.
+   */
+  showRunMarks?: boolean;
 };
 
 export type Arena = {
@@ -119,6 +124,8 @@ export type Arena = {
   /** The flagship's position on a deck. */
   flagshipWorld(side: "you" | "enemy"): THREE.Vector3;
   boardOf(side: "you" | "enemy"): Board;
+  /** Resolves once every die on that deck has landed, or after a short cap. */
+  whenSettled(side?: "you" | "enemy"): Promise<void>;
   dispose(): void;
 };
 
@@ -138,6 +145,7 @@ export function createArena(canvas: HTMLCanvasElement, options: ArenaOptions = {
     enemy: makeDeck("enemy", ENEMY_DECK, font, stage),
   };
   const isPhone = () => isPhoneLayout();
+  let settledAlive = true;
 
   /* Tapping ---------------------------------------------------------- */
 
@@ -337,6 +345,7 @@ export function createArena(canvas: HTMLCanvasElement, options: ArenaOptions = {
       player,
       show,
       deckKey === "you" ? opts.previewTally : undefined,
+      opts.showRunMarks !== false,
     );
   }
 
@@ -346,6 +355,7 @@ export function createArena(canvas: HTMLCanvasElement, options: ArenaOptions = {
     player: PlayerState,
     show: boolean,
     liveTally?: Tally | null,
+    showRun = true,
   ) {
     const tally: Tally | null = liveTally ?? player.tally;
     if (!show) {
@@ -355,7 +365,7 @@ export function createArena(canvas: HTMLCanvasElement, options: ArenaOptions = {
       return;
     }
 
-    const run = tally?.run ?? null;
+    const run = showRun ? (tally?.run ?? null) : null;
     const runCells: number[] = [];
     const lineCells = new Map<number, "row" | "col">();
     for (const line of tally?.lines ?? []) {
@@ -439,7 +449,23 @@ export function createArena(canvas: HTMLCanvasElement, options: ArenaOptions = {
     boardOf(side) {
       return decks[side].board;
     },
+    whenSettled(side = "you") {
+      return new Promise<void>((resolve) => {
+        const started = performance.now();
+        const tick = () => {
+          if (!settledAlive) {
+            resolve();
+            return;
+          }
+          const flying = [...decks[side].dice.values()].some((die) => die.rolling);
+          if (!flying || performance.now() - started > 2200) resolve();
+          else requestAnimationFrame(tick);
+        };
+        requestAnimationFrame(tick);
+      });
+    },
     dispose() {
+      settledAlive = false;
       window.removeEventListener("resize", refreshFrame);
       canvas.removeEventListener("pointerdown", onPointerDown);
       canvas.removeEventListener("pointerup", onPointerUp);

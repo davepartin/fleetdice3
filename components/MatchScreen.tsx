@@ -22,11 +22,13 @@ import {
   escalationFor,
   flagBonusSize,
   previewTally,
+  straightPrizeTakes,
   type MatchAction,
   type PlayerState,
+  type Straight,
 } from "@/lib/engine";
 import { rollHint } from "@/lib/ai";
-import { FLAGSHIP_FACES, NOUN } from "@/lib/reference";
+import { FLAGSHIP_FACES, NOUN, STAT_LABEL } from "@/lib/reference";
 import { isPhoneLayout } from "@/lib/viewport";
 import type { MatchController } from "@/lib/useMatch";
 import { pendingThrow, pendingThrowReady, type PendingThrow } from "@/lib/throwSync";
@@ -64,6 +66,12 @@ export function MatchScreen({ controller, onExit, title, subtitle }: Props) {
    */
   const [cinematic, setCinematic] = useState<null | "reveal" | "volley">(null);
   const [leaveOpen, setLeaveOpen] = useState(false);
+  /**
+   * The straight's board lights stay off until the dice land, so the run
+   * arriving is one 700ms beat instead of a glow that appears mid-throw.
+   */
+  const [runMarksOn, setRunMarksOn] = useState(false);
+  const straightEventRef = useRef("");
   /**
    * Dice the player just sent back. Held until the new numbers actually
    * arrive — otherwise solo and versus both toss the old faces, then toss again.
@@ -184,10 +192,59 @@ export function MatchScreen({ controller, onExit, title, subtitle }: Props) {
       previewTally: tally,
       revealEnemy: phase === "brace" || phase === "report" || phase === "over",
       thrown: throwReady ? pending?.ids : undefined,
+      showRunMarks: phase !== "rolling" || runMarksOn,
     });
     if (throwReady) pendingThrowRef.current = null;
     firstSyncRef.current = false;
-  }, [state, you, selected, braceShips, phase, controller.side, arenaReady, tally]);
+  }, [state, you, selected, braceShips, phase, controller.side, arenaReady, tally, runMarksOn]);
+
+  /* The straight is an event — lights and prize cards after the dice land */
+
+  const diceFingerprint = you?.dice.map((die) => `${die.id}:${die.value}`).join(",") ?? "";
+  useEffect(() => {
+    if (!you) return;
+    const run = you.dice.length ? bestRun(you.dice) : null;
+    const key = run ? `${run.start}:${run.top}:${run.length}:${diceFingerprint}` : "";
+
+    if (phase !== "rolling") {
+      if (phase === "ready" || phase === "shop") {
+        straightEventRef.current = "";
+        setRunMarksOn(false);
+      } else {
+        setRunMarksOn(Boolean(run));
+      }
+      return;
+    }
+
+    if (!run) {
+      straightEventRef.current = "";
+      setRunMarksOn(false);
+      return;
+    }
+
+    if (straightEventRef.current === key) {
+      setRunMarksOn(true);
+      return;
+    }
+
+    let cancelled = false;
+    setRunMarksOn(false);
+    const arena = arenaRef.current;
+    void (async () => {
+      if (arena) await arena.whenSettled("you");
+      if (cancelled) return;
+      straightEventRef.current = key;
+      setRunMarksOn(true);
+      if (!arena) return;
+      const points = runWorldPoints(arena, you, run);
+      arena.vfx.straightSweep(points, run.taken, 0.7);
+      audio.play("straight");
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [you, phase, arenaReady, diceFingerprint]);
 
   /* Point the camera at whatever matters right now ------------------- */
 
@@ -302,7 +359,7 @@ export function MatchScreen({ controller, onExit, title, subtitle }: Props) {
         .map((die) =>
           arena.cellWorld("you", die.flag ? 4 : cellForSlot(die.slot ?? 0)),
         );
-      arena.vfx.straightSweep(points, run.taken);
+      arena.vfx.straightSweep(points, run.taken, 0.7);
       audio.play("straight");
     }
   }, [you]);
@@ -572,6 +629,7 @@ export function MatchScreen({ controller, onExit, title, subtitle }: Props) {
               waiting={waitingOnEnemy}
               waitingName={enemyName}
               busy={busy}
+              showPrizes={runMarksOn}
               onRollAll={rollAll}
               onReroll={rerollSelected}
               onSubmit={() => {
@@ -692,6 +750,57 @@ function TallyStrip({ tally }: { tally: ReturnType<typeof previewTally> | null }
   );
 }
 
+function runWorldPoints(arena: Arena, you: PlayerState, run: Straight) {
+  return you.dice
+    .filter((die) => die.value >= run.start && die.value <= run.top)
+    .sort((a, b) => a.value - b.value)
+    .map((die) => arena.cellWorld("you", die.flag ? 4 : cellForSlot(die.slot ?? 0)));
+}
+
+function StraightPrizes({
+  you,
+  run,
+  prizes,
+  chosenTake,
+  onTake,
+}: {
+  you: PlayerState;
+  run: Straight;
+  prizes: number[];
+  chosenTake: number;
+  onTake(take: number): void;
+}) {
+  const choosable = prizes.length > 1;
+  return (
+    <div
+      className={`straight-prizes${prizes.length === 1 ? " straight-prizes-one" : ""}`}
+      role={choosable ? "group" : undefined}
+      aria-label={choosable ? "Choose a straight prize" : "Straight prize"}
+    >
+      {prizes.map((take) => {
+        const reward = previewTally(you, take).run?.reward ?? run.reward;
+        const selected = take === chosenTake;
+        const kind = reward.kind === "attack" ? "attack" : "energy";
+        const amount = reward.kind === "attack" ? (reward.attack ?? 0) : (reward.energy ?? 0);
+        return (
+          <button
+            key={take}
+            type="button"
+            onClick={choosable ? () => onTake(take) : undefined}
+            className={`straight-prize straight-prize-${kind}${selected ? " straight-prize-on" : ""}`}
+            aria-pressed={choosable ? selected : undefined}
+            disabled={!choosable}
+          >
+            <span className="t-eyebrow straight-prize-length">{take} in a row</span>
+            <span className="t-display text-xl straight-prize-value">{amount}</span>
+            <span className="t-eyebrow straight-prize-kind">{STAT_LABEL[kind]}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 function YourHealth({ you }: { you: PlayerState }) {
   const reactorShowing = you.dice.some((die) => die.flag) && you.flag.face === 1;
   const projectedBase = reactorShowing
@@ -746,6 +855,7 @@ function RollDock({
   onTake,
   onToken,
   onClearSelection,
+  showPrizes,
 }: {
   you: PlayerState;
   tally: ReturnType<typeof previewTally> | null;
@@ -756,6 +866,7 @@ function RollDock({
   waiting: boolean;
   waitingName?: string;
   busy: boolean;
+  showPrizes: boolean;
   onRollAll(): void;
   onReroll(): void;
   onSubmit(): void;
@@ -766,13 +877,8 @@ function RollDock({
   const [tokenOpen, setTokenOpen] = useState(false);
   const notRolled = you.phase === "ready";
   const run = you.dice.length ? bestRun(you.dice) : null;
-  const tiers = run
-    ? Array.from(
-        { length: Math.min(run.length, TUNING.runMax) - TUNING.runMin + 1 },
-        (_, index) => TUNING.runMin + index,
-      )
-    : [];
-  const chosenTake = you.straightTake ?? (run ? Math.min(run.length, TUNING.runMax) : 0);
+  const prizes = run ? straightPrizeTakes(run) : [];
+  const chosenTake = you.straightTake ?? (prizes.length ? prizes[prizes.length - 1]! : 0);
   const canAffordReroll = rerollCost === 0 || you.energy >= rerollCost;
 
   return (
@@ -780,33 +886,14 @@ function RollDock({
       <YourHealth you={you} />
       <TallyStrip tally={tally} />
 
-      {tiers.length > 1 && (
-        <div className="rounded-xl border border-[--color-run]/30 bg-[--color-run]/[0.08] p-2.5">
-          <p className="t-eyebrow mb-1.5 c-run">
-            Straight — cash it as
-          </p>
-          <div className="flex flex-wrap gap-1.5">
-            {tiers.map((take) => {
-              const preview = previewTally(you, take);
-              const reward = preview.run?.reward;
-              return (
-                <button
-                  key={take}
-                  type="button"
-                  onClick={() => onTake(take)}
-                  className={`rounded-lg border px-2.5 py-1.5 text-xs font-semibold transition ${
-                    take === chosenTake
-                      ? "border-[--color-run] bg-[--color-run]/25 text-white"
-                      : "border-white/12 c-dim hover:bg-white/[0.06]"
-                  }`}
-                >
-                  {take} in a row
-                  <span className="ml-1.5 opacity-80">{reward?.label}</span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
+      {run && showPrizes && (
+        <StraightPrizes
+          you={you}
+          run={run}
+          prizes={prizes}
+          chosenTake={chosenTake}
+          onTake={onTake}
+        />
       )}
 
       {hint && (

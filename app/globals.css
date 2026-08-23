@@ -628,6 +628,61 @@ button {
 .tally-strip .glow-repair { text-shadow: 0 0 18px rgb(100 193 142 / 0.65); }
 .tally-strip .glow-direct { text-shadow: 0 0 18px rgb(182 151 229 / 0.65); }
 
+/* Two prize cards — a choice, not a settings list. 700ms is the only
+   motion allowed for a moment worth watching. */
+.straight-prizes {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.straight-prizes-one {
+  grid-template-columns: 1fr;
+}
+.straight-prize {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  padding: 12px;
+  border: 1px solid rgb(255 157 46 / 0.28);
+  border-radius: 14px;
+  background: rgb(255 157 46 / 0.08);
+  text-align: left;
+  animation: straight-prize-in 700ms var(--ease-snap) both;
+}
+.straight-prize-energy .straight-prize-value { color: var(--color-energy-dim); }
+.straight-prize-attack .straight-prize-value { color: var(--color-attack-dim); }
+.straight-prize-on {
+  border-color: var(--color-primary);
+  background: var(--color-primary);
+  color: var(--color-primary-ink);
+}
+.straight-prize-on .t-eyebrow {
+  color: var(--color-primary-ink);
+  opacity: 0.62;
+}
+.straight-prize-on .straight-prize-value {
+  color: var(--color-primary-ink);
+}
+.straight-prize:disabled {
+  cursor: default;
+  opacity: 1;
+}
+.straight-prize-length,
+.straight-prize-kind {
+  color: var(--color-hull-300);
+}
+@keyframes straight-prize-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
 .brace-mobile-guide {
   display: none;
 }
@@ -758,6 +813,15 @@ button {
     max-height: calc(250px + var(--hud-safe-bottom));
     padding: 0.65rem;
     border-radius: 20px;
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
+  .match-hud-solo .straight-prize {
+    gap: 0;
+    padding: 8px;
+  }
+  .match-hud-solo .straight-prizes {
+    gap: 8px;
   }
 
   .match-hud-solo .commander-rail {

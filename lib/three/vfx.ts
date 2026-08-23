@@ -110,8 +110,9 @@ export type Vfx = {
     color: THREE.ColorRepresentation,
     opts?: FloatingNumberOptions,
   ): void;
-  /** The straight completing — a line of light drawn through the dice in order. */
-  straightSweep(points: THREE.Vector3[], tier: number): void;
+  /** The straight completing — a line of light drawn through the dice in order.
+   *  `hold` is the whole sequence, default 0.7s (the plan's "moment" beat). */
+  straightSweep(points: THREE.Vector3[], tier: number, hold?: number): void;
   /** A formation row or column firing. */
   formation(points: THREE.Vector3[], kind: "row" | "col"): void;
   /** A flagship dying. Resolves when the dust has settled (~1.5s). */
@@ -2021,10 +2022,11 @@ export function createVfx(stage: Stage, options: VfxOptions = {}): Vfx {
    * The best moment in the game. A ribbon of light is drawn through the dice in
    * numeric order — a bright head running the path, the ribbon burning in
    * behind it, sparks shed at every die it crosses — and the whole thing ends
-   * on a burst at the last die. Higher tiers run longer, wider and hotter, and
-   * add a second ribbon shadowing the first.
+   * on a burst at the last die. Higher tiers run wider and hotter. The whole
+   * sequence is pinned to `hold` seconds (700ms by default) so a straight is
+   * always the same kind of moment, not a variable light-show.
    */
-  function straightSweep(points: THREE.Vector3[], tier: number) {
+  function straightSweep(points: THREE.Vector3[], tier: number, hold = 0.7) {
     if (points.length < 2) return;
     const now = stage.time;
     const rank = clamp(tier, 1, 6);
@@ -2032,9 +2034,9 @@ export function createVfx(stage: Stage, options: VfxOptions = {}): Vfx {
 
     const segments = budget().ribbon;
     const width = 0.13 + rank * 0.035;
-    const draw = span(0.42 + rank * 0.08 + path.length * 0.04);
-    const fade = span(0.42);
-    const total = draw + fade;
+    const total = span(hold);
+    const draw = total * 0.6;
+    const fade = total * 0.4;
 
     const curve = new THREE.CatmullRomCurve3(path, false, "catmullrom", 0.4);
 
@@ -2137,9 +2139,10 @@ export function createVfx(stage: Stage, options: VfxOptions = {}): Vfx {
         p.shape = SHAPE.spark;
       }
     }, () => {
-      // The burst at the end of the run.
+      // The burst at the end of the run. Same window as the ribbon fade so
+      // the whole sequence stays inside `hold` (700ms).
       const end = path[path.length - 1]!;
-      const burst = span(0.6 + rank * 0.05);
+      const burst = fade;
       shake(0.3 + rank * 0.09);
       flash(C.run, 0.16 + rank * 0.05);
       punchLight(end, C.run, 30 + rank * 12, span(0.4), stage.time);

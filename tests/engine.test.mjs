@@ -39,6 +39,7 @@ const {
   repairOf,
   setRng,
   slotForCell,
+  straightPrizeTakes,
   straightReward,
   tally,
 } = G;
@@ -211,6 +212,13 @@ test("a longer straight may be cashed short, and the ladder is monotonic", () =>
     assert.equal(six.kind, "attack");
     assert.ok(seven.attack > six.attack, `d${biggest}: seven must beat six`);
   }
+});
+
+test("the board offers at most two straight prizes — short cash vs long cash", () => {
+  assert.deepEqual(straightPrizeTakes({ length: 5 }), [5]);
+  assert.deepEqual(straightPrizeTakes({ length: 6 }), [5, 6]);
+  assert.deepEqual(straightPrizeTakes({ length: 7 }), [5, 7]);
+  assert.deepEqual(straightPrizeTakes({ length: 9 }), [5, 7]);
 });
 
 /* ------------------------------------------------------------------ */
