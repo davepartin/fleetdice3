@@ -22,6 +22,7 @@ import {
   escalationFor,
   flagBonusSize,
   previewTally,
+  runMemberIds,
   straightPrizeTakes,
   type MatchAction,
   type PlayerState,
@@ -360,8 +361,9 @@ export function MatchScreen({ controller, onExit, title, subtitle }: Props) {
     }
     if (you.tally?.run) {
       const run = you.tally.run;
+      const members = runMemberIds(you.dice, run);
       const points = you.dice
-        .filter((die) => die.value >= run.start && die.value <= run.top)
+        .filter((die) => members.has(die.id))
         .sort((a, b) => a.value - b.value)
         .map((die) =>
           arena.cellWorld("you", die.flag ? 4 : cellForSlot(die.slot ?? 0)),
@@ -596,6 +598,7 @@ export function MatchScreen({ controller, onExit, title, subtitle }: Props) {
                 report={you.report}
                 you={you}
                 enemyName={enemyName}
+                waitingForOpponent={them?.phase === "brace"}
                 busy={busy}
                 onContinue={() => {
                   audio.play("button-major");
@@ -758,8 +761,9 @@ function TallyStrip({ tally }: { tally: ReturnType<typeof previewTally> | null }
 }
 
 function runWorldPoints(arena: Arena, you: PlayerState, run: Straight) {
+  const members = runMemberIds(you.dice, run);
   return you.dice
-    .filter((die) => die.value >= run.start && die.value <= run.top)
+    .filter((die) => members.has(die.id))
     .sort((a, b) => a.value - b.value)
     .map((die) => arena.cellWorld("you", die.flag ? 4 : cellForSlot(die.slot ?? 0)));
 }
@@ -779,12 +783,22 @@ function StraightPrizes({
 }) {
   const choosable = prizes.length > 1;
   return (
-    <div
-      className={`straight-prizes${prizes.length === 1 ? " straight-prizes-one" : ""}`}
-      role={choosable ? "group" : undefined}
-      aria-label={choosable ? "Choose a straight prize" : "Straight prize"}
-    >
-      {prizes.map((take) => {
+    <section className="straight-choice" aria-label="Straight reward">
+      <div className="straight-choice-heading">
+        <span className="t-eyebrow c-run">Straight {run.start}–{run.top}</span>
+        <span className="text-xs c-dim">{run.length} numbers · best hull d{run.biggest}</span>
+      </div>
+      <p className="straight-choice-copy">
+        {choosable
+          ? "Choose quick Energy now or the strongest Attack payout."
+          : "This run pays once, using its biggest ship."}
+      </p>
+      <div
+        className={`straight-prizes${prizes.length === 1 ? " straight-prizes-one" : ""}`}
+        role={choosable ? "group" : undefined}
+        aria-label={choosable ? "Choose a straight prize" : "Straight prize"}
+      >
+      {prizes.map((take, index) => {
         const reward = previewTally(you, take).run?.reward ?? run.reward;
         const selected = take === chosenTake;
         const kind = reward.kind === "attack" ? "attack" : "energy";
@@ -798,13 +812,16 @@ function StraightPrizes({
             aria-pressed={choosable ? selected : undefined}
             disabled={!choosable}
           >
-            <span className="t-eyebrow straight-prize-length">{take} in a row</span>
+            <span className="t-eyebrow straight-prize-length">
+              {choosable ? (index === 0 ? "Quick cash" : "Full run") : "Straight"}
+            </span>
             <span className="t-display text-xl straight-prize-value">{amount}</span>
-            <span className="t-eyebrow straight-prize-kind">{STAT_LABEL[kind]}</span>
+            <span className="t-eyebrow straight-prize-kind">{STAT_LABEL[kind]} · {take} numbers</span>
           </button>
         );
       })}
-    </div>
+      </div>
+    </section>
   );
 }
 
@@ -890,8 +907,9 @@ function RollDock({
 
   return (
     <div className="roll-dock panel panel-you relative flex flex-col gap-2.5 p-3.5">
-      <YourHealth you={you} />
-      <TallyStrip tally={tally} />
+      <div className="roll-dock-body flex min-h-0 flex-col gap-2.5">
+        <YourHealth you={you} />
+        <TallyStrip tally={tally} />
 
       {run && showPrizes && (
         <StraightPrizes
@@ -950,9 +968,11 @@ function RollDock({
           </div>
         </div>
       )}
+      </div>
 
+      <div className="roll-dock-action">
       {waiting ? (
-        <div className="flex items-center justify-center gap-3 py-2">
+        <div className="flex items-center justify-center gap-3 py-2" aria-live="polite">
           <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-white/20 border-t-white/80" />
           <span className="text-sm c-dim">
             Locked in. Waiting for {waitingName ?? "the enemy"}…
@@ -1005,6 +1025,7 @@ function RollDock({
           )}
         </div>
       )}
+      </div>
 
     </div>
   );
