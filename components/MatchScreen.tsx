@@ -587,7 +587,9 @@ export function MatchScreen({ controller, onExit, title, subtitle }: Props) {
         </div>
 
         {/* ---------------- middle: the board shows through ---------------- */}
-        <div className="hud-pass-through min-h-0 flex-1" />
+        <div
+          className={`hud-pass-through min-h-0 flex-1 ${phase === "brace" ? "hud-pass-through-danger" : ""}`}
+        />
 
         {/* ---------------- bottom ---------------- */}
         <div ref={bottomRef} className="match-bottom mx-auto w-full max-w-[44rem] px-2 pb-2">
@@ -1124,7 +1126,7 @@ function BraceDock({
   return (
     <div className="brace-dock panel panel-you flex flex-col gap-3 p-3.5">
       <div>
-        <p className="t-eyebrow">Incoming</p>
+        <p className="t-eyebrow">Choose damage</p>
         <h2 className="t-display text-xl">
           <span className="c-attack">{you.incoming}</span>
           <span className="c-dim text-base"> blockable</span>
@@ -1142,11 +1144,11 @@ function BraceDock({
           </p>
         )}
         <p className="brace-explanation mt-1 text-sm leading-snug c-dim">
-          Throw ships in front of it. Each one blocks its own size and sits out the next round.
-          Nothing stops Direct.
+          Throw ships in front of it. Each one blocks its own size and is out of commission
+          for one round. Nothing stops Direct.
         </p>
         <p className="brace-mobile-guide mt-1 text-sm font-semibold c-attack">
-          Tap a ship die. A red damage target means it will take the hit.
+          Tap a ship to block — it takes the hit and is out of commission for one round.
         </p>
       </div>
 
