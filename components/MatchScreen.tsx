@@ -611,6 +611,9 @@ export function MatchScreen({ controller, onExit, title, subtitle }: Props) {
             <div className="yard-portal">
               <Shipyard
                 player={you}
+                enemyName={enemyName}
+                enemyHp={them?.hp ?? 0}
+                enemyMaxHp={them?.maxHp ?? TUNING.hp}
                 onAction={(action) => {
                   audio.play("shop-buy");
                   send(action);

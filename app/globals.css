@@ -1228,6 +1228,34 @@ button {
   margin: 0.15rem auto 0;
 }
 
+/* Both fleets' hit points, so shopping never means losing track of who is
+   actually winning. A plain count each, not a bar — see HpBox's own note on
+   why a ratio stops meaning anything once repairs push maxHp past 60. */
+.yard-hp-row {
+  flex: none;
+  display: flex;
+  gap: 0.5rem;
+  width: min(100%, 27rem);
+  margin: 0 auto;
+}
+.yard-hp-box {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  border-radius: 0.9rem;
+  border: 1px solid rgb(255 255 255 / 0.1);
+  background: rgb(255 255 255 / 0.04);
+  padding: 0.55rem 0.9rem;
+}
+.yard-hp-box > span:first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .yard-cell {
   position: relative;
   /* Without this, a grid item's minimum width defaults to its content's
