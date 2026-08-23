@@ -263,13 +263,12 @@ export function createArena(canvas: HTMLCanvasElement, options: ArenaOptions = {
       if (!die) {
         // On a phone the face, not the board decoration, is the product. The
         // larger hulls fill their cells while the atlas keeps their values and
-        // payoff marks clean at the steeper command angle. The flagship gets
-        // a further boost on top of that — it shares its cube geometry with
-        // every d6 hull ship, so size is the one silhouette cue available
-        // without a bespoke shape, and it needs to survive a greyscale,
-        // label-blurred screenshot on its own.
+        // payoff marks clean at the steeper command angle. The flagship used
+        // to get a 1.3× boost on top of that; the cube then covered its own
+        // reroll ring. It stays the same scale as a hull ship so the cyan
+        // outline can sit outside it.
         const base = isPhone() ? 1.66 : 1.14;
-        die = createDie(spec.kind, font, spec.kind === "flag" ? base * 1.3 : base, CELL, isPhone());
+        die = createDie(spec.kind, font, spec.kind === "flag" ? base * 0.94 : base, CELL, isPhone());
         die.object.userData.shipId = id;
         die.object.traverse((node) => {
           node.userData.shipId = id;

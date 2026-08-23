@@ -347,7 +347,9 @@ export function createDie(kind: DieKind, font: string, scale = 1, cellSize = 0, 
     side: THREE.DoubleSide,
     blending: THREE.AdditiveBlending,
   });
-  const selectionScale = kind === "flag" ? 1.17 : 0.98;
+  // The flagship cube fills most of its cell. Keep the reroll ring clearly
+  // outside that hull so a tap still shows.
+  const selectionScale = kind === "flag" ? 1.32 : 0.98;
   const selectionFill = new THREE.Mesh(
     new THREE.PlaneGeometry(markerSize * selectionScale, markerSize * selectionScale),
     selectionFillMaterial,
