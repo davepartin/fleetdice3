@@ -48,7 +48,9 @@ const D4: DieShape = {
   ],
   artRadius: 0.4,
   textureRotation: 0,
-  displayScale: 0.92,
+  // The smallest hull in the fleet. Every other displayScale is set relative
+  // to this one, so a bigger die always, unambiguously, reads as bigger.
+  displayScale: 0.82,
 };
 
 /** A cube. */
@@ -73,9 +75,11 @@ const D6: DieShape = {
   ],
   artRadius: 0.44,
   textureRotation: 0,
-  // A cube carries more visual mass than a pointed hull at the same radius.
-  // Keep it a little smaller, with the painted bevel preserving its d6 read.
-  displayScale: 1.16,
+  // A cube already carries more visual mass than a pointed hull at the same
+  // radius — its face is a full square, not a triangle tapering to a point —
+  // so it needs less of a scale boost than d8/d10 to read as the second step
+  // up from d4.
+  displayScale: 0.95,
 };
 
 /** An octahedron. Eight triangles. */
@@ -100,7 +104,10 @@ const D8: DieShape = {
   ],
   artRadius: 0.4,
   textureRotation: 0,
-  displayScale: 1.15,
+  // A d8's single visible face is the same equilateral triangle as a d4's —
+  // shape alone cannot tell them apart from a fixed overhead camera, so size
+  // has to. Clearly bigger than d4, clearly smaller than d10.
+  displayScale: 1.02,
 };
 
 /**
@@ -140,7 +147,11 @@ function buildD10(): DieShape {
     faces.push([bottom, a, b, c]);
   }
 
-  return { vertices, faces, artRadius: 0.36, textureRotation: 0, displayScale: 0.86 };
+  // The heaviest gun in the fleet. Its ten thin kite faces read as visually
+  // slighter than a cube or octahedron's broad faces at the same radius, so
+  // it needs the biggest displayScale of the four just to be seen as the top
+  // of the upgrade ladder rather than the runt of it.
+  return { vertices, faces, artRadius: 0.36, textureRotation: 0, displayScale: 1.12 };
 }
 
 const D10 = buildD10();

@@ -806,6 +806,36 @@ package-network request is blocked, so `pnpm test`, lint, typecheck, build and
 the phone playtest remain the next required verification in a normal project
 checkout.
 
+**Follow-up, with a working install:** the owner reviewed 6.3's actual result
+live on the phone and found it still short of AAA — a real d10-vs-d8 size
+comparison showed d8 reading bigger than d10 and nearly identical in
+silhouette to d4, and the reroll rings on two adjacent selected dice were
+still touching. Investigated with `app/lab/page.tsx?view=sheet` (a bench
+built for exactly this kind of side-by-side comparison) rather than guessing
+from gameplay screenshots alone.
+**Proved:** Found the actual bug behind "d8 looks bigger than d10": the four
+`displayScale` values in `lib/three/polyhedron.ts` were not monotonic with
+hull power — d6 (1.16) and d8 (1.15) were both larger than d10 (0.86), the
+opposite of the upgrade ladder d4→d6→d8→d10. Rebuilt them as a genuine
+ladder (0.82 / 0.95 / 1.02 / 1.12) verified via the lab bench's `?view=sheet`
+row, where all five hulls sit side by side at identical scale. Thinned the
+outline mesh's inflation from 1.035× to 1.012× (`lib/three/die.ts`) so the
+dark rim reads as a resin bevel catching a shadow rather than a flat cartoon
+border. Shrank the flagship a further step, from the 0.94× a prior pass
+landed on to 0.85× of a hull ship's scale, verified by tapping the flagship
+via the `window.__fd3.tap("flag")` debug hatch and screenshotting its
+selected cyan reroll ring directly — it now sits with clear space on every
+side. Checked the ring math is untouched: `markerSize` and `selectionScale`
+key off the fixed board cell, not `displayScale`, so none of this affects
+hit-testing or where a tap lands.
+Left the black-rimmed flagship shell alone — `AAA-PLAN.md`'s own "Found
+along the way" entry below records that as a deliberate owner call
+overriding the bronze row in the colour table, not a bug to fix back.
+Verified for real, closing the gap the blocked install had left open:
+`tsc --noEmit`, `pnpm lint`, `pnpm test` (29/29), and `BASE_PATH= pnpm build`
+all pass; `node tools/playtest.mjs 3 phone` (full 3-round real match) is
+clean but for the same pre-existing 404. `/code-review` came back clean.
+
 ---
 
 ## Found along the way

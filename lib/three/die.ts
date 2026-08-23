@@ -238,7 +238,7 @@ export function createDie(kind: DieKind, font: string, scale = 1, cellSize = 0, 
   pivot.add(mesh);
 
   const outline = new THREE.Mesh(shared.outlineGeometry, shared.outline);
-  outline.scale.setScalar(1.035);
+  outline.scale.setScalar(1.012);
   pivot.add(outline);
 
   // The pool of light the die sits in. A flat decal on the deck, not a sprite —
