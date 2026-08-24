@@ -185,7 +185,7 @@ export function RoundReportCard({
         <p className="t-eyebrow mb-1 mt-2.5">{enemyName}</p>
         <p className="battle-line flex flex-wrap items-center gap-1">
           <HpBox value={enemyHp} />
-          <span className="c-dim">−</span>
+          <span className="c-dim">·</span>
           <Box kind="attack" value={t.attack} />
           {enemyShieldsStopped > 0 && (
             <>
