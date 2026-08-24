@@ -737,8 +737,16 @@ button {
   box-shadow: 0 18px 45px rgb(0 0 0 / 0.62), 0 0 28px rgb(255 210 61 / 0.1);
 }
 
+/* The only battle breakdown there is now — no separate disclosure to fall
+   back to — so it's visible on every viewport, not just phone. */
 .round-report-mobile-summary {
-  display: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  border: 1px solid rgb(255 255 255 / 0.09);
+  border-radius: 13px;
+  background: rgb(0 0 0 / 0.22);
+  padding: 0.7rem 0.8rem;
 }
 
 .shipyard-overview > div {
@@ -769,23 +777,12 @@ button {
   list-style-position: inside;
 }
 
-.round-report-disclosure-button {
-  display: none;
-  width: 100%;
-  cursor: pointer;
-}
 .round-report-wait {
   margin: 0;
   color: var(--color-hull-200);
   font-size: var(--text-sm);
   line-height: 1.35;
   text-align: center;
-}
-
-@media (min-width: 641px) and (min-height: 641px) {
-  .round-report-details-body {
-    display: block;
-  }
 }
 
 @media (max-width: 640px), (max-height: 640px) {
@@ -1065,80 +1062,8 @@ button {
     overscroll-behavior: contain;
     -webkit-overflow-scrolling: touch;
   }
-  .match-hud-solo .round-report-top > div:first-child h2 {
-    font-size: var(--text-xl);
-  }
   .match-hud-solo .round-report-mobile-summary {
-    display: flex;
-    flex-direction: column;
-    gap: 0.45rem;
-    border: 1px solid rgb(255 255 255 / 0.09);
-    border-radius: 13px;
-    background: rgb(0 0 0 / 0.22);
-    padding: 0.55rem;
-  }
-  .match-hud-solo .round-report-mobile-summary .t-num {
-    font-size: var(--text-base);
-  }
-  .match-hud-solo .round-report-disclosure {
-    display: flex;
-    flex: 0 0 auto;
-    flex-direction: column;
-    min-height: 0;
-  }
-  .match-hud-solo .round-report-disclosure-button {
-    display: flex;
-    min-height: 44px;
-    align-items: center;
-    justify-content: space-between;
-    border: 1px solid rgb(255 255 255 / 0.12);
-    border-radius: 10px;
-    padding: 0.48rem 0.7rem;
-    color: var(--color-hull-200);
-    font-family: var(--font-body);
-    font-size: var(--text-xs);
-    font-weight: 700;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-  }
-  .match-hud-solo .round-report-disclosure-button::after {
-    content: "+";
-    color: var(--color-shield);
-    font-family: var(--font-body);
-    font-size: var(--text-base);
-    line-height: 1;
-  }
-  .match-hud-solo .round-report.is-open .round-report-disclosure-button::after {
-    content: "−";
-  }
-  .match-hud-solo .round-report:not(.is-open) .round-report-details-body {
-    display: none;
-  }
-  /* Phone Safari will not scroll a <details> flex child. The open report uses
-     ordinary divs, and height:0 + flex-grow gives the list a real scrollport. */
-  .match-hud-solo .round-report-panel:has(.round-report.is-open) {
-    height: min(74dvh, 650px);
-    max-height: min(74dvh, 650px);
-  }
-  .match-hud-solo .round-report.is-open .round-report-disclosure {
-    flex: 1 1 auto;
-    min-height: 0;
-    overflow: hidden;
-  }
-  .match-hud-solo .round-report.is-open .round-report-details-body {
-    display: block;
-    position: relative;
-    z-index: 2;
-    height: 0;
-    min-height: 0;
-    flex: 1 1 auto;
-    padding: 0.15rem 0.15rem 0.65rem;
-    overflow-x: hidden;
-    overflow-y: scroll;
-    overscroll-behavior: contain;
-    -webkit-overflow-scrolling: touch;
-    touch-action: pan-y;
-    pointer-events: auto;
+    padding: 0.55rem 0.7rem;
   }
   .match-hud-solo .round-report .btn-lg {
     flex: 0 0 auto;
