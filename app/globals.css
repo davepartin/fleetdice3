@@ -50,6 +50,15 @@
   --color-run: #ff9d2e;
   --color-run-glow: #ffc978;
 
+  /* Hit points, and only hit points — a colour every other score already
+     claimed a meaning for, so this is the one number on screen that's
+     always this hue, everywhere it appears. Deliberately not --color-run:
+     close in hue, but a straight's payoff and a flagship's hit points are
+     never the same idea and shouldn't share a colour by coincidence. */
+  --color-hp: #ff7a1a;
+  --color-hp-deep: #7a3406;
+  --color-hp-glow: #ffb37a;
+
   /* Universal. */
   --color-white: #ffffff;
 
@@ -412,16 +421,19 @@ button {
 .c-repair { color: var(--color-repair); }
 .c-direct { color: var(--color-direct); }
 .c-run { color: var(--color-run); }
+.c-hp { color: var(--color-hp); }
 .c-dim { color: var(--color-hull-300); }
 .c-dim-bright { color: var(--color-hull-200); }
 .c-attack-glow { color: var(--color-attack-glow); }
 .c-repair-glow { color: var(--color-repair-glow); }
+.c-hp-glow { color: var(--color-hp-glow); }
 
 .glow-attack { text-shadow: 0 0 18px rgb(255 77 77 / 0.65); }
 .glow-shield { text-shadow: 0 0 18px rgb(77 180 255 / 0.65); }
 .glow-energy { text-shadow: 0 0 18px rgb(255 210 61 / 0.65); }
 .glow-repair { text-shadow: 0 0 18px rgb(69 224 139 / 0.65); }
 .glow-direct { text-shadow: 0 0 18px rgb(176 125 255 / 0.65); }
+.glow-hp { text-shadow: 0 0 18px rgb(255 122 26 / 0.65); }
 
 /* ==================================================================
    Health bar

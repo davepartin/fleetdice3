@@ -39,16 +39,49 @@ function Box({ kind, value, big }: { kind: BoxKind; value: number; big?: boolean
   );
 }
 
-/** A plain number, uncoloured — hpBefore and hpAfter aren't damage terms,
- *  they're the anchors the line starts and ends on. */
+/** Hit points, and only hit points, are ever this colour — hpBefore and
+ *  hpAfter aren't damage terms, they're the anchors the line starts and
+ *  ends on, so they get the one hue nothing else on screen uses. */
 function HpBox({ value, big }: { value: number; big?: boolean }) {
   return (
     <span
-      className={`t-num inline-flex items-center rounded-md border border-white/25 bg-white/10 font-bold leading-none text-white ${
+      className={`t-num inline-flex items-center rounded-md border border-[--color-hp]/45 bg-[--color-hp]/[0.16] c-hp font-bold leading-none ${
         big ? "px-1.5 py-1 text-base" : "px-1 py-0.5 text-sm"
       }`}
     >
       {value}
+    </span>
+  );
+}
+
+/**
+ * A ship blocking part of the hit, drawn as the same triangle hull every
+ * d4 ship shows on the board — see HullShape's own note on why each hull
+ * has its own silhouette. A white number on it, the same as a real die
+ * face: the shape says "this is a ship," not a colour that would
+ * otherwise collide with shields' blue.
+ */
+function ShipBlockBox({ value, big }: { value: number; big?: boolean }) {
+  const size = big ? "1.9em" : "1.6em";
+  return (
+    <span
+      className="relative inline-flex items-center justify-center"
+      style={{ width: size, height: size }}
+    >
+      <svg viewBox="0 0 64 64" className="absolute inset-0 h-full w-full" aria-hidden="true">
+        <path
+          d="M32 8 L57 52 L7 52 Z"
+          fill="rgba(255,255,255,0.12)"
+          stroke="rgba(255,255,255,0.6)"
+          strokeWidth="3"
+          strokeLinejoin="round"
+        />
+      </svg>
+      <span
+        className={`t-num relative translate-y-[0.12em] font-bold leading-none text-white ${big ? "text-sm" : "text-xs"}`}
+      >
+        {value}
+      </span>
     </span>
   );
 }
@@ -102,7 +135,7 @@ export function RoundReportCard({
        * the engine itself applies them. Theirs can only ever be a ceiling:
        * their own brace choice isn't visible from this side of the match. */}
       <div className="round-report-mobile-summary">
-        <p className="t-eyebrow mb-1">You</p>
+        <p className="t-eyebrow mb-1">Your fleet damage report</p>
         <p className="battle-line flex flex-wrap items-center gap-1">
           <HpBox value={report.hpBefore} />
           <span className="c-dim">−</span>
@@ -116,7 +149,7 @@ export function RoundReportCard({
           {report.soaked > 0 && (
             <>
               <span className="c-dim">+</span>
-              <Box kind="shield" value={report.soaked} />
+              <ShipBlockBox value={report.soaked} />
             </>
           )}
           {report.escalation > 0 && (
@@ -141,7 +174,7 @@ export function RoundReportCard({
           <HpBox value={report.hpAfter} big />
         </p>
 
-        <p className="t-eyebrow mb-1 mt-2.5">{enemyName} (up to)</p>
+        <p className="t-eyebrow mb-1 mt-2.5">{enemyName}</p>
         <p className="battle-line flex flex-wrap items-center gap-1">
           <Box kind="attack" value={t.attack} />
           {enemyShieldsStopped > 0 && (
