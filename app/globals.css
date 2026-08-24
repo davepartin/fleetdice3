@@ -1045,7 +1045,7 @@ button {
   }
 
   .match-hud-solo .round-report-panel {
-    max-height: calc(270px + var(--hud-safe-bottom));
+    max-height: calc(320px + var(--hud-safe-bottom));
     overflow: hidden;
     padding: 0.7rem;
   }
@@ -1054,7 +1054,18 @@ button {
     gap: 0.5rem;
     overflow: hidden;
   }
-  .match-hud-solo .round-report > div:first-child h2 {
+  /* The battle-line boxes can wrap to four lines on a narrow phone — this
+     scrolls internally rather than ever pushing the confirm button, below,
+     off the bottom of the screen. Same fix as .brace-dock-body. */
+  .match-hud-solo .round-report-top {
+    flex: 0 1 auto;
+    min-height: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+  .match-hud-solo .round-report-top > div:first-child h2 {
     font-size: var(--text-xl);
   }
   .match-hud-solo .round-report-mobile-summary {

@@ -10,45 +10,37 @@
 
 import { useState } from "react";
 import type { RoundReport as Report } from "@/lib/engine";
+import { STAT_GLYPH } from "@/lib/reference";
 import { Button, Notice, Rule, Stat } from "./ui";
 
-/**
- * One arithmetic term in a battle line: an operator, a label, and the
- * number itself — the same "small caption under/after a coloured number"
- * language as the rest of the game, just inline instead of stacked.
- */
-function Term({
-  op,
-  label,
-  value,
-  tone,
-  strong,
-}: {
-  op?: "+" | "−";
-  label: string;
-  value: number;
-  tone?: "attack" | "shield" | "direct" | "repair";
-  strong?: boolean;
-}) {
-  return (
-    <>
-      {op && <span className="c-dim"> {op} </span>}
-      <span className="c-dim">{label} </span>
-      <span className={`t-num ${tone ? `c-${tone}` : "text-white"} ${strong ? "font-semibold" : ""}`}>
-        {value}
-      </span>
-    </>
-  );
-}
+type BoxKind = "attack" | "shield" | "direct" | "repair";
 
-/** The number a battle line arrives at — bold and first, so it reads as the
- *  headline of the sentence rather than one more term in the chain. */
-function Result({ value, label, tone }: { value: number; label: string; tone?: "attack" }) {
+// Written literally (not built from a template string) so Tailwind's static
+// scan can actually find these classes — a `${kind}`-interpolated class name
+// would never make it into the compiled stylesheet.
+const BOX_TONE: Record<BoxKind, string> = {
+  attack: "border-[--color-attack]/40 bg-[--color-attack]/[0.16] c-attack",
+  shield: "border-[--color-shield]/40 bg-[--color-shield]/[0.16] c-shield",
+  direct: "border-[--color-direct]/40 bg-[--color-direct]/[0.16] c-direct",
+  repair: "border-[--color-repair]/40 bg-[--color-repair]/[0.16] c-repair",
+};
+
+/**
+ * One term in a battle line: the same coloured glyph a die itself shows
+ * (▲ attack, ◆ shield, ⌁ direct, ✚ repair), boxed, so the number reads
+ * without needing a text label next to it. `big` marks the line's own
+ * total — the number the whole line is building toward.
+ */
+function Box({ kind, value, big }: { kind: BoxKind; value: number; big?: boolean }) {
   return (
-    <>
-      <span className={`t-num font-semibold ${tone ? `c-${tone}` : "text-white"}`}>{value}</span>{" "}
-      <span className="c-dim">{label}</span>
-    </>
+    <span
+      className={`t-num inline-flex items-center gap-0.5 rounded-md border font-bold leading-none ${BOX_TONE[kind]} ${
+        big ? "px-1.5 py-1 text-base" : "px-1 py-0.5 text-sm"
+      }`}
+    >
+      <span className="text-[0.65em] opacity-75">{STAT_GLYPH[kind]}</span>
+      {value}
+    </span>
   );
 }
 
@@ -109,6 +101,10 @@ export function RoundReportCard({
 
   return (
     <div className={`round-report flex min-h-0 flex-1 flex-col gap-3 ${detailsOpen ? "is-open" : ""}`}>
+      {/* Whatever this needs — two lines' worth of boxes, sometimes wrapped
+       * to four — it scrolls on its own rather than ever pushing the
+       * confirm button below the fold. See BraceDock for the same fix. */}
+      <div className="round-report-top min-h-0">
       <div className="flex items-baseline justify-between">
         <div>
           <p className="t-eyebrow">Round {report.round}</p>
@@ -124,36 +120,73 @@ export function RoundReportCard({
        * ("Battle details") is the same arithmetic spelled out further, for
        * anyone who wants to check it against the board. */}
       <div className="round-report-mobile-summary">
-        <p className="battle-line text-sm leading-snug">
-          <Term label="attack" value={enemy?.attack ?? 0} tone="attack" />
-          {blocked > 0 && <Term op="−" label="shields" value={blocked} tone="shield" />}
-          {report.soaked > 0 && <Term op="−" label="blocked" value={report.soaked} tone="shield" />}
-          {report.escalation > 0 && <Term op="+" label="war" value={report.escalation} tone="attack" />}
-          {report.direct > 0 && <Term op="+" label="direct" value={report.direct} tone="direct" />}
-          <span className="c-dim"> = </span>
-          <Result value={took} label="damage to you" tone="attack" />
+        <p className="battle-line flex flex-wrap items-center gap-1">
+          <Box kind="attack" value={enemy?.attack ?? 0} />
+          {blocked > 0 && (
+            <>
+              <span className="c-dim">−</span>
+              <Box kind="shield" value={blocked} />
+            </>
+          )}
+          {report.soaked > 0 && (
+            <>
+              <span className="c-dim">−</span>
+              <Box kind="shield" value={report.soaked} />
+            </>
+          )}
+          {report.escalation > 0 && (
+            <>
+              <span className="c-dim">+</span>
+              <Box kind="attack" value={report.escalation} />
+            </>
+          )}
+          {report.direct > 0 && (
+            <>
+              <span className="c-dim">+</span>
+              <Box kind="direct" value={report.direct} />
+            </>
+          )}
+          <span className="c-dim">=</span>
+          <Box kind="attack" value={took} big />
           {report.repair > 0 && (
             <>
-              <span className="c-dim"> · </span>
-              <Term op="+" label="repair" value={report.repair} tone="repair" />
+              <span className="c-dim">+</span>
+              <Box kind="repair" value={report.repair} />
             </>
           )}
+          <span className="c-dim text-xs">to you</span>
         </p>
-        <p className="battle-line text-sm leading-snug">
-          <Term label="attack" value={t.attack} tone="attack" />
-          {enemyShieldsStopped > 0 && <Term op="−" label="their shields" value={enemyShieldsStopped} tone="shield" />}
-          {report.escalation > 0 && <Term op="+" label="war" value={report.escalation} tone="attack" />}
-          {t.direct > 0 && <Term op="+" label="direct" value={t.direct} tone="direct" />}
-          <span className="c-dim"> = up to </span>
-          <Result value={dealtCeiling} label={`to ${enemyName}`} tone="attack" />
+        <p className="battle-line flex flex-wrap items-center gap-1">
+          <Box kind="attack" value={t.attack} />
+          {enemyShieldsStopped > 0 && (
+            <>
+              <span className="c-dim">−</span>
+              <Box kind="shield" value={enemyShieldsStopped} />
+            </>
+          )}
+          {report.escalation > 0 && (
+            <>
+              <span className="c-dim">+</span>
+              <Box kind="attack" value={report.escalation} />
+            </>
+          )}
+          {t.direct > 0 && (
+            <>
+              <span className="c-dim">+</span>
+              <Box kind="direct" value={t.direct} />
+            </>
+          )}
+          <span className="c-dim">= up to</span>
+          <Box kind="attack" value={dealtCeiling} big />
           {enemyRepair > 0 && (
             <>
-              <span className="c-dim"> · </span>
-              <Term op="+" label="their repair" value={enemyRepair} tone="repair" />
+              <span className="c-dim">+</span>
+              <Box kind="repair" value={enemyRepair} />
             </>
           )}
-          <span className="c-dim"> · their blocks unknown</span>
+          <span className="c-dim text-xs">to {enemyName} · blocks unknown</span>
         </p>
+      </div>
       </div>
 
       <div className="round-report-disclosure min-h-0">
