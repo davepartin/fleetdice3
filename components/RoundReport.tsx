@@ -12,6 +12,46 @@ import { useState } from "react";
 import type { RoundReport as Report } from "@/lib/engine";
 import { Button, Notice, Rule, Stat } from "./ui";
 
+/**
+ * One arithmetic term in a battle line: an operator, a label, and the
+ * number itself — the same "small caption under/after a coloured number"
+ * language as the rest of the game, just inline instead of stacked.
+ */
+function Term({
+  op,
+  label,
+  value,
+  tone,
+  strong,
+}: {
+  op?: "+" | "−";
+  label: string;
+  value: number;
+  tone?: "attack" | "shield" | "direct" | "repair";
+  strong?: boolean;
+}) {
+  return (
+    <>
+      {op && <span className="c-dim"> {op} </span>}
+      <span className="c-dim">{label} </span>
+      <span className={`t-num ${tone ? `c-${tone}` : "text-white"} ${strong ? "font-semibold" : ""}`}>
+        {value}
+      </span>
+    </>
+  );
+}
+
+/** The number a battle line arrives at — bold and first, so it reads as the
+ *  headline of the sentence rather than one more term in the chain. */
+function Result({ value, label, tone }: { value: number; label: string; tone?: "attack" }) {
+  return (
+    <>
+      <span className={`t-num font-semibold ${tone ? `c-${tone}` : "text-white"}`}>{value}</span>{" "}
+      <span className="c-dim">{label}</span>
+    </>
+  );
+}
+
 function Row({
   label,
   value,
@@ -60,6 +100,13 @@ export function RoundReportCard({
   const blocked = Math.max(0, (enemy?.attack ?? 0) + report.escalation - report.incoming);
   const [detailsOpen, setDetailsOpen] = useState(false);
 
+  // What you dealt them is only ever a ceiling here — their own brace choice
+  // (which ships stepped in front of it) isn't known from this side of the
+  // match, so this assumes zero and says so, rather than guessing.
+  const enemyShieldsStopped = Math.min(t.attack, enemy?.defense ?? 0);
+  const enemyRepair = enemy?.heal ?? 0;
+  const dealtCeiling = Math.max(0, t.attack - (enemy?.defense ?? 0)) + report.escalation + t.direct;
+
   return (
     <div className={`round-report flex min-h-0 flex-1 flex-col gap-3 ${detailsOpen ? "is-open" : ""}`}>
       <div className="flex items-baseline justify-between">
@@ -72,13 +119,41 @@ export function RoundReportCard({
         <Stat kind="energy" value={`+${report.energyEarned}`} label="earned" />
       </div>
 
+      {/* The whole round, in the two numbers each commander actually needs:
+       * what landed on you, and what you landed on them. Everything below
+       * ("Battle details") is the same arithmetic spelled out further, for
+       * anyone who wants to check it against the board. */}
       <div className="round-report-mobile-summary">
-        <div className="grid grid-cols-4 gap-1">
-          <Stat kind="attack" value={t.attack} label="Attack" size="sm" />
-          <Stat kind="shield" value={t.defense} label="Shields" size="sm" />
-          <Stat kind="direct" value={t.direct} label="Direct" size="sm" />
-          <Stat kind="repair" value={t.heal} label="Repair" size="sm" />
-        </div>
+        <p className="battle-line text-sm leading-snug">
+          <Term label="attack" value={enemy?.attack ?? 0} tone="attack" />
+          {blocked > 0 && <Term op="−" label="shields" value={blocked} tone="shield" />}
+          {report.soaked > 0 && <Term op="−" label="blocked" value={report.soaked} tone="shield" />}
+          {report.escalation > 0 && <Term op="+" label="war" value={report.escalation} tone="attack" />}
+          {report.direct > 0 && <Term op="+" label="direct" value={report.direct} tone="direct" />}
+          <span className="c-dim"> = </span>
+          <Result value={took} label="damage to you" tone="attack" />
+          {report.repair > 0 && (
+            <>
+              <span className="c-dim"> · </span>
+              <Term op="+" label="repair" value={report.repair} tone="repair" />
+            </>
+          )}
+        </p>
+        <p className="battle-line text-sm leading-snug">
+          <Term label="attack" value={t.attack} tone="attack" />
+          {enemyShieldsStopped > 0 && <Term op="−" label="their shields" value={enemyShieldsStopped} tone="shield" />}
+          {report.escalation > 0 && <Term op="+" label="war" value={report.escalation} tone="attack" />}
+          {t.direct > 0 && <Term op="+" label="direct" value={t.direct} tone="direct" />}
+          <span className="c-dim"> = up to </span>
+          <Result value={dealtCeiling} label={`to ${enemyName}`} tone="attack" />
+          {enemyRepair > 0 && (
+            <>
+              <span className="c-dim"> · </span>
+              <Term op="+" label="their repair" value={enemyRepair} tone="repair" />
+            </>
+          )}
+          <span className="c-dim"> · their blocks unknown</span>
+        </p>
       </div>
 
       <div className="round-report-disclosure min-h-0">
