@@ -89,12 +89,20 @@ function ShipBlockBox({ value, big }: { value: number; big?: boolean }) {
 export function RoundReportCard({
   report,
   enemyName,
+  enemyHp,
   waitingForOpponent = false,
   onContinue,
   busy,
 }: {
   report: Report;
   enemyName: string;
+  /**
+   * Their HP as of right now — their starting point for this round if they
+   * haven't resolved their own brace yet, already their result if they
+   * have. Shown the same way yours is, for the same reason: a number is
+   * easier to read next to another number than floating alone.
+   */
+  enemyHp: number;
   /** The other commander is still choosing which ships absorb their volley. */
   waitingForOpponent?: boolean;
   onContinue(): void;
@@ -176,6 +184,8 @@ export function RoundReportCard({
 
         <p className="t-eyebrow mb-1 mt-2.5">{enemyName}</p>
         <p className="battle-line flex flex-wrap items-center gap-1">
+          <HpBox value={enemyHp} />
+          <span className="c-dim">−</span>
           <Box kind="attack" value={t.attack} />
           {enemyShieldsStopped > 0 && (
             <>

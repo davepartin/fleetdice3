@@ -630,6 +630,7 @@ export function MatchScreen({ controller, onExit, title, subtitle }: Props) {
               <RoundReportCard
                 report={you.report}
                 enemyName={enemyName}
+                enemyHp={them?.hp ?? 0}
                 waitingForOpponent={them?.phase === "brace"}
                 busy={busy}
                 onContinue={() => {
