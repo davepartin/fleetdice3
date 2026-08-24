@@ -869,6 +869,13 @@ button {
     border-radius: 20px;
     overflow: hidden;
   }
+  /* A straight card is a real decision, not a stat to skim — it deserves
+     room to show in full rather than getting cut off mid-card and leaving
+     a half-visible button. The board (this dock's own flex sibling) gives
+     up the space instead: you already know your own dice by this point. */
+  .match-hud-solo .roll-dock:has(.straight-prizes) {
+    max-height: calc(380px + var(--hud-safe-bottom));
+  }
   .match-hud-solo .roll-dock-body {
     flex: 1 1 auto;
     min-height: 0;
