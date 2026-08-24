@@ -1194,7 +1194,9 @@ function BraceDock({
       )}
 
       <Button tone="primary" size="lg" full onClick={onConfirm} disabled={busy}>
-        {chosen.size === 0 ? "Take it on the flagship" : `Send ${chosen.size} in front`}
+        {chosen.size === 0
+          ? "Flagship takes all damage"
+          : `${chosen.size} ${chosen.size === 1 ? "ship blocks" : "ships block"} ${Math.min(blocked, you.incoming)} damage`}
       </Button>
     </div>
   );
