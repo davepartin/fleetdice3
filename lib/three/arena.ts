@@ -129,6 +129,9 @@ export type Arena = {
    * settles into once next round's sync marks it disabled.
    */
   nudgeShip(side: "you" | "enemy", shipId: string, strength?: number): void;
+  /** Blast every die on that deck outward from the flagship and off the
+   *  board — the losing fleet at the moment the match ends. */
+  scatterDice(side: "you" | "enemy"): void;
   boardOf(side: "you" | "enemy"): Board;
   /** Resolves once every die on that deck has landed, or after a short cap. */
   whenSettled(side?: "you" | "enemy"): Promise<void>;
@@ -457,6 +460,23 @@ export function createArena(canvas: HTMLCanvasElement, options: ArenaOptions = {
     },
     nudgeShip(side, shipId, strength = 1) {
       decks[side].dice.get(shipId)?.nudge(strength);
+    },
+    scatterDice(side) {
+      for (const die of decks[side].dice.values()) {
+        // Cell positions are local to the deck root, centred on the
+        // flagship's own cell — so a die's own position already points
+        // outward from the blast. A die sitting dead centre (the flagship
+        // itself, or a ship whose home coincides with it) gets a random
+        // direction instead of a zero vector.
+        const outward = new THREE.Vector2(die.object.position.x, die.object.position.z);
+        let angle = outward.lengthSq() > 0.0001 ? Math.atan2(outward.y, outward.x) : Math.random() * Math.PI * 2;
+        // A perfectly radial burst reads as a diagram, not a detonation.
+        angle += (Math.random() - 0.5) * 1.1;
+        const power = 7 + Math.random() * 6;
+        die.launch(
+          new THREE.Vector3(Math.cos(angle) * power, 6 + Math.random() * 5, Math.sin(angle) * power),
+        );
+      }
     },
     boardOf(side) {
       return decks[side].board;

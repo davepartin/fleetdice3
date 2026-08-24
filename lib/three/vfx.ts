@@ -115,8 +115,10 @@ export type Vfx = {
   straightSweep(points: THREE.Vector3[], tier: number, hold?: number): void;
   /** A formation row or column firing. */
   formation(points: THREE.Vector3[], kind: "row" | "col"): void;
-  /** A flagship dying. Resolves when the dust has settled (~1.5s). */
-  flagshipBreak(at: THREE.Vector3): Promise<void>;
+  /** A flagship dying. Resolves when the dust has settled (~1.5s).
+   *  `onDetonate` fires at the boom itself, not the build-up — the right
+   *  moment to trigger anything that should read as caused by this blast. */
+  flagshipBreak(at: THREE.Vector3, onDetonate?: () => void): Promise<void>;
   update(dt: number, time: number): void;
   dispose(): void;
 };
@@ -2303,7 +2305,7 @@ export function createVfx(stage: Stage, options: VfxOptions = {}): Vfx {
    *   0.70–1.55  aftermath: embers falling, smoke lifting, scorch on the plate,
    *              the light dying down to nothing.
    */
-  function flagshipBreak(at: THREE.Vector3): Promise<void> {
+  function flagshipBreak(at: THREE.Vector3, onDetonate?: () => void): Promise<void> {
     const point = at.clone();
     const build = span(0.6);
     const beat = span(0.1);
@@ -2378,6 +2380,7 @@ export function createVfx(stage: Stage, options: VfxOptions = {}): Vfx {
       if (!detonated) {
         /* --- detonation -------------------------------------------- */
         detonated = true;
+        onDetonate?.();
         shake(1.5);
         flash(C.white, 0.95);
         // White for a beat, then the frame goes red as the fireball takes over.

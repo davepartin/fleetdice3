@@ -162,6 +162,10 @@ export type Die = {
   throwTo(value: number, options?: ThrowOptions): void;
   setState(state: DieState): void;
   nudge(strength?: number): void;
+  /** Blast this die off its seat instead of animating home to it — the
+   *  losing fleet scattering at the end of a match. `impulse` is world-space
+   *  velocity; gravity and spin take it from there. */
+  launch(impulse: THREE.Vector3): void;
   /** Diagnostics for the screenshot harness. */
   stats(): Record<string, unknown>;
   update(dt: number, time: number): void;
@@ -417,6 +421,13 @@ export function createDie(kind: DieKind, font: string, scale = 1, cellSize = 0, 
   let value = 1;
   let rolling = false;
 
+  // Launch (post-match scatter)
+  let launched = false;
+  let launchAge = 0;
+  const launchVel = new THREE.Vector3();
+  let launchSpinAxis = new THREE.Vector3(1, 0, 0);
+  let launchSpinSpeed = 0;
+
   // Flight
   let flightTime = 0;
   let flightDelay = 0;
@@ -532,6 +543,12 @@ export function createDie(kind: DieKind, font: string, scale = 1, cellSize = 0, 
     home,
     setHome(position) {
       home.copy(position);
+      if (launched) {
+        // A new match reuses this same die if the ship configuration
+        // matches — pull it back from whatever scattered flight it was on.
+        launched = false;
+        object.scale.setScalar(scale);
+      }
       if (!rolling) object.position.copy(home);
     },
     setFace(next) {
@@ -573,8 +590,50 @@ export function createDie(kind: DieKind, font: string, scale = 1, cellSize = 0, 
       landPunch = Math.max(landPunch, 0.5 * strength);
       spinAxis = new THREE.Vector3(Math.random() - 0.5, 1, Math.random() - 0.5).normalize();
     },
+    launch(impulse) {
+      rolling = false;
+      launched = true;
+      launchAge = 0;
+      launchVel.copy(impulse);
+      launchSpinAxis = new THREE.Vector3(
+        Math.random() - 0.5,
+        Math.random() - 0.5,
+        Math.random() - 0.5,
+      ).normalize();
+      launchSpinSpeed = 7 + Math.random() * 9;
+      // The deck-plane markers (glow, shadow, selection, run bar…) are all
+      // children of `object` and would otherwise fly along with the die —
+      // a floating shadow trailing a tumbling die reads as broken, not cool.
+      contactMaterial.opacity = 0;
+      glowMaterial.opacity = 0;
+      barMaterial.opacity = 0;
+      linkMaterial.opacity = 0;
+      selectionMaterial.opacity = 0;
+      selectionFillMaterial.opacity = 0;
+      damageMaterial.opacity = 0;
+      for (const damageBar of damageBars) {
+        (damageBar.material as THREE.MeshBasicMaterial).opacity = 0;
+      }
+    },
     update(dt, _time) {
       frameCount += 1;
+
+      if (launched) {
+        launchAge += dt;
+        launchVel.y -= 16 * dt;
+        object.position.addScaledVector(launchVel, dt);
+        pivot.rotateOnAxis(launchSpinAxis, launchSpinSpeed * dt);
+        // Shrink to nothing shortly after the blast so a scattered board
+        // doesn't leave dice tumbling through the dark indefinitely.
+        const fadeStart = 0.9;
+        if (launchAge > fadeStart) {
+          const k = Math.min(1, (launchAge - fadeStart) / 0.5);
+          object.scale.setScalar(scale * (1 - k));
+          if (k >= 1) object.visible = false;
+        }
+        return;
+      }
+
       const lift = (state.selected || state.damageSelected) && !rolling ? 0.42 : 0;
 
       if (rolling) {

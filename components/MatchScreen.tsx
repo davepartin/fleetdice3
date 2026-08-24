@@ -416,9 +416,11 @@ export function MatchScreen({ controller, onExit, title, subtitle }: Props) {
       // Hold on the loser's own deck for the break, then widen once the
       // dust has settled (~1.5s, per vfx.flagshipBreak's own timing).
       arena.setFocus(loser === "you" ? "fleet" : "enemy", true);
-      void arena.vfx.flagshipBreak(arena.flagshipWorld(loser)).then(() => {
-        arena.setFocus("wide");
-      });
+      void arena.vfx
+        .flagshipBreak(arena.flagshipWorld(loser), () => arena.scatterDice(loser))
+        .then(() => {
+          arena.setFocus("wide");
+        });
       arena.stage.shake(1.3);
       arena.stage.flash(won ? 0x45e08b : 0xff4d4d, 0.6);
     }
