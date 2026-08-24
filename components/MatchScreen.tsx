@@ -36,7 +36,7 @@ import { pendingThrow, pendingThrowReady, type PendingThrow } from "@/lib/throwS
 import { createArena, type Arena, type Focus } from "@/lib/three/arena";
 import { waitForFonts } from "@/lib/three/fonts";
 import { audio } from "@/lib/audio";
-import { Button, Chip, HealthBar, Notice, Sheet, Stat, Ticker } from "./ui";
+import { Button, Chip, HpRail, Notice, Sheet, Stat } from "./ui";
 import { HowToPlaySheet } from "./HowToPlay";
 import { Shipyard } from "./Shipyard";
 import { RoundReportCard } from "./RoundReport";
@@ -527,19 +527,13 @@ export function MatchScreen({ controller, onExit, title, subtitle }: Props) {
             <span className="leave-label-short">‹ {NOUN.home}</span>
           </Button>
 
-          <div className="panel panel-enemy panel-flush min-w-0 flex-1 px-3 py-2">
-            <div className="flex items-baseline justify-between gap-2">
-              <span className="min-w-0 flex-1 truncate text-sm font-semibold c-attack-glow">
-                {enemyName}
-              </span>
-              <span className="t-eyebrow shrink-0 text-xs">Round {you.round}</span>
-              <span className="t-num text-sm text-white">
-                {them ? <Ticker value={Math.max(0, them.hp)} /> : 0}
-                <span className="c-dim"> / {them?.maxHp ?? TUNING.hp}</span>
-              </span>
-            </div>
-            <HealthBar className="mt-1.5" value={them?.hp ?? 0} max={them?.maxHp ?? TUNING.hp} />
-          </div>
+          <HpRail
+            yourHp={you.hp}
+            enemyName={enemyName}
+            enemyHp={them?.hp ?? 0}
+            round={you.round}
+            className="min-w-0 flex-1"
+          />
 
           <div className="match-desktop-utilities flex flex-col gap-1.5">
             <Button tone="ghost" size="sm" onClick={() => setHelpOpen(true)} ariaLabel="How to play">
@@ -620,7 +614,6 @@ export function MatchScreen({ controller, onExit, title, subtitle }: Props) {
                 player={you}
                 enemyName={enemyName}
                 enemyHp={them?.hp ?? 0}
-                enemyMaxHp={them?.maxHp ?? TUNING.hp}
                 onAction={(action) => {
                   audio.play("shop-buy");
                   send(action);
@@ -636,7 +629,6 @@ export function MatchScreen({ controller, onExit, title, subtitle }: Props) {
             <div className="round-report-panel panel panel-you flex max-h-[74dvh] min-h-0 flex-col overflow-hidden p-4">
               <RoundReportCard
                 report={you.report}
-                you={you}
                 enemyName={enemyName}
                 waitingForOpponent={them?.phase === "brace"}
                 busy={busy}
@@ -873,15 +865,10 @@ function YourHealth({ you }: { you: PlayerState }) {
   const baseRising = projectedBase > you.baseEnergy;
 
   return (
-    <div className="commander-rail flex items-center gap-2">
+    <div className="commander-rail flex items-center justify-between gap-2">
       <span className="commander-name t-eyebrow shrink-0">
         <span className="commander-name-full">{you.name}</span>
         <span className="commander-name-mobile">{NOUN.flagship}</span>
-      </span>
-      <HealthBar className="commander-hpbar min-w-0 flex-1" value={you.hp} max={you.maxHp} />
-      <span className="t-num shrink-0 text-sm text-white">
-        <Ticker value={Math.max(0, you.hp)} />
-        <span className="c-dim">/{you.maxHp}</span>
       </span>
       <span className="commander-energy-cluster flex shrink-0 items-stretch gap-1">
         <span className="commander-bank t-num c-energy" aria-label={`${you.energy} Energy in bank`}>
@@ -1127,79 +1114,86 @@ function BraceDock({
 
   return (
     <div className="brace-dock panel panel-you flex flex-col gap-3 p-3.5">
-      <div>
-        <p className="t-eyebrow">Choose damage</p>
-        <h2 className="t-display text-xl">
-          <span className="c-attack">{you.incoming}</span>
-          <span className="c-dim text-base"> blockable</span>
-          {you.directIncoming > 0 && (
+      {/* Whatever this grows to — the war line, the fatal notice — never
+       * gets to push the confirm button off the bottom of the screen. This
+       * area scrolls; the action below it never does. */}
+      <div className="brace-dock-body flex min-h-0 flex-col gap-3">
+        <div>
+          <p className="t-eyebrow">Choose damage</p>
+          <h2 className="t-display text-xl">
+            <span className="c-attack">{you.incoming}</span>
+            <span className="c-dim text-base"> blockable</span>
+            {you.directIncoming > 0 && (
+              <>
+                {" "}
+                <span className="c-direct">{you.directIncoming}</span>
+                <span className="c-dim text-base"> direct</span>
+              </>
+            )}
+          </h2>
+          {war > 0 && (
+            <p className="mt-1 text-sm font-semibold c-attack">
+              Includes war +{war} — shields cannot stop that extra.
+            </p>
+          )}
+          <p className="brace-explanation mt-1 text-sm leading-snug c-dim">
+            Throw ships in front of it. Each one blocks its own size and is out of commission
+            for one round. Nothing stops Direct.
+          </p>
+          <p className="brace-mobile-guide mt-1 text-sm font-semibold c-attack">
+            Tap a ship to block — it takes the hit and is out of commission for one round.
+          </p>
+        </div>
+
+        <div className="brace-ship-list flex flex-wrap gap-1.5">
+          {available.map((ship) => {
+            const picked = chosen.has(ship.id);
+            return (
+              <button
+                key={ship.id}
+                type="button"
+                onClick={() => onToggle(ship.id)}
+                className={`t-num rounded-lg border px-3 py-2 text-sm transition ${
+                  picked
+                    ? "border-[--color-shield] bg-[--color-shield]/20 text-white"
+                    : "border-white/12 c-dim hover:bg-white/[0.06]"
+                }`}
+              >
+                d{ship.sides}
+                <span className="ml-1 text-xs opacity-70">{NOUN.bay} {cellForSlot(ship.slot) + 1}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="brace-summary flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-black/30 px-2 py-2.5">
+          <EquationTerm value={you.hp} label="Now" />
+          <span className="t-num c-dim text-lg">−</span>
+          <EquationTerm value={landing} label="Damage" tone="attack" />
+          {heal > 0 && (
             <>
-              {" "}
-              <span className="c-direct">{you.directIncoming}</span>
-              <span className="c-dim text-base"> direct</span>
+              <span className="t-num c-dim text-lg">+</span>
+              <EquationTerm value={heal} label="Repair" tone="repair" />
             </>
           )}
-        </h2>
-        {war > 0 && (
-          <p className="mt-1 text-sm font-semibold c-attack">
-            Includes war +{war} — shields cannot stop that extra.
-          </p>
+          <span className="t-num c-dim text-lg">=</span>
+          <EquationTerm value={Math.max(0, after)} label="After" tone={fatal ? "attack" : "repair"} />
+        </div>
+
+        {fatal && (
+          <Notice tone="warn">
+            This volley finishes your flagship even with everything in front of it.
+          </Notice>
         )}
-        <p className="brace-explanation mt-1 text-sm leading-snug c-dim">
-          Throw ships in front of it. Each one blocks its own size and is out of commission
-          for one round. Nothing stops Direct.
-        </p>
-        <p className="brace-mobile-guide mt-1 text-sm font-semibold c-attack">
-          Tap a ship to block — it takes the hit and is out of commission for one round.
-        </p>
       </div>
 
-      <div className="brace-ship-list flex flex-wrap gap-1.5">
-        {available.map((ship) => {
-          const picked = chosen.has(ship.id);
-          return (
-            <button
-              key={ship.id}
-              type="button"
-              onClick={() => onToggle(ship.id)}
-              className={`t-num rounded-lg border px-3 py-2 text-sm transition ${
-                picked
-                  ? "border-[--color-shield] bg-[--color-shield]/20 text-white"
-                  : "border-white/12 c-dim hover:bg-white/[0.06]"
-              }`}
-            >
-              d{ship.sides}
-              <span className="ml-1 text-xs opacity-70">{NOUN.bay} {cellForSlot(ship.slot) + 1}</span>
-            </button>
-          );
-        })}
+      <div className="brace-dock-action">
+        <Button tone="primary" size="lg" full onClick={onConfirm} disabled={busy}>
+          {chosen.size === 0
+            ? "Flagship takes all damage"
+            : `${chosen.size} ${chosen.size === 1 ? "ship blocks" : "ships block"} ${Math.min(blocked, you.incoming)} damage`}
+        </Button>
       </div>
-
-      <div className="brace-summary flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-black/30 px-2 py-2.5">
-        <EquationTerm value={you.hp} label="Now" />
-        <span className="t-num c-dim text-lg">−</span>
-        <EquationTerm value={landing} label="Damage" tone="attack" />
-        {heal > 0 && (
-          <>
-            <span className="t-num c-dim text-lg">+</span>
-            <EquationTerm value={heal} label="Repair" tone="repair" />
-          </>
-        )}
-        <span className="t-num c-dim text-lg">=</span>
-        <EquationTerm value={Math.max(0, after)} label="After" tone={fatal ? "attack" : "repair"} />
-      </div>
-
-      {fatal && (
-        <Notice tone="warn">
-          This volley finishes your flagship even with everything in front of it.
-        </Notice>
-      )}
-
-      <Button tone="primary" size="lg" full onClick={onConfirm} disabled={busy}>
-        {chosen.size === 0
-          ? "Flagship takes all damage"
-          : `${chosen.size} ${chosen.size === 1 ? "ship blocks" : "ships block"} ${Math.min(blocked, you.incoming)} damage`}
-      </Button>
     </div>
   );
 }

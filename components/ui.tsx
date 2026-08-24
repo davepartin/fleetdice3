@@ -244,6 +244,49 @@ export function Ticker({
 }
 
 /* ------------------------------------------------------------------ */
+/* Hit points                                                          */
+/* ------------------------------------------------------------------ */
+
+/**
+ * The one hit-point readout in the game — a plain number each, no bar.
+ * Every screen that needs HP context (the match header, the shipyard, which
+ * runs as its own full-screen overlay above that header) shows this same
+ * rail instead of growing its own bar or number, so a decision never has to
+ * compete with a tracker for room, and "how hurt am I" always looks the
+ * same wherever it's asked.
+ */
+export function HpRail({
+  yourHp,
+  enemyName,
+  enemyHp,
+  round,
+  className = "",
+}: {
+  yourHp: number;
+  enemyName: string;
+  enemyHp: number;
+  /** Omit on a screen that already states the round elsewhere. */
+  round?: number;
+  className?: string;
+}) {
+  return (
+    <div className={`hp-rail panel panel-flush px-3 py-2 ${className}`}>
+      <div className="flex items-center justify-between gap-2">
+        <span className="hp-rail-side min-w-0 truncate text-sm font-semibold c-repair-glow">
+          You <Ticker value={Math.max(0, yourHp)} className="hp-rail-number" />
+        </span>
+        {round !== undefined && (
+          <span className="t-eyebrow hp-rail-round shrink-0 text-xs">Round {round}</span>
+        )}
+        <span className="hp-rail-side hp-rail-side-enemy min-w-0 truncate text-right text-sm font-semibold c-attack-glow">
+          {enemyName} <Ticker value={Math.max(0, enemyHp)} className="hp-rail-number" />
+        </span>
+      </div>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
 /* Chips and pills                                                     */
 /* ------------------------------------------------------------------ */
 

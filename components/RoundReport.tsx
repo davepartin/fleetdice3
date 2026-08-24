@@ -9,9 +9,8 @@
  */
 
 import { useState } from "react";
-import type { PlayerState, RoundReport as Report } from "@/lib/engine";
-import { NOUN } from "@/lib/reference";
-import { Button, HealthBar, Rule, Stat, Ticker } from "./ui";
+import type { RoundReport as Report } from "@/lib/engine";
+import { Button, Notice, Rule, Stat } from "./ui";
 
 function Row({
   label,
@@ -41,14 +40,12 @@ function Row({
 
 export function RoundReportCard({
   report,
-  you,
   enemyName,
   waitingForOpponent = false,
   onContinue,
   busy,
 }: {
   report: Report;
-  you: PlayerState;
   enemyName: string;
   /** The other commander is still choosing which ships absorb their volley. */
   waitingForOpponent?: boolean;
@@ -81,11 +78,6 @@ export function RoundReportCard({
           <Stat kind="shield" value={t.defense} label="Shields" size="sm" />
           <Stat kind="direct" value={t.direct} label="Direct" size="sm" />
           <Stat kind="repair" value={t.heal} label="Repair" size="sm" />
-        </div>
-        <div className="round-report-mobile-hp flex items-center gap-2">
-          <span className="t-eyebrow">{NOUN.flagship}</span>
-          <HealthBar className="min-w-0 flex-1" value={report.hpAfter} max={you.maxHp} />
-          <span className="t-num text-white"><Ticker value={Math.max(0, report.hpAfter)} />/{you.maxHp}</span>
         </div>
       </div>
 
@@ -182,19 +174,11 @@ export function RoundReportCard({
           {report.repair > 0 && <Row label="Your 3s repaired" value={`+${report.repair}`} tone="repair" />}
         </section>
 
-        {/* Health */}
-        <section className="mt-3 px-1">
-          <div className="mb-1.5 flex items-baseline justify-between">
-            <span className="t-eyebrow">Your flagship</span>
-            <span className="t-num text-base text-white">
-              <Ticker value={Math.max(0, report.hpAfter)} /> / {you.maxHp}
-            </span>
-          </div>
-          <HealthBar value={report.hpAfter} max={you.maxHp} />
-          {!survived && (
-            <p className="mt-2 text-sm c-attack-glow">Your flagship is gone.</p>
-          )}
-        </section>
+        {!survived && (
+          <Notice tone="warn" className="mt-3">
+            Your flagship is gone.
+          </Notice>
+        )}
         </div>
       </div>
 

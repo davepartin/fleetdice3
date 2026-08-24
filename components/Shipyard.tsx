@@ -33,7 +33,7 @@ import {
 } from "@/lib/engine";
 import { NOUN } from "@/lib/reference";
 import { HullShape } from "./HullShape";
-import { Button, Chip, Notice } from "./ui";
+import { Button, Chip, HpRail, Notice } from "./ui";
 
 const HULLS: DieSize[] = [4, 6, 8, 10];
 
@@ -149,32 +149,12 @@ type Props = {
   player: PlayerState;
   enemyName: string;
   enemyHp: number;
-  enemyMaxHp: number;
   onAction(action: MatchAction): void;
   onDone(): void;
   busy?: boolean;
 };
 
-/**
- * A plain hit-point count, not a bar. A ratio needs a fixed maximum to mean
- * anything, and repairs can push a flagship's own maxHp past its starting
- * 60 — so a HealthBar's "47/68" here would read as a typo, not a fraction.
- * The number is still coloured by how hurt that maxHp says the fleet is,
- * matching the same healthy/hurt/critical states the live HP bar uses
- * elsewhere, so danger reads the same way on every screen.
- */
-function HpBox({ label, value, maxHp }: { label: string; value: number; maxHp: number }) {
-  const ratio = Math.max(0, Math.min(1, value / Math.max(1, maxHp)));
-  const tone = ratio <= 0.25 ? "attack" : ratio <= 0.55 ? "energy" : "repair";
-  return (
-    <div className="yard-hp-box">
-      <span className="t-eyebrow text-xs c-dim">{label}</span>
-      <span className={`t-num text-2xl c-${tone}`}>{Math.max(0, Math.round(value))}</span>
-    </div>
-  );
-}
-
-export function Shipyard({ player, enemyName, enemyHp, enemyMaxHp, onAction, onDone, busy }: Props) {
+export function Shipyard({ player, enemyName, enemyHp, onAction, onDone, busy }: Props) {
   const [selected, setSelected] = useState<number | null>(null);
   const energy = player.energy;
 
@@ -199,6 +179,11 @@ export function Shipyard({ player, enemyName, enemyHp, enemyMaxHp, onAction, onD
 
   return (
     <div className="yard">
+      {/* The shipyard is a full-screen overlay above the match header (see
+         .yard's own note), so it carries its own copy of the same HP rail
+         rather than relying on one it has covered up. */}
+      <HpRail yourHp={player.hp} enemyName={enemyName} enemyHp={enemyHp} />
+
       {/* ---------------- header ---------------- */}
       <header className="yard-head">
         <div>
@@ -229,11 +214,6 @@ export function Shipyard({ player, enemyName, enemyHp, enemyMaxHp, onAction, onD
             onSelect={() => setSelected(selected === offer.cell ? null : offer.cell)}
           />
         ))}
-      </div>
-
-      <div className="yard-hp-row" role="group" aria-label="Hit points">
-        <HpBox label="You" value={player.hp} maxHp={player.maxHp} />
-        <HpBox label={enemyName} value={enemyHp} maxHp={enemyMaxHp} />
       </div>
 
       </div>

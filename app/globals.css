@@ -243,6 +243,16 @@ button {
   border-color: rgb(255 77 77 / 0.3);
 }
 
+/* The one hit-point readout in the whole game — always on screen, so no
+   other screen needs to repeat it. */
+.hp-rail-number {
+  margin-left: 0.3em;
+  font-size: var(--text-base);
+}
+.hp-rail-round {
+  color: var(--color-hull-300);
+}
+
 /* A hairline rule that fades at both ends. */
 .rule {
   height: 1px;
@@ -793,9 +803,9 @@ button {
   .match-hud-solo .leave-label-full { display: none; }
   .match-hud-solo .leave-label-short { display: inline; }
 
-  .match-hud-solo .match-header .panel-enemy {
-    min-height: 58px;
-    padding: 0.55rem 0.7rem;
+  .match-hud-solo .match-header .hp-rail {
+    min-height: 44px;
+    padding: 0.5rem 0.7rem;
   }
 
   .match-hud-solo .match-desktop-utilities {
@@ -887,11 +897,6 @@ button {
   }
   .match-hud-solo .commander-name-full { display: none; }
   .match-hud-solo .commander-name-mobile { display: inline; }
-  .match-hud-solo .commander-hpbar {
-    height: 8px;
-    flex: 0 1 42%;
-    min-width: 64px;
-  }
   .commander-bank {
     display: inline-flex;
     min-height: 28px;
@@ -999,8 +1004,25 @@ button {
 
   .match-hud-solo .brace-dock {
     gap: 0.55rem;
-    max-height: calc(220px + var(--hud-safe-bottom));
+    max-height: calc(240px + var(--hud-safe-bottom));
     padding: 0.7rem;
+    overflow: hidden;
+  }
+  /* The fatal-notice line can push this past its cap on a short phone — it
+     scrolls internally now instead of shoving the confirm button, the one
+     thing on this screen you must be able to reach, off the bottom edge. */
+  .match-hud-solo .brace-dock-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+  .match-hud-solo .brace-dock-action {
+    flex: 0 0 auto;
+    border-top: 1px solid rgb(255 255 255 / 0.09);
+    padding-top: 0.42rem;
   }
   .match-hud-solo .brace-dock h2 {
     font-size: var(--text-xl);
@@ -1046,9 +1068,6 @@ button {
   }
   .match-hud-solo .round-report-mobile-summary .t-num {
     font-size: var(--text-base);
-  }
-  .match-hud-solo .round-report-mobile-hp .hpbar {
-    height: 8px;
   }
   .match-hud-solo .round-report-disclosure {
     display: flex;
@@ -1235,34 +1254,6 @@ button {
   gap: 0.5rem;
   width: min(100%, 27rem);
   margin: 0.15rem auto 0;
-}
-
-/* Both fleets' hit points, so shopping never means losing track of who is
-   actually winning. A plain count each, not a bar — see HpBox's own note on
-   why a ratio stops meaning anything once repairs push maxHp past 60. */
-.yard-hp-row {
-  flex: none;
-  display: flex;
-  gap: 0.5rem;
-  width: min(100%, 27rem);
-  margin: 0 auto;
-}
-.yard-hp-box {
-  flex: 1 1 0;
-  min-width: 0;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem;
-  border-radius: 0.9rem;
-  border: 1px solid rgb(255 255 255 / 0.1);
-  background: rgb(255 255 255 / 0.04);
-  padding: 0.55rem 0.9rem;
-}
-.yard-hp-box > span:first-child {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .yard-cell {
