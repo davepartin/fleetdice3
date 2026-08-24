@@ -395,7 +395,7 @@ function Drawer({
               faces.
             </p>
             <Button
-              tone="ghost"
+              tone="primary"
               full
               disabled={busy || cost > energy}
               onClick={() => onAct({ type: "shop", operation: "flagship" })}
@@ -438,7 +438,7 @@ function Drawer({
             </div>
             <p className="yard-copy">{HULL_BLURB[offer.next]}</p>
             <Button
-              tone="ghost"
+              tone="primary"
               full
               disabled={busy || cost > energy}
               onClick={() => onAct({ type: "shop", operation: "upgrade", shipId: offer.ship.id })}
@@ -503,7 +503,7 @@ function Drawer({
         <p className="yard-copy">Every {NOUN.bay} is already open.</p>
       ) : (
         <Button
-          tone="ghost"
+          tone="primary"
           full
           disabled={busy || cost > energy}
           onClick={() => onAct({ type: "shop", operation: "slot", slotIndex: offer.slot })}
