@@ -33,7 +33,7 @@ import {
 } from "@/lib/engine";
 import { NOUN } from "@/lib/reference";
 import { HullShape } from "./HullShape";
-import { Button, Chip } from "./ui";
+import { Button, Chip, Notice } from "./ui";
 
 const HULLS: DieSize[] = [4, 6, 8, 10];
 
@@ -361,6 +361,37 @@ function CellButton({
 /* The drawer under the board                                          */
 /* ------------------------------------------------------------------ */
 
+/**
+ * A purchase confirm button. "{Verb} · {cost} Energy" only — no afford-state
+ * suffix, so the label is the same short shape at any cost from any
+ * shipyard row. The shortfall, when there is one, gets its own line instead
+ * of being crammed onto the button; "Open this bay · 10 Energy · not
+ * enough" was long enough to spill past the button's own edges on a phone.
+ */
+function PurchaseButton({
+  verb,
+  cost,
+  energy,
+  busy,
+  onClick,
+}: {
+  verb: string;
+  cost: number;
+  energy: number;
+  busy?: boolean;
+  onClick(): void;
+}) {
+  const short = cost - energy;
+  return (
+    <>
+      {short > 0 && <Notice tone="warn">Need {short} more Energy.</Notice>}
+      <Button tone="primary" full disabled={busy || short > 0} onClick={onClick}>
+        {verb} · {cost} Energy
+      </Button>
+    </>
+  );
+}
+
 function Drawer({
   offer,
   energy,
@@ -374,8 +405,6 @@ function Drawer({
   onAct(action: MatchAction): void;
   onClose(): void;
 }) {
-  const after = (cost: number) => `${energy - cost} left`;
-
   if (offer.kind === "flagship") {
     const cost = offer.cost;
     return (
@@ -394,14 +423,13 @@ function Drawer({
               <b className="c-energy">{flagBonusSize(offer.level + 1)}</b>. One purchase, all six
               faces.
             </p>
-            <Button
-              tone="primary"
-              full
-              disabled={busy || cost > energy}
+            <PurchaseButton
+              verb="Level up"
+              cost={cost}
+              energy={energy}
+              busy={busy}
               onClick={() => onAct({ type: "shop", operation: "flagship" })}
-            >
-              Level up · {cost} Energy {cost <= energy ? `· ${after(cost)}` : "· not enough"}
-            </Button>
+            />
           </>
         )}
       </section>
@@ -437,14 +465,13 @@ function Drawer({
               </div>
             </div>
             <p className="yard-copy">{HULL_BLURB[offer.next]}</p>
-            <Button
-              tone="primary"
-              full
-              disabled={busy || cost > energy}
+            <PurchaseButton
+              verb="Upgrade"
+              cost={cost}
+              energy={energy}
+              busy={busy}
               onClick={() => onAct({ type: "shop", operation: "upgrade", shipId: offer.ship.id })}
-            >
-              Upgrade · {cost} Energy {cost <= energy ? `· ${after(cost)}` : "· not enough"}
-            </Button>
+            />
           </>
         )}
       </section>
@@ -502,14 +529,13 @@ function Drawer({
       {cost === null ? (
         <p className="yard-copy">Every {NOUN.bay} is already open.</p>
       ) : (
-        <Button
-          tone="primary"
-          full
-          disabled={busy || cost > energy}
+        <PurchaseButton
+          verb="Open this bay"
+          cost={cost}
+          energy={energy}
+          busy={busy}
           onClick={() => onAct({ type: "shop", operation: "slot", slotIndex: offer.slot })}
-        >
-          Open this bay · {cost} Energy {cost <= energy ? `· ${after(cost)}` : "· not enough"}
-        </Button>
+        />
       )}
     </section>
   );
