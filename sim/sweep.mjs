@@ -15,8 +15,8 @@
  *   node sim/sweep.mjs final    [n]  the whole proposed set, one change at a time
  */
 
-import "./bundle.mjs";
-const G = await import("../.simbuild/game.mjs");
+import { bundlePath } from "./bundle.mjs";
+const G = await import(bundlePath);
 
 const {
   PLANS, PLAN_LABEL, TUNING, applyAction, makeRng, newBrain, newMatch, newPlayer,

@@ -4,9 +4,9 @@
 
 import test from "node:test";
 import assert from "node:assert/strict";
-import "../sim/bundle.mjs";
+import { bundlePath } from "../sim/bundle.mjs";
 
-const G = await import("../.simbuild/game.mjs");
+const G = await import(bundlePath);
 
 // Tutorial modules are TS — bundle only ships engine/ai. Import via dynamic
 // evaluation against the source is awkward, so we re-check the critical
@@ -15,7 +15,7 @@ const G = await import("../.simbuild/game.mjs");
 // structure, plus a runtime harness that mirrors useTutorialMatch's helpers.
 
 import { readFileSync } from "node:fs";
-import { findLines, bestRun, newMatch, newPlayer, applyAction, tally, TUNING } from "../.simbuild/game.mjs";
+const { findLines, bestRun, newMatch, newPlayer, applyAction, tally, TUNING } = G;
 
 test("tutorial route and homepage button exist", () => {
   const home = readFileSync(new URL("../components/HomeScreen.tsx", import.meta.url), "utf8");

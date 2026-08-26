@@ -15,8 +15,8 @@
  *   node sim/columns.mjs 600    slower and more certain
  */
 
-import "./bundle.mjs";
-const G = await import("../.simbuild/game.mjs");
+import { bundlePath } from "./bundle.mjs";
+const G = await import(bundlePath);
 
 const { PLANS, TUNING, applyAction, makeRng, newBrain, newMatch, newPlayer, nextActions, setRng } = G;
 

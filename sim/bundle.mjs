@@ -6,7 +6,10 @@ import { fileURLToPath } from "node:url";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = resolve(here, "..");
-const outfile = resolve(root, ".simbuild/game.mjs");
+// node --test runs each test file as its own process, and more than one file
+// imports this module — a shared output path lets two esbuild writes race on
+// the same file. Every process gets its own, so nobody else can step on it.
+const outfile = resolve(root, `.simbuild/game.${process.pid}.mjs`);
 
 mkdirSync(dirname(outfile), { recursive: true });
 

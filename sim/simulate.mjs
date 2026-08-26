@@ -18,8 +18,8 @@
  *   node sim/sweep.mjs flag | slot | hp | live | chaser          what-ifs
  */
 
-import "./bundle.mjs";
-const G = await import("../.simbuild/game.mjs");
+import { bundlePath } from "./bundle.mjs";
+const G = await import(bundlePath);
 
 const {
   PLANS,

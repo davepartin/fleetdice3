@@ -10,9 +10,9 @@
 
 import test from "node:test";
 import assert from "node:assert/strict";
-import "../sim/bundle.mjs";
+import { bundlePath } from "../sim/bundle.mjs";
 
-const G = await import("../.simbuild/game.mjs");
+const G = await import(bundlePath);
 
 const {
   PLANS,
