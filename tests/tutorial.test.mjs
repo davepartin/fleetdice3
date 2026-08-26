@@ -125,6 +125,39 @@ test("the coach sits at the top, so it can never cover the controls", () => {
   assert.match(coach, /HelpShipFace/, "tips still show real dice art");
 });
 
+test("the coach and theme buttons live outside their own scroll region", () => {
+  const coach = readFileSync(new URL("../components/TutorialCoach.tsx", import.meta.url), "utf8");
+  const css = readFileSync(new URL("../app/globals.css", import.meta.url), "utf8");
+
+  // A long tip or a long theme paragraph must scroll *inside* the card, but
+  // the button that actually advances the tutorial has to stay outside that
+  // scrollable box — otherwise it can end up hidden behind a scroll gesture
+  // the player never discovers, which is exactly what real-device testing
+  // caught: the card's own overflow:auto region swallowed its footer.
+  assert.match(coach, /tutorial-coach-scroll/, "coach body needs its own scroll wrapper");
+  assert.match(coach, /tutorial-theme-scroll/, "theme paragraphs need their own scroll wrapper");
+
+  const scrollBefore = coach.indexOf("tutorial-coach-scroll");
+  const footBefore = coach.indexOf("tutorial-coach-foot");
+  assert.ok(scrollBefore > 0 && footBefore > scrollBefore, "coach foot must render after (sibling to) the scroll wrapper");
+
+  const themeScrollBefore = coach.indexOf("tutorial-theme-scroll");
+  const actionsBefore = coach.indexOf("tutorial-theme-actions");
+  assert.ok(themeScrollBefore > 0 && actionsBefore > themeScrollBefore, "theme actions must render after (sibling to) the scroll wrapper");
+
+  // The overflow:auto must sit on the *-scroll class, never on the outer
+  // card class — putting it on the card is what traps the footer inside it.
+  const cardBlock = css.match(/\.tutorial-coach-card \{[^}]*\}/);
+  const themeCardBlock = css.match(/\.tutorial-theme-card \{[^}]*\}/);
+  assert.ok(cardBlock && !/overflow/.test(cardBlock[0]), "coach card itself must not scroll");
+  assert.ok(themeCardBlock && !/overflow/.test(themeCardBlock[0]), "theme card itself must not scroll");
+
+  const coachScrollBlock = css.match(/\.tutorial-coach-scroll \{[^}]*\}/);
+  const themeScrollBlock = css.match(/\.tutorial-theme-scroll \{[^}]*\}/);
+  assert.ok(coachScrollBlock && /overflow-y:\s*auto/.test(coachScrollBlock[0]));
+  assert.ok(themeScrollBlock && /overflow-y:\s*auto/.test(themeScrollBlock[0]));
+});
+
 test("action steps spotlight the control they name", () => {
   const coach = readFileSync(new URL("../components/TutorialCoach.tsx", import.meta.url), "utf8");
   const screen = readFileSync(new URL("../components/TutorialScreen.tsx", import.meta.url), "utf8");

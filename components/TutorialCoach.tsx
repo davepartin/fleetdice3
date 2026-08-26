@@ -184,23 +184,27 @@ export function TutorialCoach({
   return (
     <div className="tutorial-coach" role="dialog" aria-label="Tutorial coach">
       <div ref={cardRef} className="tutorial-coach-card panel">
-        <div className="tutorial-coach-top">
-          <p className="t-eyebrow c-energy">{step.eyebrow}</p>
-          <p className="tutorial-coach-progress t-num">
-            {stepNumber}/{stepCount}
-          </p>
+        <div className="tutorial-coach-scroll">
+          <div className="tutorial-coach-top">
+            <p className="t-eyebrow c-energy">{step.eyebrow}</p>
+            <p className="tutorial-coach-progress t-num">
+              {stepNumber}/{stepCount}
+            </p>
+          </div>
+
+          <h2 className="t-display tutorial-coach-title">{step.title}</h2>
+          <FaceStrip stepId={stepId} />
+          <p className="tutorial-coach-body">{step.body}</p>
+
+          {error && (
+            <p className="tutorial-coach-error" role="status">
+              {error}
+            </p>
+          )}
         </div>
 
-        <h2 className="t-display tutorial-coach-title">{step.title}</h2>
-        <FaceStrip stepId={stepId} />
-        <p className="tutorial-coach-body">{step.body}</p>
-
-        {error && (
-          <p className="tutorial-coach-error" role="status">
-            {error}
-          </p>
-        )}
-
+        {/* Outside the scroll area on purpose — this is the one thing on the
+            card that must never require a scroll gesture to find. */}
         <div className="tutorial-coach-foot">
           {showNext ? (
             <Button tone="primary" full onClick={onNext}>
@@ -240,27 +244,31 @@ export function TutorialTheme({ eyebrow, title, paragraphs, onStart, onSkip }: T
     <div className="tutorial-theme">
       <div className="tutorial-theme-art" aria-hidden>
         <div className="tutorial-theme-dice">
-          <HelpShipFace value={4} size={72} />
-          <HelpFlagFace face={1} size={88} />
-          <HelpShipFace value={6} size={72} />
+          <HelpShipFace value={4} size={56} />
+          <HelpFlagFace face={1} size={68} />
+          <HelpShipFace value={6} size={56} />
         </div>
         <div className="tutorial-theme-dice tutorial-theme-dice-row2">
-          <HelpShipFace value={1} size={56} />
-          <HelpShipFace value={2} size={56} />
-          <HelpShipFace value={3} size={56} />
+          <HelpShipFace value={1} size={44} />
+          <HelpShipFace value={2} size={44} />
+          <HelpShipFace value={3} size={44} />
         </div>
       </div>
       <div className="tutorial-theme-card panel anim-rise">
-        <p className="t-eyebrow c-energy">{eyebrow}</p>
-        <h1 className="t-display mt-2 text-3xl text-white">{title}</h1>
-        <div className="mt-4 flex flex-col gap-3">
-          {paragraphs.map((text) => (
-            <p key={text.slice(0, 24)} className="text-sm leading-relaxed text-[--color-hull-100]">
-              {text}
-            </p>
-          ))}
+        <div className="tutorial-theme-scroll">
+          <p className="t-eyebrow c-energy">{eyebrow}</p>
+          <h1 className="t-display mt-2 text-3xl text-white">{title}</h1>
+          <div className="mt-4 flex flex-col gap-3">
+            {paragraphs.map((text) => (
+              <p key={text.slice(0, 24)} className="text-sm leading-relaxed text-[--color-hull-100]">
+                {text}
+              </p>
+            ))}
+          </div>
         </div>
-        <div className="mt-6 flex flex-col gap-2">
+        {/* Outside the scroll area — the whole point of this screen is to get
+            the player tapping in, so that button can never hide inside it. */}
+        <div className="tutorial-theme-actions">
           <Button tone="primary" full onClick={onStart}>
             Begin the flight
           </Button>
