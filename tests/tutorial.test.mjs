@@ -102,19 +102,30 @@ test("token nudge completes a five-straight on d4 faces", () => {
   assert.equal(run.reward.energy, 6);
 });
 
-test("the coach sits at the top, so it can never cover the controls", () => {
+test("the coach docks above the action button, never over the board", () => {
   const coach = readFileSync(new URL("../components/TutorialCoach.tsx", import.meta.url), "utf8");
   const css = readFileSync(new URL("../app/globals.css", import.meta.url), "utf8");
 
-  // Every control the tutorial asks for is in the bottom dock. The coach is
-  // top-anchored so the two can never share pixels — that is the whole fix.
+  // The board fills the empty band between the HUD and the bottom dock, so
+  // by default the coach anchors to the BOTTOM — right above whichever
+  // action button is live — instead of parking over the board. The
+  // shipyard is the one screen with no board to protect, so it keeps the
+  // coach at the top instead (and pushes its own grid clear of it).
   const block = css.match(/\.tutorial-coach \{[^}]*\}/);
   assert.ok(block, "the coach needs a positioning block");
-  assert.match(block[0], /top:/, "the coach must be anchored to the top");
-  assert.doesNotMatch(block[0], /bottom:\s*0/, "anchoring to the bottom is what caused the overlap");
+  assert.match(block[0], /bottom:/, "the coach must default to anchoring above the action button");
 
-  // Because it cannot overlap, there is nothing to collapse. If an accordion
-  // ever comes back, so has the bug it was working around.
+  const shopOverride = css.match(/\.tutorial-shell\[data-phase="shop"\] \.tutorial-coach \{[^}]*\}/);
+  assert.ok(shopOverride, "the shipyard needs its own top-anchored override");
+  assert.match(shopOverride[0], /top:/, "the shipyard override must anchor to the top");
+
+  // The measured clearance above the action button has to actually be
+  // measured, or the card could still land on top of the button it names.
+  assert.match(coach, /--tutorial-action-clear/, "the action clearance must be measured, not guessed");
+
+  // Because the card can never overlap its target, there is nothing to
+  // collapse. If an accordion ever comes back, so has the bug it worked
+  // around.
   assert.doesNotMatch(coach, /tutorial-coach-bar/, "no collapsed bar should be needed");
   assert.doesNotMatch(coach, /setOpen/, "no open/closed state should be needed");
   assert.doesNotMatch(coach, /Got it — show the board/, "nothing should need dismissing");

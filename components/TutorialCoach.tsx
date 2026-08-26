@@ -80,11 +80,11 @@ function FaceStrip({ stepId }: { stepId: TutorialStepId }) {
     return (
       <div className="tutorial-face-strip" aria-hidden>
         <figure className="tutorial-face-card">
-          <HelpShipFace value={6} size={54} />
+          <HelpShipFace value={6} size={68} />
           <figcaption className="c-attack">Even · hits</figcaption>
         </figure>
         <figure className="tutorial-face-card">
-          <HelpShipFace value={5} size={54} />
+          <HelpShipFace value={5} size={68} />
           <figcaption className="c-shield">Odd · blocks</figcaption>
         </figure>
       </div>
@@ -94,15 +94,15 @@ function FaceStrip({ stepId }: { stepId: TutorialStepId }) {
     return (
       <div className="tutorial-face-strip" aria-hidden>
         <figure className="tutorial-face-card">
-          <HelpShipFace value={1} size={48} />
+          <HelpShipFace value={1} size={60} />
           <figcaption className="c-energy">Energy</figcaption>
         </figure>
         <figure className="tutorial-face-card">
-          <HelpShipFace value={2} size={48} />
+          <HelpShipFace value={2} size={60} />
           <figcaption className="c-direct">Direct</figcaption>
         </figure>
         <figure className="tutorial-face-card">
-          <HelpShipFace value={3} size={48} />
+          <HelpShipFace value={3} size={60} />
           <figcaption className="c-repair">Repair</figcaption>
         </figure>
       </div>
@@ -112,14 +112,14 @@ function FaceStrip({ stepId }: { stepId: TutorialStepId }) {
     return (
       <div className="tutorial-face-strip" aria-hidden>
         <figure className="tutorial-face-card">
-          <HelpFlagFace face={4} size={54} />
+          <HelpFlagFace face={4} size={64} />
           <figcaption>Flagship</figcaption>
         </figure>
         <span className="tutorial-face-arrow c-energy" aria-hidden>
           →
         </span>
         <figure className="tutorial-face-card">
-          <HelpFlagFace face={5} size={54} />
+          <HelpFlagFace face={5} size={64} />
           <figcaption className="c-energy">+1 face</figcaption>
         </figure>
       </div>
@@ -164,6 +164,38 @@ export function TutorialCoach({
       window.removeEventListener("resize", publish);
     };
   }, [stepId]);
+
+  /*
+   * On every screen except the shipyard, the coach docks at the BOTTOM —
+   * right above whichever action button is live — instead of the top. The
+   * board sits in the middle of the real match screen; anchoring the card
+   * to the top parks it right over the board, which is the one thing a
+   * lesson about dice can't afford to hide. Anchored to the bottom, it
+   * covers the dock's own totals instead — those are redundant with what
+   * the card itself is teaching. Measured, not guessed, same as the height
+   * above: the action row's own padding differs slightly panel to panel.
+   */
+  useEffect(() => {
+    const shell = document.querySelector<HTMLElement>(".tutorial-shell");
+    if (!shell) return;
+    const publish = () => {
+      const action = document.querySelector<HTMLElement>(".match-bottom .btn-primary");
+      if (!action) return;
+      const clear = Math.max(0, Math.round(window.innerHeight - action.getBoundingClientRect().top));
+      shell.style.setProperty("--tutorial-action-clear", `${clear}px`);
+    };
+    publish();
+    const raf = requestAnimationFrame(publish);
+    const bottom = document.querySelector<HTMLElement>(".match-bottom");
+    const observer = bottom ? new ResizeObserver(publish) : null;
+    observer?.observe(bottom!);
+    window.addEventListener("resize", publish);
+    return () => {
+      cancelAnimationFrame(raf);
+      observer?.disconnect();
+      window.removeEventListener("resize", publish);
+    };
+  }, [stepId, awaiting]);
 
   /*
    * Bring whatever this step lit up into view. Mostly a no-op — the dock is

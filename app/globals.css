@@ -1623,7 +1623,7 @@ button {
   display: block;
   flex: none;
   background: transparent;
-  filter: drop-shadow(0 8px 14px rgb(0 0 0 / 0.55));
+  filter: drop-shadow(0 10px 18px rgb(0 0 0 / 0.6));
 }
 
 .help-die-legend,
@@ -1958,21 +1958,30 @@ button {
 }
 
 /*
- * The coach sits at the TOP, under the HP rail. Every control this game asks
- * you to press is in the bottom dock, so anchoring here means the tip can
- * never cover its own target — which is why there is no collapse/expand
- * mechanism in this component at all.
+ * On the real match screen, the board sits in the empty band between the HUD
+ * and the bottom dock — so the coach docks at the BOTTOM, right above
+ * whichever action button is live (--tutorial-action-clear, measured by
+ * TutorialCoach), covering the dock's own totals instead of the board. The
+ * one exception is the shipyard: it's a full-screen overlay with no board to
+ * protect, so there the coach stays at the top and the grid is pushed clear
+ * of it instead (see .tutorial-shell .yard below). Either way, the card and
+ * the control it names never share pixels, so there is still no accordion.
  */
 .tutorial-coach {
   position: fixed;
   left: 0;
   right: 0;
-  top: calc(var(--hud-safe-top) + 4.6rem);
+  bottom: var(--tutorial-action-clear, 4.5rem);
   z-index: 70;
   display: flex;
   justify-content: center;
   padding: 0 0.65rem;
   pointer-events: none;
+}
+
+.tutorial-shell[data-phase="shop"] .tutorial-coach {
+  top: calc(var(--hud-safe-top) + 4.6rem);
+  bottom: auto;
 }
 
 .tutorial-coach-card {
@@ -2095,11 +2104,26 @@ button {
 }
 
 .tutorial-face-card {
+  position: relative;
   margin: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.25rem;
+  gap: 0.3rem;
+}
+
+/* A soft glow behind each face, like it's lit from the board — the flat
+   drop-shadow alone read as a sticker; this gives it some depth. */
+.tutorial-face-card::before {
+  content: "";
+  position: absolute;
+  top: -0.5rem;
+  left: 50%;
+  width: 4.5rem;
+  height: 4.5rem;
+  translate: -50% 0;
+  background: radial-gradient(circle, rgb(255 255 255 / 0.14), transparent 68%);
+  z-index: -1;
 }
 
 .tutorial-face-card figcaption {
@@ -2117,18 +2141,32 @@ button {
 }
 
 .tutorial-hull-chip {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.2rem;
+  gap: 0.25rem;
   color: var(--color-hull-200);
   font-size: var(--text-xs);
   font-weight: 700;
 }
 
+.tutorial-hull-chip::before {
+  content: "";
+  position: absolute;
+  top: -0.35rem;
+  left: 50%;
+  width: 3.6rem;
+  height: 3.6rem;
+  translate: -50% 0;
+  background: radial-gradient(circle, rgb(255 255 255 / 0.12), transparent 68%);
+  z-index: -1;
+}
+
 .tutorial-hull-shape {
-  width: 2.4rem;
-  height: 2.4rem;
+  width: 3rem;
+  height: 3rem;
+  filter: drop-shadow(0 6px 10px rgb(0 0 0 / 0.5));
 }
 
 /*
