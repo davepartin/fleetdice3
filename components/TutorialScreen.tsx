@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Tutorial battle: real MatchScreen underneath, coach on top, actions gated.
+ * Tutorial battle: real MatchScreen always visible, collapsible coach on top.
  */
 
 import { useMemo } from "react";
@@ -31,7 +31,7 @@ export function TutorialScreen() {
       them: tutorial.them,
       busy: tutorial.busy,
       waitingOnEnemy: tutorial.waitingOnEnemy,
-      error: null, // coach shows tutorial errors; don't double up in MatchScreen
+      error: null,
       clearError: tutorial.clearError,
       act,
       mode: "solo",
@@ -50,18 +50,17 @@ export function TutorialScreen() {
     );
   }
 
-  // Hide the live board during pure-coach preface steps so the first Roll is
-  // the first time they see the fleet.
-  const preface = tutorial.stepId === "intro" || tutorial.stepId === "faces" || tutorial.stepId === "marks";
+  const preface =
+    tutorial.stepId === "intro" || tutorial.stepId === "faces" || tutorial.stepId === "marks";
 
   return (
-    <div className="tutorial-shell">
-      {!preface && tutorial.status === "ready" && (
-        <MatchScreen controller={controller} onExit={goHome} />
-      )}
-      {preface && <div className="tutorial-preface-backdrop" aria-hidden />}
+    <div className={`tutorial-shell ${preface ? "is-preface" : ""}`}>
+      {/* Board stays up from the first tip so the fleet is never a black void. */}
+      {tutorial.status === "ready" && <MatchScreen controller={controller} onExit={goHome} />}
+      {preface && <div className="tutorial-preface-scrim" aria-hidden />}
       <TutorialCoach
         step={tutorial.step}
+        stepId={tutorial.stepId}
         stepNumber={tutorial.stepNumber}
         stepCount={tutorial.stepCount}
         error={tutorial.error}

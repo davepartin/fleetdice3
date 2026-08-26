@@ -1876,7 +1876,7 @@ button {
 }
 
 /* ==================================================================
-   Tutorial coach
+   Tutorial coach — collapsible tip over a live board
    ================================================================== */
 
 .tutorial-shell {
@@ -1884,14 +1884,15 @@ button {
   min-height: 100dvh;
 }
 
-.tutorial-preface-backdrop {
+/* Soft veil over the board during preface tips — fleet still visible underneath. */
+.tutorial-preface-scrim {
   position: fixed;
   inset: 0;
-  z-index: 0;
+  z-index: 55;
+  pointer-events: auto;
   background:
-    radial-gradient(ellipse at 50% 20%, rgb(255 210 61 / 0.08), transparent 55%),
-    radial-gradient(ellipse at 80% 80%, rgb(77 180 255 / 0.06), transparent 50%),
-    var(--color-void);
+    radial-gradient(ellipse at 50% 18%, rgb(255 210 61 / 0.1), transparent 50%),
+    linear-gradient(180deg, rgb(4 6 13 / 0.35), rgb(4 6 13 / 0.55) 55%, rgb(4 6 13 / 0.82));
 }
 
 .tutorial-theme {
@@ -1899,20 +1900,46 @@ button {
   inset: 0;
   z-index: 80;
   display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  padding: calc(var(--hud-safe-top) + 0.75rem) 1rem calc(var(--hud-safe-bottom) + 1rem);
+  background:
+    radial-gradient(ellipse at 50% 0%, rgb(255 210 61 / 0.14), transparent 45%),
+    radial-gradient(ellipse at 100% 100%, rgb(176 125 255 / 0.1), transparent 40%),
+    var(--color-void);
+}
+
+.tutorial-theme-art {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.85rem;
+  width: min(100%, 28rem);
+  min-height: 9rem;
+  pointer-events: none;
+}
+
+.tutorial-theme-dice {
+  display: flex;
   align-items: flex-end;
   justify-content: center;
-  padding: calc(var(--hud-safe-top) + 1rem) 1rem calc(var(--hud-safe-bottom) + 1rem);
-  background:
-    radial-gradient(ellipse at 50% 0%, rgb(255 210 61 / 0.12), transparent 45%),
-    radial-gradient(ellipse at 100% 100%, rgb(176 125 255 / 0.1), transparent 40%),
-    rgb(4 6 13 / 0.92);
+  gap: 0.65rem;
+}
+
+.tutorial-theme-dice-row2 {
+  opacity: 0.92;
 }
 
 .tutorial-theme-card {
   width: min(100%, 28rem);
-  max-height: min(90dvh, 40rem);
+  max-height: min(58dvh, 28rem);
   overflow: auto;
-  padding: 1.35rem 1.25rem 1.25rem;
+  padding: 1.2rem 1.15rem 1.15rem;
+  flex: 0 0 auto;
 }
 
 .tutorial-coach {
@@ -1923,18 +1950,51 @@ button {
   z-index: 70;
   display: flex;
   justify-content: center;
-  padding: 0 0.65rem calc(var(--hud-safe-bottom) + 0.55rem);
+  padding: 0 0.65rem calc(var(--hud-safe-bottom) + 0.45rem);
   pointer-events: none;
 }
 
+.tutorial-coach-bar,
 .tutorial-coach-card {
   pointer-events: auto;
   width: min(100%, 28rem);
+}
+
+/* Collapsed accordion — one line, clears Roll Fleet above it. */
+.tutorial-coach-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  min-height: 3.25rem;
+  padding: 0.55rem 0.8rem;
+  border-radius: 14px;
+  border: 1px solid rgb(255 210 61 / 0.35);
+  background: rgb(11 16 32 / 0.94);
+  box-shadow: 0 -6px 28px rgb(0 0 0 / 0.4);
+  text-align: left;
+  color: inherit;
+}
+
+.tutorial-coach-bar-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex-shrink: 0;
+}
+
+.tutorial-coach-chevron {
+  color: var(--color-energy);
+  font-size: 0.85rem;
+}
+
+.tutorial-coach-card {
+  max-height: min(52dvh, 26rem);
+  overflow: auto;
   padding: 0.9rem 0.95rem 0.85rem;
   border-color: rgb(255 210 61 / 0.28);
   background:
     linear-gradient(180deg, rgb(255 210 61 / 0.08), transparent 40%),
-    rgb(11 16 32 / 0.94);
+    rgb(11 16 32 / 0.96);
   box-shadow: 0 -8px 40px rgb(0 0 0 / 0.45);
 }
 
@@ -1950,24 +2010,91 @@ button {
   font-size: var(--text-xs);
 }
 
+.tutorial-coach-minimize {
+  border: 0;
+  background: transparent;
+  color: var(--color-hull-300);
+  font-size: var(--text-xs);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 0.2rem 0.35rem;
+  cursor: pointer;
+}
+
 .tutorial-coach-wait {
   letter-spacing: 0.06em;
 }
 
-/* Keep the match bottom dock and shipyard clear of the coach on phone. */
+.tutorial-face-strip {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  margin-top: 0.75rem;
+}
+
+.tutorial-face-card {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.tutorial-face-card figcaption {
+  font-size: var(--text-xs);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-hull-300);
+}
+
+.tutorial-face-arrow {
+  font-size: 1.4rem;
+  font-weight: 800;
+  padding-bottom: 1.4rem;
+}
+
+.tutorial-hull-chip {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+  color: var(--color-hull-200);
+  font-size: var(--text-xs);
+  font-weight: 700;
+}
+
+.tutorial-hull-shape {
+  width: 2.4rem;
+  height: 2.4rem;
+}
+
+/*
+ * Collapsed coach is short — only reserve a slim strip under the dock.
+ * Expanded tips temporarily cover more; the player taps Got it / Hide first.
+ */
+.tutorial-shell .match-hud-solo .match-bottom {
+  padding-bottom: calc(var(--hud-safe-bottom) + 4.1rem);
+}
+
 @media (max-width: 640px), (max-height: 640px) {
-  .tutorial-shell .match-hud-solo .match-bottom {
-    padding-bottom: calc(var(--hud-safe-bottom) + 9.5rem);
-  }
   .tutorial-shell .match-hud-solo .roll-dock {
-    max-height: calc(220px + var(--hud-safe-bottom));
+    max-height: calc(260px + var(--hud-safe-bottom));
   }
 }
 
 .tutorial-shell .yard {
-  padding-bottom: calc(var(--hud-safe-bottom) + 10.5rem);
+  padding-bottom: calc(var(--hud-safe-bottom) + 4.5rem);
 }
 .tutorial-shell .yard-portal {
   z-index: 60;
+}
+
+/* When the tip is open on an action step, dim the board slightly so the tip reads. */
+.tutorial-shell:has(.tutorial-coach.is-open.is-board-wait) .stage-canvas {
+  filter: brightness(0.72);
 }
 

@@ -102,9 +102,16 @@ test("token nudge completes a five-straight on d4 faces", () => {
   assert.equal(run.reward.energy, 6);
 });
 
-test("tutorial theme copy has four sentences of setting", () => {
-  const script = readFileSync(new URL("../lib/tutorial.ts", import.meta.url), "utf8");
-  assert.match(script, /paragraphs:\s*\[/);
-  assert.match(script, /growing swarm/);
-  assert.match(script, /Happy fleet battles/);
+test("tutorial coach collapses so board actions stay free", () => {
+  const coach = readFileSync(new URL("../components/TutorialCoach.tsx", import.meta.url), "utf8");
+  const screen = readFileSync(new URL("../components/TutorialScreen.tsx", import.meta.url), "utf8");
+  const css = readFileSync(new URL("../app/globals.css", import.meta.url), "utf8");
+  assert.match(coach, /tutorial-coach-bar/);
+  assert.match(coach, /Got it — show the board/);
+  assert.match(coach, /HelpShipFace/);
+  assert.match(coach, /setOpen\(!boardTap\)/);
+  assert.match(screen, /MatchScreen controller=\{controller\}/);
+  assert.doesNotMatch(screen, /tutorial-preface-backdrop/);
+  assert.match(css, /\.tutorial-coach-bar/);
+  assert.match(css, /padding-bottom: calc\(var\(--hud-safe-bottom\) \+ 4\.1rem\)/);
 });
