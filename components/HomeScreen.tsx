@@ -125,6 +125,21 @@ export function HomeScreen() {
 
             {/* The two ways to play */}
             <div className="flex flex-col gap-2.5">
+              <Link href="/tutorial/" className="block">
+                <Panel className="anim-rise flex items-center gap-4 border-[--color-energy]/30 bg-[--color-energy]/[0.06] p-4 transition hover:border-[--color-energy]/50">
+                  <ModeIcon kind="tutorial" />
+                  <span className="min-w-0 flex-1">
+                    <span className="t-display block text-xl text-white">Tutorial</span>
+                    <span className="mt-0.5 block text-sm leading-snug c-dim">
+                      A short guided flight — faces, formations, the shipyard, a straight, and the flagship token.
+                    </span>
+                  </span>
+                  <span className="c-energy" aria-hidden>
+                    ›
+                  </span>
+                </Panel>
+              </Link>
+
               <Link href="/solo/" className="block">
                 <Panel className="anim-rise flex items-center gap-4 p-4 transition hover:border-white/25">
                   <ModeIcon kind="solo" />
@@ -332,17 +347,22 @@ export function HomeScreen() {
   );
 }
 
-function ModeIcon({ kind }: { kind: "solo" | "versus" }) {
+function ModeIcon({ kind }: { kind: "solo" | "versus" | "tutorial" }) {
+  const tone =
+    kind === "tutorial"
+      ? "border-[--color-energy]/40 bg-[--color-energy]/15 c-energy"
+      : kind === "solo"
+        ? "border-[--color-energy]/30 bg-[--color-energy]/10 c-energy"
+        : "border-[--color-attack]/30 bg-[--color-attack]/10 c-attack";
   return (
-    <span
-      className={`grid h-11 w-11 shrink-0 place-items-center rounded-xl border ${
-        kind === "solo"
-          ? "border-[--color-energy]/30 bg-[--color-energy]/10 c-energy"
-          : "border-[--color-attack]/30 bg-[--color-attack]/10 c-attack"
-      }`}
-      aria-hidden
-    >
-      {kind === "solo" ? (
+    <span className={`grid h-11 w-11 shrink-0 place-items-center rounded-xl border ${tone}`} aria-hidden>
+      {kind === "tutorial" ? (
+        <svg viewBox="0 0 32 32" className="h-7 w-7" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M6 7h14a4 4 0 0 1 4 4v14H10a4 4 0 0 0-4 4V7Z" />
+          <path d="M6 7a4 4 0 0 1 4-4h14" />
+          <path d="M12 12h8M12 17h8M12 22h5" />
+        </svg>
+      ) : kind === "solo" ? (
         <svg viewBox="0 0 32 32" className="h-7 w-7" fill="none" stroke="currentColor" strokeWidth="2">
           <path d="M8 5h16l4 7-4 15H8L4 12 8 5Z" />
           <circle cx="11" cy="11" r="1.3" fill="currentColor" stroke="none" />

@@ -1874,3 +1874,100 @@ button {
   width: 2rem;
   height: 2rem;
 }
+
+/* ==================================================================
+   Tutorial coach
+   ================================================================== */
+
+.tutorial-shell {
+  position: relative;
+  min-height: 100dvh;
+}
+
+.tutorial-preface-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  background:
+    radial-gradient(ellipse at 50% 20%, rgb(255 210 61 / 0.08), transparent 55%),
+    radial-gradient(ellipse at 80% 80%, rgb(77 180 255 / 0.06), transparent 50%),
+    var(--color-void);
+}
+
+.tutorial-theme {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: calc(var(--hud-safe-top) + 1rem) 1rem calc(var(--hud-safe-bottom) + 1rem);
+  background:
+    radial-gradient(ellipse at 50% 0%, rgb(255 210 61 / 0.12), transparent 45%),
+    radial-gradient(ellipse at 100% 100%, rgb(176 125 255 / 0.1), transparent 40%),
+    rgb(4 6 13 / 0.92);
+}
+
+.tutorial-theme-card {
+  width: min(100%, 28rem);
+  max-height: min(90dvh, 40rem);
+  overflow: auto;
+  padding: 1.35rem 1.25rem 1.25rem;
+}
+
+.tutorial-coach {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 70;
+  display: flex;
+  justify-content: center;
+  padding: 0 0.65rem calc(var(--hud-safe-bottom) + 0.55rem);
+  pointer-events: none;
+}
+
+.tutorial-coach-card {
+  pointer-events: auto;
+  width: min(100%, 28rem);
+  padding: 0.9rem 0.95rem 0.85rem;
+  border-color: rgb(255 210 61 / 0.28);
+  background:
+    linear-gradient(180deg, rgb(255 210 61 / 0.08), transparent 40%),
+    rgb(11 16 32 / 0.94);
+  box-shadow: 0 -8px 40px rgb(0 0 0 / 0.45);
+}
+
+.tutorial-coach-top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.tutorial-coach-progress {
+  color: var(--color-hull-400);
+  font-size: var(--text-xs);
+}
+
+.tutorial-coach-wait {
+  letter-spacing: 0.06em;
+}
+
+/* Keep the match bottom dock and shipyard clear of the coach on phone. */
+@media (max-width: 640px), (max-height: 640px) {
+  .tutorial-shell .match-hud-solo .match-bottom {
+    padding-bottom: calc(var(--hud-safe-bottom) + 9.5rem);
+  }
+  .tutorial-shell .match-hud-solo .roll-dock {
+    max-height: calc(220px + var(--hud-safe-bottom));
+  }
+}
+
+.tutorial-shell .yard {
+  padding-bottom: calc(var(--hud-safe-bottom) + 10.5rem);
+}
+.tutorial-shell .yard-portal {
+  z-index: 60;
+}
+
