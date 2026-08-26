@@ -569,3 +569,68 @@ test("a roll throw waits for the new faces, not the tap", () => {
   const again = pendingThrow(state.players.host, ["flag"]);
   assert.equal(pendingThrowReady(again, state.players.host), false, "the same faces must not throw twice");
 });
+
+test("Formation shops for lines: opens cells, fills with small hulls, banks Energy", () => {
+  const { planShopping } = G;
+  const formation = newPlayer("e", "Enemy", "shop");
+  formation.energy = 20;
+  const acts = planShopping(formation, "formation", 3, 1).filter((a) => a.type === "shop");
+  const slots = acts.filter((a) => a.operation === "slot");
+  const buys = acts.filter((a) => a.operation === "buy");
+  const upgrades = acts.filter((a) => a.operation === "upgrade");
+  assert.ok(slots.length >= 1, "Formation must open at least one cell with 20 Energy");
+  assert.ok(
+    buys.every((a) => !("sides" in a) || a.sides <= 6),
+    "Formation must not plant d8/d10 hulls while building lines",
+  );
+
+  const capital = newPlayer("c", "Cap", "shop");
+  capital.energy = 20;
+  const capitalActs = planShopping(capital, "capital", 3, 1).filter((a) => a.type === "shop");
+  assert.ok(
+    capitalActs.filter((a) => a.operation === "upgrade").length > upgrades.length,
+    "Capital should upgrade more than Formation on the same purse",
+  );
+});
+
+test("nearFormation is true when a line is one face away", () => {
+  const { nearFormation } = G;
+  // Middle row: left d4=3, flag=3, right d4=1 → two 3s, one away.
+  const dice = [
+    { id: "a", sides: 4, value: 3, slot: 3 },
+    { id: "b", sides: 4, value: 1, slot: 4 },
+    { id: "flag", sides: 6, value: 3, flag: true },
+  ];
+  assert.equal(nearFormation(dice), true);
+  const matched = [
+    { id: "a", sides: 4, value: 2, slot: 3 },
+    { id: "b", sides: 4, value: 2, slot: 4 },
+    { id: "flag", sides: 6, value: 2, flag: true },
+  ];
+  assert.equal(nearFormation(matched), false, "already complete is not 'near'");
+});
+
+test("a paid reroll trims to what the bank can afford", () => {
+  const state = freshMatch(21);
+  const brain = newBrain("formation", "admiral");
+  applyAction(state, "host", { type: "roll", dice: [] });
+  applyAction(state, "guest", { type: "roll", dice: [] });
+  const guest = state.players.guest;
+  guest.energy = 2;
+  guest.rolls = TUNING.rollsPerRound;
+  for (const die of guest.dice) {
+    if (!die.flag) die.value = 1;
+  }
+  guest.flag.face = 6;
+  const flag = guest.dice.find((d) => d.flag);
+  if (flag) flag.value = 6;
+
+  const actions = nextActions(state, "guest", brain);
+  const rollAct = actions.find((a) => a.type === "roll");
+  if (rollAct && rollAct.type === "roll") {
+    assert.ok(
+      rollAct.dice.length <= 2,
+      `paid reroll must not ask for more than 2 dice with 2 Energy (asked ${rollAct.dice.length})`,
+    );
+  }
+});

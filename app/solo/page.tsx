@@ -118,7 +118,11 @@ function SoloSetup({
             </div>
 
             <header className="pt-2">
-              <p className="t-eyebrow">Choose enemy plan</p>
+              <p className="t-eyebrow">Enemy plan</p>
+              <h2 className="t-display text-2xl text-white">Who are you fighting?</h2>
+              <p className="mt-1 text-sm leading-snug c-dim">
+                Each plan shops and rerolls differently — Formation hunts threes, Capital buys big hulls.
+              </p>
             </header>
 
             <div className="flex flex-col gap-2.5">
