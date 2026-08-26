@@ -1,14 +1,14 @@
 "use client";
 
 /**
- * Tutorial coach — a card at the TOP of the screen, never over the controls.
+ * Tutorial coach — docks above the live action button, never over the board.
  *
- * Every action in this game lives in the bottom dock. So the coach lives at the
- * top, in the empty band where the board shows through. That one decision is
- * what makes it work: the coach and the button it points at can never occupy
- * the same pixels, so there is no accordion to open, nothing to hide, and no
- * moment where the tip covers the thing it just told you to tap. You read at
- * the top, you act at the bottom.
+ * On the match screen the board sits in the middle band, so the coach anchors
+ * to the bottom (right above whichever action button is live) and covers the
+ * dock's own totals instead. The shipyard is the exception: no board to
+ * protect, so the card stays top-anchored there and the grid is pushed clear.
+ * Either way the tip and the control it names never share pixels — no
+ * accordion, nothing to hide, tip always points at something you can tap.
  */
 
 import { useEffect, useRef } from "react";
