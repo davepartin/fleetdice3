@@ -7,7 +7,7 @@
 import { useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { MatchScreen } from "./MatchScreen";
-import { TutorialCoach, TutorialTheme } from "./TutorialCoach";
+import { TutorialCoach, TutorialTheme, awaitedAction } from "./TutorialCoach";
 import { useTutorialMatch } from "@/lib/useTutorialMatch";
 import { TUTORIAL_INTRO } from "@/lib/tutorial";
 import type { MatchAction } from "@/lib/engine";
@@ -50,14 +50,16 @@ export function TutorialScreen() {
     );
   }
 
-  const preface =
-    tutorial.stepId === "intro" || tutorial.stepId === "faces" || tutorial.stepId === "marks";
+  // What the player must tap for this step to advance. CSS reads this off the
+  // shell to light up that exact control down in the dock — so "tap Roll Fleet"
+  // is something you see, not just something you read.
+  const awaiting = awaitedAction(tutorial.step);
 
   return (
-    <div className={`tutorial-shell ${preface ? "is-preface" : ""}`}>
-      {/* Board stays up from the first tip so the fleet is never a black void. */}
+    <div className="tutorial-shell" data-awaiting={awaiting ?? undefined}>
+      {/* The board is never veiled. You are being taught about these dice —
+          dimming them to make room for a text card defeats the whole point. */}
       {tutorial.status === "ready" && <MatchScreen controller={controller} onExit={goHome} />}
-      {preface && <div className="tutorial-preface-scrim" aria-hidden />}
       <TutorialCoach
         step={tutorial.step}
         stepId={tutorial.stepId}

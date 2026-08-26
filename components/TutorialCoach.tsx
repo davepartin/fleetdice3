@@ -1,14 +1,17 @@
 "use client";
 
 /**
- * Tutorial coach — a collapsible tip, never a wall over the board.
+ * Tutorial coach — a card at the TOP of the screen, never over the controls.
  *
- * When the player must tap the board (Roll, Lock in, shipyard…), the card
- * collapses to a one-line bar so the primary button stays free. Tap the bar to
- * re-read the tip. Preface steps and "Next" steps open expanded with dice art.
+ * Every action in this game lives in the bottom dock. So the coach lives at the
+ * top, in the empty band where the board shows through. That one decision is
+ * what makes it work: the coach and the button it points at can never occupy
+ * the same pixels, so there is no accordion to open, nothing to hide, and no
+ * moment where the tip covers the thing it just told you to tap. You read at
+ * the top, you act at the bottom.
  */
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef } from "react";
 import { Button } from "./ui";
 import { HelpFlagFace, HelpShipFace } from "./HelpArt";
 import { HullShape } from "./HullShape";
@@ -24,50 +27,52 @@ type Props = {
   onSkip(): void;
 };
 
-function needsBoardTap(step: TutorialStep): boolean {
+/**
+ * What the player has to do on the board for this step to advance. The three
+ * shipyard steps stay distinct because they point at different *kinds* of cell
+ * — lighting all nine at once would be pointing at nothing.
+ */
+export function awaitedAction(step: TutorialStep): string | null {
   const a = step.allow;
-  return !!(
-    a.rollAll ||
-    a.reroll ||
-    a.submit ||
-    a.continue ||
-    a.brace ||
-    a.ready ||
-    a.shopSlot ||
-    a.shopBuy ||
-    a.shopUpgrade ||
-    a.token?.length
-  );
+  if (a.rollAll) return "roll";
+  if (a.reroll) return "reroll";
+  if (a.submit) return "submit";
+  if (a.continue) return "continue";
+  if (a.brace) return "brace";
+  if (a.ready) return "ready";
+  if (a.shopSlot) return "shopSlot";
+  if (a.shopBuy) return "shopBuy";
+  if (a.shopUpgrade) return "shopUpgrade";
+  if (a.token?.length) return "token";
+  return null;
 }
+
+/** The one-line nudge under the body, naming the target in the player's words. */
+const AWAIT_HINT: Record<string, string> = {
+  roll: "Tap Roll Fleet below",
+  reroll: "Tap a die on the board, then Reroll",
+  submit: "Tap Lock in below",
+  continue: "Tap the button below to continue",
+  brace: "Tap a ship, then confirm below",
+  ready: "Tap Return to battle below",
+  shopSlot: "Tap a glowing locked bay",
+  shopBuy: "Tap the glowing empty bay",
+  shopUpgrade: "Tap a glowing d4 to upgrade",
+  token: "Tap Flagship weapon, then +1 face",
+};
 
 function FaceStrip({ stepId }: { stepId: TutorialStepId }) {
   if (stepId === "intro" || stepId === "finale") {
     return (
       <div className="tutorial-face-strip" aria-hidden>
-        <span className="tutorial-hull-chip">
-          <span className="tutorial-hull-shape">
-            <HullShape sides={4} tone="live" />
+        {([4, 6, 8, 10] as const).map((sides) => (
+          <span key={sides} className="tutorial-hull-chip">
+            <span className="tutorial-hull-shape">
+              <HullShape sides={sides} tone="live" />
+            </span>
+            <b>d{sides}</b>
           </span>
-          <b>d4</b>
-        </span>
-        <span className="tutorial-hull-chip">
-          <span className="tutorial-hull-shape">
-            <HullShape sides={6} tone="live" />
-          </span>
-          <b>d6</b>
-        </span>
-        <span className="tutorial-hull-chip">
-          <span className="tutorial-hull-shape">
-            <HullShape sides={8} tone="live" />
-          </span>
-          <b>d8</b>
-        </span>
-        <span className="tutorial-hull-chip">
-          <span className="tutorial-hull-shape">
-            <HullShape sides={10} tone="live" />
-          </span>
-          <b>d10</b>
-        </span>
+        ))}
       </div>
     );
   }
@@ -75,11 +80,11 @@ function FaceStrip({ stepId }: { stepId: TutorialStepId }) {
     return (
       <div className="tutorial-face-strip" aria-hidden>
         <figure className="tutorial-face-card">
-          <HelpShipFace value={6} size={64} />
+          <HelpShipFace value={6} size={54} />
           <figcaption className="c-attack">Even · hits</figcaption>
         </figure>
         <figure className="tutorial-face-card">
-          <HelpShipFace value={5} size={64} />
+          <HelpShipFace value={5} size={54} />
           <figcaption className="c-shield">Odd · blocks</figcaption>
         </figure>
       </div>
@@ -89,15 +94,15 @@ function FaceStrip({ stepId }: { stepId: TutorialStepId }) {
     return (
       <div className="tutorial-face-strip" aria-hidden>
         <figure className="tutorial-face-card">
-          <HelpShipFace value={1} size={56} />
+          <HelpShipFace value={1} size={48} />
           <figcaption className="c-energy">Energy</figcaption>
         </figure>
         <figure className="tutorial-face-card">
-          <HelpShipFace value={2} size={56} />
+          <HelpShipFace value={2} size={48} />
           <figcaption className="c-direct">Direct</figcaption>
         </figure>
         <figure className="tutorial-face-card">
-          <HelpShipFace value={3} size={56} />
+          <HelpShipFace value={3} size={48} />
           <figcaption className="c-repair">Repair</figcaption>
         </figure>
       </div>
@@ -107,14 +112,14 @@ function FaceStrip({ stepId }: { stepId: TutorialStepId }) {
     return (
       <div className="tutorial-face-strip" aria-hidden>
         <figure className="tutorial-face-card">
-          <HelpFlagFace face={4} size={64} />
+          <HelpFlagFace face={4} size={54} />
           <figcaption>Flagship</figcaption>
         </figure>
         <span className="tutorial-face-arrow c-energy" aria-hidden>
           →
         </span>
         <figure className="tutorial-face-card">
-          <HelpFlagFace face={5} size={64} />
+          <HelpFlagFace face={5} size={54} />
           <figcaption className="c-energy">+1 face</figcaption>
         </figure>
       </div>
@@ -132,96 +137,92 @@ export function TutorialCoach({
   onNext,
   onSkip,
 }: Props) {
-  const boardTap = needsBoardTap(step);
+  const awaiting = awaitedAction(step);
   const showNext = !!step.allow.coachNext && !!step.nextLabel;
-  const [open, setOpen] = useState(!boardTap);
+  const cardRef = useRef<HTMLDivElement>(null);
 
-  // Action steps start collapsed so Roll / Lock in stay free. Tip steps open.
+  /*
+   * Publish how tall the card actually is, as --tutorial-coach-h on the shell.
+   * The match screen doesn't need this (its controls are all at the bottom),
+   * but the shipyard is a full-screen overlay whose grid starts at the very
+   * top — it has to be pushed clear of however much room this card is taking,
+   * which changes with the step's copy and the viewport. Measured, not guessed.
+   */
   useEffect(() => {
-    setOpen(!boardTap);
-  }, [stepId, boardTap]);
+    const card = cardRef.current;
+    const shell = card?.closest(".tutorial-shell") as HTMLElement | null;
+    if (!card || !shell) return;
+    const publish = () => {
+      shell.style.setProperty("--tutorial-coach-h", `${Math.round(card.getBoundingClientRect().height)}px`);
+    };
+    publish();
+    const observer = new ResizeObserver(publish);
+    observer.observe(card);
+    window.addEventListener("resize", publish);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", publish);
+    };
+  }, [stepId]);
+
+  /*
+   * Bring whatever this step lit up into view. Mostly a no-op — the dock is
+   * always on screen — but the shipyard's grid can scroll, and a glowing bay
+   * the player has to go looking for is a step that reads as broken.
+   */
+  useEffect(() => {
+    if (!awaiting) return;
+    const timer = window.setTimeout(() => {
+      const lit = document.querySelector<HTMLElement>(
+        `.tutorial-shell[data-awaiting="${awaiting}"] .yard-cell[data-affordable]`,
+      );
+      lit?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    }, 250);
+    return () => window.clearTimeout(timer);
+  }, [stepId, awaiting]);
 
   return (
-    <div
-      className={`tutorial-coach ${open ? "is-open" : "is-collapsed"} ${
-        boardTap ? "is-board-wait" : "is-tip"
-      }`}
-      role="dialog"
-      aria-label="Tutorial coach"
-      aria-expanded={open}
-    >
-      {!open && (
-        <button
-          type="button"
-          className="tutorial-coach-bar"
-          onClick={() => setOpen(true)}
-        >
-          <span className="min-w-0 flex-1 text-left">
-            <span className="t-eyebrow c-energy block">{step.eyebrow}</span>
-            <span className="t-display block truncate text-base text-white">{step.title}</span>
-          </span>
-          <span className="tutorial-coach-bar-meta">
-            <span className="t-num text-xs c-dim">
-              {stepNumber}/{stepCount}
-            </span>
-            <span className="tutorial-coach-chevron" aria-hidden>
-              ▴
-            </span>
-          </span>
-        </button>
-      )}
-
-      {open && (
-        <div className="tutorial-coach-card panel">
-          <div className="tutorial-coach-top">
-            <p className="t-eyebrow c-energy">{step.eyebrow}</p>
-            <div className="flex items-center gap-2">
-              <p className="tutorial-coach-progress t-num">
-                {stepNumber}/{stepCount}
-              </p>
-              {boardTap && (
-                <button
-                  type="button"
-                  className="tutorial-coach-minimize"
-                  onClick={() => setOpen(false)}
-                  aria-label="Hide tip so you can tap the board"
-                >
-                  ▾ Hide
-                </button>
-              )}
-            </div>
-          </div>
-          <h2 className="t-display mt-1 text-xl text-white">{step.title}</h2>
-          <FaceStrip stepId={stepId} />
-          <p className="mt-2 text-sm leading-snug text-[--color-hull-100]">{step.body}</p>
-          {error && (
-            <p className="mt-2 text-sm c-attack" role="status">
-              {error}
-            </p>
-          )}
-          {boardTap && (
-            <p className="tutorial-coach-wait mt-3 text-xs font-bold uppercase tracking-wide c-energy">
-              Hide this tip, then tap what it asks for on the board
-            </p>
-          )}
-          <div className="mt-3 flex items-center gap-2">
-            {showNext ? (
-              <Button tone="primary" full onClick={onNext}>
-                {step.nextLabel}
-              </Button>
-            ) : boardTap ? (
-              <Button tone="primary" full onClick={() => setOpen(false)}>
-                Got it — show the board
-              </Button>
-            ) : (
-              <span className="flex-1" />
-            )}
-            <Button tone="ghost" size="sm" onClick={onSkip}>
-              Skip
-            </Button>
-          </div>
+    <div className="tutorial-coach" role="dialog" aria-label="Tutorial coach">
+      <div ref={cardRef} className="tutorial-coach-card panel">
+        <div className="tutorial-coach-top">
+          <p className="t-eyebrow c-energy">{step.eyebrow}</p>
+          <p className="tutorial-coach-progress t-num">
+            {stepNumber}/{stepCount}
+          </p>
         </div>
-      )}
+
+        <h2 className="t-display tutorial-coach-title">{step.title}</h2>
+        <FaceStrip stepId={stepId} />
+        <p className="tutorial-coach-body">{step.body}</p>
+
+        {error && (
+          <p className="tutorial-coach-error" role="status">
+            {error}
+          </p>
+        )}
+
+        <div className="tutorial-coach-foot">
+          {showNext ? (
+            <Button tone="primary" full onClick={onNext}>
+              {step.nextLabel}
+            </Button>
+          ) : awaiting ? (
+            /* No button — the board is the button. Name the target and point
+               at it; the real control is already lit up down in the dock. */
+            <p className="tutorial-coach-await" role="status">
+              <span className="tutorial-coach-caret" aria-hidden>
+                ↓
+              </span>
+              {AWAIT_HINT[awaiting] ?? "Take your turn on the board"}
+            </p>
+          ) : (
+            <span className="flex-1" />
+          )}
+          <button type="button" className="tutorial-coach-skip" onClick={onSkip}>
+            Skip
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

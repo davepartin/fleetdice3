@@ -1884,17 +1884,6 @@ button {
   min-height: 100dvh;
 }
 
-/* Soft veil over the board during preface tips — fleet still visible underneath. */
-.tutorial-preface-scrim {
-  position: fixed;
-  inset: 0;
-  z-index: 55;
-  pointer-events: auto;
-  background:
-    radial-gradient(ellipse at 50% 18%, rgb(255 210 61 / 0.1), transparent 50%),
-    linear-gradient(180deg, rgb(4 6 13 / 0.35), rgb(4 6 13 / 0.55) 55%, rgb(4 6 13 / 0.82));
-}
-
 .tutorial-theme {
   position: fixed;
   inset: 0;
@@ -1942,60 +1931,102 @@ button {
   flex: 0 0 auto;
 }
 
+/*
+ * The coach sits at the TOP, under the HP rail. Every control this game asks
+ * you to press is in the bottom dock, so anchoring here means the tip can
+ * never cover its own target — which is why there is no collapse/expand
+ * mechanism in this component at all.
+ */
 .tutorial-coach {
   position: fixed;
   left: 0;
   right: 0;
-  bottom: 0;
+  top: calc(var(--hud-safe-top) + 4.6rem);
   z-index: 70;
   display: flex;
   justify-content: center;
-  padding: 0 0.65rem calc(var(--hud-safe-bottom) + 0.45rem);
+  padding: 0 0.65rem;
   pointer-events: none;
 }
 
-.tutorial-coach-bar,
 .tutorial-coach-card {
   pointer-events: auto;
   width: min(100%, 28rem);
-}
-
-/* Collapsed accordion — one line, clears Roll Fleet above it. */
-.tutorial-coach-bar {
-  display: flex;
-  align-items: center;
-  gap: 0.65rem;
-  min-height: 3.25rem;
-  padding: 0.55rem 0.8rem;
-  border-radius: 14px;
-  border: 1px solid rgb(255 210 61 / 0.35);
-  background: rgb(11 16 32 / 0.94);
-  box-shadow: 0 -6px 28px rgb(0 0 0 / 0.4);
-  text-align: left;
-  color: inherit;
-}
-
-.tutorial-coach-bar-meta {
-  display: flex;
-  align-items: center;
-  gap: 0.45rem;
-  flex-shrink: 0;
-}
-
-.tutorial-coach-chevron {
-  color: var(--color-energy);
-  font-size: 0.85rem;
-}
-
-.tutorial-coach-card {
-  max-height: min(52dvh, 26rem);
+  max-height: min(46dvh, 24rem);
   overflow: auto;
-  padding: 0.9rem 0.95rem 0.85rem;
-  border-color: rgb(255 210 61 / 0.28);
+  padding: 0.85rem 0.95rem 0.8rem;
+  border-color: rgb(255 210 61 / 0.3);
   background:
-    linear-gradient(180deg, rgb(255 210 61 / 0.08), transparent 40%),
-    rgb(11 16 32 / 0.96);
-  box-shadow: 0 -8px 40px rgb(0 0 0 / 0.45);
+    linear-gradient(180deg, rgb(255 210 61 / 0.08), transparent 42%),
+    rgb(11 16 32 / 0.97);
+  box-shadow: 0 14px 44px rgb(0 0 0 / 0.55);
+}
+
+.tutorial-coach-title {
+  margin-top: 0.15rem;
+  color: white;
+  font-size: var(--text-xl);
+  line-height: 1.12;
+}
+
+.tutorial-coach-body {
+  margin-top: 0.5rem;
+  color: var(--color-hull-100);
+  font-size: var(--text-sm);
+  line-height: 1.4;
+}
+
+.tutorial-coach-error {
+  margin-top: 0.5rem;
+  color: var(--color-attack);
+  font-size: var(--text-sm);
+}
+
+.tutorial-coach-foot {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-top: 0.75rem;
+}
+
+/* On an action step there is no coach button — the lit control below IS the
+   button. This line just names it and points down at it. */
+.tutorial-coach-await {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex: 1 1 auto;
+  margin: 0;
+  color: var(--color-energy);
+  font-size: var(--text-xs);
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.tutorial-coach-caret {
+  animation: tutorial-caret 1.4s ease-in-out infinite;
+  font-size: 1rem;
+  line-height: 1;
+}
+
+@keyframes tutorial-caret {
+  0%, 100% { transform: translateY(0); opacity: 0.55; }
+  50% { transform: translateY(3px); opacity: 1; }
+}
+
+.tutorial-coach-skip {
+  flex-shrink: 0;
+  border: 1px solid rgb(255 255 255 / 0.14);
+  border-radius: 10px;
+  padding: 0.4rem 0.7rem;
+  background: transparent;
+  color: var(--color-hull-300);
+  font-size: var(--text-xs);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
 }
 
 .tutorial-coach-top {
@@ -2008,22 +2039,6 @@ button {
 .tutorial-coach-progress {
   color: var(--color-hull-400);
   font-size: var(--text-xs);
-}
-
-.tutorial-coach-minimize {
-  border: 0;
-  background: transparent;
-  color: var(--color-hull-300);
-  font-size: var(--text-xs);
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  padding: 0.2rem 0.35rem;
-  cursor: pointer;
-}
-
-.tutorial-coach-wait {
-  letter-spacing: 0.06em;
 }
 
 .tutorial-face-strip {
@@ -2073,28 +2088,66 @@ button {
 }
 
 /*
- * Collapsed coach is short — only reserve a slim strip under the dock.
- * Expanded tips temporarily cover more; the player taps Got it / Hide first.
+ * The shipyard is a full-screen overlay whose grid starts at the very top —
+ * the one screen where a top-anchored coach *would* cover its targets. Push
+ * its content below the card using the card's own measured height
+ * (--tutorial-coach-h, set by TutorialCoach), so the cells clear it exactly
+ * whatever the step's copy or the viewport.
  */
-.tutorial-shell .match-hud-solo .match-bottom {
-  padding-bottom: calc(var(--hud-safe-bottom) + 4.1rem);
-}
-
-@media (max-width: 640px), (max-height: 640px) {
-  .tutorial-shell .match-hud-solo .roll-dock {
-    max-height: calc(260px + var(--hud-safe-bottom));
-  }
-}
-
 .tutorial-shell .yard {
-  padding-bottom: calc(var(--hud-safe-bottom) + 4.5rem);
+  padding-top: calc(var(--hud-safe-top) + 4.6rem + var(--tutorial-coach-h, 0px) + 0.75rem);
+}
+/* Pushing the yard down costs vertical room, which can put the bottom row of
+   bays past the fold. Let the board scroll so every cell stays reachable —
+   a bay you cannot tap is a dead end in a tutorial that asks you to tap it. */
+.tutorial-shell .yard-main {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
 }
 .tutorial-shell .yard-portal {
   z-index: 60;
 }
 
-/* When the tip is open on an action step, dim the board slightly so the tip reads. */
-.tutorial-shell:has(.tutorial-coach.is-open.is-board-wait) .stage-canvas {
-  filter: brightness(0.72);
+/* ------------------------------------------------------------------
+   Spotlight — the tutorial points at real controls, it does not just
+   describe them. data-awaiting on the shell says which control this
+   step needs, and each rule lights that one up in place.
+   ------------------------------------------------------------------ */
+
+@keyframes tutorial-spotlight {
+  0%, 100% {
+    box-shadow:
+      0 0 0 0 rgb(255 210 61 / 0.55),
+      0 0 18px 2px rgb(255 210 61 / 0.35);
+  }
+  50% {
+    box-shadow:
+      0 0 0 6px rgb(255 210 61 / 0),
+      0 0 26px 6px rgb(255 210 61 / 0.5);
+  }
+}
+
+.tutorial-spotlight,
+.tutorial-shell[data-awaiting="roll"] .roll-dock-action .btn-primary,
+.tutorial-shell[data-awaiting="reroll"] .roll-dock-action .btn-primary,
+.tutorial-shell[data-awaiting="submit"] .roll-dock-action .btn-primary,
+.tutorial-shell[data-awaiting="continue"] .round-report .btn-primary,
+.tutorial-shell[data-awaiting="brace"] .brace-dock-action .btn-primary,
+.tutorial-shell[data-awaiting="ready"] .yard-done .btn-primary,
+.tutorial-shell[data-awaiting="ready"] .yard .btn-primary,
+.tutorial-shell[data-awaiting="token"] .flagship-control-row > .btn {
+  position: relative;
+  z-index: 2;
+  animation: tutorial-spotlight 1.6s ease-in-out infinite;
+  border-radius: 16px;
+}
+
+/* Shipyard steps point at cells, not a button — and each step points at one
+   *kind* of cell (locked / empty / a ship to upgrade), never all nine. */
+.tutorial-shell[data-awaiting="shopSlot"] .yard-cell-locked[data-affordable],
+.tutorial-shell[data-awaiting="shopBuy"] .yard-cell-empty[data-affordable],
+.tutorial-shell[data-awaiting="shopUpgrade"] .yard-cell-ship[data-affordable] {
+  animation: tutorial-spotlight 1.6s ease-in-out infinite;
 }
 

@@ -102,16 +102,48 @@ test("token nudge completes a five-straight on d4 faces", () => {
   assert.equal(run.reward.energy, 6);
 });
 
-test("tutorial coach collapses so board actions stay free", () => {
+test("the coach sits at the top, so it can never cover the controls", () => {
+  const coach = readFileSync(new URL("../components/TutorialCoach.tsx", import.meta.url), "utf8");
+  const css = readFileSync(new URL("../app/globals.css", import.meta.url), "utf8");
+
+  // Every control the tutorial asks for is in the bottom dock. The coach is
+  // top-anchored so the two can never share pixels — that is the whole fix.
+  const block = css.match(/\.tutorial-coach \{[^}]*\}/);
+  assert.ok(block, "the coach needs a positioning block");
+  assert.match(block[0], /top:/, "the coach must be anchored to the top");
+  assert.doesNotMatch(block[0], /bottom:\s*0/, "anchoring to the bottom is what caused the overlap");
+
+  // Because it cannot overlap, there is nothing to collapse. If an accordion
+  // ever comes back, so has the bug it was working around.
+  assert.doesNotMatch(coach, /tutorial-coach-bar/, "no collapsed bar should be needed");
+  assert.doesNotMatch(coach, /setOpen/, "no open/closed state should be needed");
+  assert.doesNotMatch(coach, /Got it — show the board/, "nothing should need dismissing");
+
+  // The board is never veiled — the dice are the subject of the lesson.
+  assert.doesNotMatch(css, /\.tutorial-preface-scrim/);
+
+  assert.match(coach, /HelpShipFace/, "tips still show real dice art");
+});
+
+test("action steps spotlight the control they name", () => {
   const coach = readFileSync(new URL("../components/TutorialCoach.tsx", import.meta.url), "utf8");
   const screen = readFileSync(new URL("../components/TutorialScreen.tsx", import.meta.url), "utf8");
   const css = readFileSync(new URL("../app/globals.css", import.meta.url), "utf8");
-  assert.match(coach, /tutorial-coach-bar/);
-  assert.match(coach, /Got it — show the board/);
-  assert.match(coach, /HelpShipFace/);
-  assert.match(coach, /setOpen\(!boardTap\)/);
+
   assert.match(screen, /MatchScreen controller=\{controller\}/);
-  assert.doesNotMatch(screen, /tutorial-preface-backdrop/);
-  assert.match(css, /\.tutorial-coach-bar/);
-  assert.match(css, /padding-bottom: calc\(var\(--hud-safe-bottom\) \+ 4\.1rem\)/);
+  assert.match(screen, /data-awaiting/, "the shell publishes what the step wants");
+  assert.match(coach, /export function awaitedAction/);
+
+  // Each awaited action has to actually light something up, or the arrow in
+  // the coach points at nothing.
+  const keys = ["roll", "reroll", "submit", "continue", "brace", "ready", "token",
+    "shopSlot", "shopBuy", "shopUpgrade"];
+  for (const key of keys) {
+    assert.match(
+      css,
+      new RegExp(`\\[data-awaiting="${key}"\\]`),
+      `no spotlight rule for the "${key}" step`,
+    );
+  }
+  assert.match(css, /@keyframes tutorial-spotlight/);
 });
