@@ -62,19 +62,36 @@ export type Difficulty = "cadet" | "captain" | "admiral";
  * straight" rather than only the generic keep-the-good-stuff shapes. Every
  * tier can now SEE a formation; what separates them is how well they read
  * it (`samples`, noisier when low), how consistently they act on their own
- * best read (`greed`), and how readily they'll spend banked Energy on a
- * reroll instead of saving it (`rerollThreshold` — the minimum value gained
- * per Energy spent; lower means more willing to spend).
+ * best read (`greed`), how readily they'll spend banked Energy on a reroll
+ * instead of saving it (`rerollThreshold` — the minimum value gained per
+ * Energy spent; lower means more willing to spend), how big a swing the
+ * once-a-match flagship token needs before it's worth using
+ * (`tokenThreshold`), and how eagerly it throws extra hulls in front of a
+ * volley beyond what survival requires (`braceCaution` — the health
+ * fraction below which it starts feeding ships it doesn't strictly need
+ * to; low means it commits hulls only when truly squeezed, high means it
+ * plays it safe and burns ships early).
  */
 export const DIFFICULTY: Record<
   Difficulty,
-  { samples: number; candidates: number; greed: number; rerollThreshold: number; label: string; blurb: string }
+  {
+    samples: number;
+    candidates: number;
+    greed: number;
+    rerollThreshold: number;
+    tokenThreshold: number;
+    braceCaution: number;
+    label: string;
+    blurb: string;
+  }
 > = {
   cadet: {
     samples: 12,
     candidates: 4,
     greed: 0.55,
     rerollThreshold: 2.4,
+    tokenThreshold: 9,
+    braceCaution: 0.65,
     label: "Cadet",
     blurb: "Learning the ropes. Spots a formation but reads it poorly, and rarely spends Energy to chase one.",
   },
@@ -83,6 +100,8 @@ export const DIFFICULTY: Record<
     candidates: 7,
     greed: 0.85,
     rerollThreshold: 1.7,
+    tokenThreshold: 6,
+    braceCaution: 0.45,
     label: "Captain",
     blurb: "Plays the board properly — chases formations and straights, spends Energy when it's worth it.",
   },
@@ -91,8 +110,10 @@ export const DIFFICULTY: Record<
     candidates: 10,
     greed: 1,
     rerollThreshold: 1.15,
+    tokenThreshold: 4,
+    braceCaution: 0.3,
     label: "Admiral",
-    blurb: "Reads every line, never wastes a roll, and knows exactly when a paid reroll pays for itself.",
+    blurb: "Reads every line, never wastes a roll or a hull, and knows exactly when a paid reroll pays for itself.",
   },
 };
 
@@ -296,6 +317,7 @@ export function chooseStraightTake(player: PlayerState, pressure: number): numbe
 export function chooseFlagToken(
   player: PlayerState,
   pressure: number,
+  threshold = 6,
 ): -1 | 1 | null {
   if (!player.flag.token || player.phase !== "rolling") return null;
   const ctx = { hpRatio: player.hp / player.maxHp, pressure };
@@ -309,8 +331,8 @@ export function chooseFlagToken(
     const score = valueOfTally(tally(moved, player.flag.level), ctx);
     if (!best || score > best.score) best = { direction, score };
   }
-  // Only spend the once-a-match token on a real swing.
-  if (!best || best.score < now + 6) return null;
+  // Only spend the once-a-match token on a swing worth this difficulty's bar.
+  if (!best || best.score < now + threshold) return null;
   return best.direction;
 }
 
@@ -319,9 +341,12 @@ export function chooseFlagToken(
  *
  * Feeding a ship costs you that die next round, so only feed enough to survive
  * or to stop a genuinely painful hit. Smallest hulls first — a d10 that sits
- * out costs far more than a d4 that does.
+ * out costs far more than a d4 that does. `caution` is the health fraction
+ * below which it starts feeding hulls beyond what survival strictly
+ * requires — high for a tier that plays it safe and burns ships early, low
+ * for one that commits hulls only when truly squeezed.
  */
-export function chooseBrace(player: PlayerState): string[] {
+export function chooseBrace(player: PlayerState, caution = 0.45): string[] {
   const available = activeShips(player, player.round)
     .slice()
     .sort((a, b) => a.sides - b.sides);
@@ -339,7 +364,7 @@ export function chooseBrace(player: PlayerState): string[] {
     const hpAfter = survivable - landing;
     // Always survive. Beyond that, feed a hull only when it stops more than it costs.
     const mustBlock = hpAfter <= 0;
-    const worthIt = landing >= ship.sides && hpAfter < player.maxHp * 0.45;
+    const worthIt = landing >= ship.sides && hpAfter < player.maxHp * caution;
     if (!mustBlock && !worthIt) break;
     chosen.push(ship.id);
     soaked += ship.sides;
@@ -578,7 +603,7 @@ export function nextActions(state: MatchState, side: SideId, brain: Brain): Matc
         const bar = knobs.rerollThreshold * (1 - pressure * 0.35);
         if (affordable && choice.gain / cost >= bar) return [{ type: "roll", dice: choice.reroll }];
       }
-      const token = chooseFlagToken(player, pressure);
+      const token = chooseFlagToken(player, pressure, knobs.tokenThreshold);
       if (token) actions.push({ type: "flag-token", direction: token });
       const take = chooseStraightTake(player, pressure);
       if (take !== null) actions.push({ type: "straight-take", take });
@@ -586,7 +611,7 @@ export function nextActions(state: MatchState, side: SideId, brain: Brain): Matc
       return actions;
     }
     case "brace":
-      return [{ type: "brace", ships: chooseBrace(player) }];
+      return [{ type: "brace", ships: chooseBrace(player, knobs.braceCaution) }];
     case "report":
       return [{ type: "continue" }];
     default:
