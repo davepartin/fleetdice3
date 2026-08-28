@@ -380,11 +380,21 @@ export function MatchScreen({ controller, onExit, title, subtitle }: Props) {
     }, 700);
 
     // Formations and straights get their own moment.
-    for (const line of you.tally?.lines ?? []) {
+    (you.tally?.lines ?? []).forEach((line, index) => {
       const points = line.idx.map((cell) => arena.cellWorld("you", cell));
       arena.vfx.formation(points, line.kind);
       audio.play(line.kind === "row" ? "formation-row" : "formation-column");
-    }
+      // The reward number punches out of the middle die of the line itself —
+      // it has to read as part of the formation, not a stray HUD number
+      // floating off at the edge of the board.
+      const amount = line.kind === "row" ? line.energy : line.attack;
+      arena.vfx.floatingNumber(
+        points[1] ?? points[0]!,
+        `+${amount}`,
+        line.kind === "row" ? 0xffd23d : 0xff4d4d, // --color-energy / --color-attack
+        { label: line.kind === "row" ? "Energy" : "Attack", scale: 1.3, delay: index * 0.15 },
+      );
+    });
     if (you.tally?.run) {
       const run = you.tally.run;
       const members = runMemberIds(you.dice, run);

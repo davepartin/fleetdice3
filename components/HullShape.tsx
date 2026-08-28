@@ -7,7 +7,8 @@ import type { DieSize } from "@/lib/engine";
  */
 export const HULL_PATHS: Record<DieSize, string> = {
   4: "M32 8 L57 52 L7 52 Z",
-  6: "M10 12 h44 a2 2 0 0 1 2 2 v36 a2 2 0 0 1 -2 2 h-44 a2 2 0 0 1 -2 -2 v-36 a2 2 0 0 1 2 -2 z",
+  // A true 42x42 square, not the 48x40 rectangle this drifted into.
+  6: "M13 11 h38 a2 2 0 0 1 2 2 v38 a2 2 0 0 1 -2 2 h-38 a2 2 0 0 1 -2 -2 v-38 a2 2 0 0 1 2 -2 z",
   8: "M32 6 L56 32 L32 58 L8 32 Z",
   10: "M32 6 L57 24 L47 55 L17 55 L7 24 Z",
 };
@@ -20,7 +21,8 @@ export function addHullPath(ctx: CanvasRenderingContext2D, sides: DieSize, size:
     ctx.lineTo(x(57), x(52));
     ctx.lineTo(x(7), x(52));
   } else if (sides === 6) {
-    ctx.roundRect(x(10), x(12), x(44), x(40), x(2));
+    // A true square, matching HULL_PATHS[6] above.
+    ctx.roundRect(x(11), x(11), x(42), x(42), x(2));
   } else if (sides === 8) {
     ctx.moveTo(x(32), x(6));
     ctx.lineTo(x(56), x(32));

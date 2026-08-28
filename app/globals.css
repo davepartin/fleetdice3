@@ -1974,7 +1974,9 @@ button {
   position: fixed;
   left: 0;
   right: 0;
-  top: calc(var(--hud-safe-top) + 4.6rem);
+  /* Right under the HUD (measured ~51px tall) — every pixel here is one
+     the board doesn't get. */
+  top: calc(var(--hud-safe-top) + 3.6rem);
   z-index: 70;
   display: flex;
   justify-content: center;
@@ -2044,9 +2046,15 @@ button {
   min-height: 0;
   padding: 0.7rem 0.85rem 0.65rem;
   border-color: rgb(255 210 61 / 0.3);
+  /* Translucent on purpose — the board behind it is still part of the
+     lesson, so it should stay visible (softly) even while the tip is open.
+     The blur is what keeps the text readable over busy dice art instead
+     of just going dim. */
   background:
-    linear-gradient(180deg, rgb(255 210 61 / 0.08), transparent 42%),
-    rgb(11 16 32 / 0.97);
+    linear-gradient(180deg, rgb(255 210 61 / 0.1), transparent 42%),
+    rgb(11 16 32 / 0.78);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
   box-shadow: 0 14px 44px rgb(0 0 0 / 0.55);
 }
 
@@ -2248,7 +2256,7 @@ button {
  * the board elsewhere; minimizing it clears the view either way.
  */
 .tutorial-shell .yard {
-  padding-top: calc(var(--hud-safe-top) + 4.6rem + 3.75rem + 0.75rem);
+  padding-top: calc(var(--hud-safe-top) + 3.6rem + 3.75rem + 0.75rem);
 }
 /* Pushing the yard down costs vertical room, which can put the bottom row of
    bays past the fold. Let the board scroll so every cell stays reachable —
