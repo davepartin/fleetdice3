@@ -53,11 +53,47 @@ export const PLAN_BLURB: Record<Plan, string> = {
 
 export type Difficulty = "cadet" | "captain" | "admiral";
 
-/** How hard the Enemy plays. Rookies get fewer reroll samples and looser shopping. */
-export const DIFFICULTY: Record<Difficulty, { samples: number; candidates: number; greed: number; label: string; blurb: string }> = {
-  cadet: { samples: 12, candidates: 3, greed: 0.55, label: "Cadet", blurb: "Learning the ropes. Misses good rerolls." },
-  captain: { samples: 40, candidates: 6, greed: 0.85, label: "Captain", blurb: "Plays the board properly. A fair fight." },
-  admiral: { samples: 120, candidates: 10, greed: 1, label: "Admiral", blurb: "Reads every line and never wastes a roll." },
+/**
+ * How hard the Enemy plays.
+ *
+ * `candidates` caps how many reroll shapes get evaluated — see chooseReroll's
+ * SHAPES list below, which is ordered most-valuable-first specifically so a
+ * low candidate count still reaches "build a formation" and "build a
+ * straight" rather than only the generic keep-the-good-stuff shapes. Every
+ * tier can now SEE a formation; what separates them is how well they read
+ * it (`samples`, noisier when low), how consistently they act on their own
+ * best read (`greed`), and how readily they'll spend banked Energy on a
+ * reroll instead of saving it (`rerollThreshold` — the minimum value gained
+ * per Energy spent; lower means more willing to spend).
+ */
+export const DIFFICULTY: Record<
+  Difficulty,
+  { samples: number; candidates: number; greed: number; rerollThreshold: number; label: string; blurb: string }
+> = {
+  cadet: {
+    samples: 12,
+    candidates: 4,
+    greed: 0.55,
+    rerollThreshold: 2.4,
+    label: "Cadet",
+    blurb: "Learning the ropes. Spots a formation but reads it poorly, and rarely spends Energy to chase one.",
+  },
+  captain: {
+    samples: 40,
+    candidates: 7,
+    greed: 0.85,
+    rerollThreshold: 1.7,
+    label: "Captain",
+    blurb: "Plays the board properly — chases formations and straights, spends Energy when it's worth it.",
+  },
+  admiral: {
+    samples: 120,
+    candidates: 10,
+    greed: 1,
+    rerollThreshold: 1.15,
+    label: "Admiral",
+    blurb: "Reads every line, never wastes a roll, and knows exactly when a paid reroll pays for itself.",
+  },
 };
 
 /* ------------------------------------------------------------------ */
@@ -153,16 +189,26 @@ function runCandidates(dice: DieValue[]): Set<string> {
   return keep;
 }
 
+export type RerollChoice = { reroll: string[]; gain: number };
+
 /**
  * Pick the dice to send back. Generates a handful of sensible "keep" shapes,
- * measures each by rolling it out, and returns the best.
+ * measures each by rolling it out, and returns the best — along with `gain`,
+ * how many points that best shape is worth over just keeping the roll as-is.
+ * A caller decides whether that gain is worth paying Energy for.
+ *
+ * The list is ordered most-valuable-first on purpose: `candidates` (which
+ * varies by difficulty) truncates it, and a weak opponent should still be
+ * ABLE to see "build a formation" or "build a straight" — the tiers differ
+ * in how well they read and commit to that shape, not in whether it exists
+ * for them at all.
  */
-export function chooseReroll(
+export function chooseRerollDetailed(
   player: PlayerState,
   options: { samples: number; candidates: number; greed: number; pressure: number },
-): string[] {
+): RerollChoice {
   const dice = player.dice;
-  if (!dice.length) return [];
+  if (!dice.length) return { reroll: [], gain: 0 };
   const ctx = { hpRatio: player.hp / player.maxHp, pressure: options.pressure };
   const flagLevel = player.flag.level;
 
@@ -183,31 +229,43 @@ export function chooseReroll(
     shapes.push(reroll);
   };
 
-  add(() => true); // keep everything
-  add((die) => die.value >= die.sides - 1); // keep the top faces
-  add((die) => die.value % 2 === 0 && die.value >= 4); // keep the big hits
-  add((die) => die.value % 2 === 0 || die.value === 1 || die.value === 3); // keep hits and marks
+  add(() => true); // keep everything — the "do nothing" baseline
+  add((die) => lineKeep.has(die.id)); // build a formation
   add((die) => runKeep.has(die.id)); // build a straight
   add((die) => inRun.has(die.id) || runKeep.has(die.id)); // protect the run we have
-  add((die) => lineKeep.has(die.id)); // build a formation
   add((die) => lineKeep.has(die.id) || die.value >= die.sides - 1); // formation plus the big faces
+  add((die) => die.value % 2 === 0 && die.value >= 4); // keep the big hits
+  add((die) => die.value >= die.sides - 1); // keep the top faces
+  add((die) => die.value % 2 === 0 || die.value === 1 || die.value === 3); // keep hits and marks
   add((die) => die.flag === true); // keep only the flagship
   add((die) => die.value >= 3); // dump the dregs
 
   const pool = shapes.slice(0, Math.max(3, options.candidates));
+  // expectedValue short-circuits to an exact score when the reroll set is
+  // empty, so this doubles as the "keep everything" baseline for `gain`.
+  const baseline = expectedValue(dice, new Set(), flagLevel, ctx, options.samples);
   let best: { reroll: Set<string>; score: number } | null = null;
   for (const reroll of pool) {
-    const score = expectedValue(dice, reroll, flagLevel, ctx, options.samples);
+    const score = reroll.size === 0 ? baseline : expectedValue(dice, reroll, flagLevel, ctx, options.samples);
     if (!best || score > best.score) best = { reroll, score };
   }
-  if (!best) return [];
+  if (!best) return { reroll: [], gain: 0 };
 
   // A weaker opponent sometimes takes the second-best line.
-  if (options.greed < 1 && Math.random() > options.greed) {
-    const alt = pool[Math.floor(Math.random() * pool.length)]!;
-    return [...alt];
-  }
-  return [...best.reroll];
+  const picked =
+    options.greed < 1 && Math.random() > options.greed
+      ? pool[Math.floor(Math.random() * pool.length)]!
+      : best.reroll;
+  const pickedScore = picked === best.reroll ? best.score : expectedValue(dice, picked, flagLevel, ctx, options.samples);
+  return { reroll: [...picked], gain: pickedScore - baseline };
+}
+
+/** Just the reroll ids, for callers that don't need the value gain. */
+export function chooseReroll(
+  player: PlayerState,
+  options: { samples: number; candidates: number; greed: number; pressure: number },
+): string[] {
+  return chooseRerollDetailed(player, options).reroll;
 }
 
 function sameSet(a: Set<string>, b: Set<string>): boolean {
@@ -497,19 +555,28 @@ export function nextActions(state: MatchState, side: SideId, brain: Brain): Matc
     case "rolling": {
       const actions: MatchAction[] = [];
       const free = player.rolls < TUNING.rollsPerRound;
-      const paidWorthIt = !free && player.energy >= 6 && pressure > 0.35;
-      if (free || paidWorthIt) {
-        const reroll = chooseReroll(player, {
-          samples: knobs.samples,
-          candidates: knobs.candidates,
-          greed: knobs.greed,
-          pressure,
-        });
+      const choice = chooseRerollDetailed(player, {
+        samples: knobs.samples,
+        candidates: knobs.candidates,
+        greed: knobs.greed,
+        pressure,
+      });
+      if (free) {
+        if (choice.reroll.length) return [{ type: "roll", dice: choice.reroll }];
+      } else if (choice.reroll.length) {
         // A paid reroll costs one Energy per die. Asking for more dice than the
         // bank covers makes the engine refuse the move, and with nothing else
         // queued the match simply stops — so check the real price, not a guess.
-        const affordable = free || reroll.length <= player.energy;
-        if (reroll.length && affordable) return [{ type: "roll", dice: reroll }];
+        const cost = choice.reroll.length;
+        const affordable = cost <= player.energy;
+        // Worth it when the expected value gained per Energy spent clears the
+        // bar for this difficulty — not a flat "got 6 Energy?" gate, so a real
+        // shot at a formation gets taken even on a tight bank, and a marginal
+        // one still gets passed up even on a full one. Getting desperate (low
+        // HP, late round) lowers the bar: a losing fleet should gamble Energy
+        // it would otherwise hoard.
+        const bar = knobs.rerollThreshold * (1 - pressure * 0.35);
+        if (affordable && choice.gain / cost >= bar) return [{ type: "roll", dice: choice.reroll }];
       }
       const token = chooseFlagToken(player, pressure);
       if (token) actions.push({ type: "flag-token", direction: token });
