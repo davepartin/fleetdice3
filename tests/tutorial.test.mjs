@@ -102,33 +102,41 @@ test("token nudge completes a five-straight on d4 faces", () => {
   assert.equal(run.reward.energy, 6);
 });
 
-test("the coach docks above the action button, never over the board", () => {
+test("the coach is a minimize/maximize overlay, not a card that relocates itself", () => {
   const coach = readFileSync(new URL("../components/TutorialCoach.tsx", import.meta.url), "utf8");
+  const screen = readFileSync(new URL("../components/TutorialScreen.tsx", import.meta.url), "utf8");
   const css = readFileSync(new URL("../app/globals.css", import.meta.url), "utf8");
 
-  // The board fills the empty band between the HUD and the bottom dock, so
-  // by default the coach anchors to the BOTTOM — right above whichever
-  // action button is live — instead of parking over the board. The
-  // shipyard is the one screen with no board to protect, so it keeps the
-  // coach at the top instead (and pushes its own grid clear of it).
+  // Two earlier designs tried to dodge the board (and, once, the flagship
+  // weapon control) by repositioning the card based on which screen or
+  // phase was live. The game's own layout has to stay put now, so the coach
+  // is a single, stable, always-top-anchored overlay — no per-phase override.
   const block = css.match(/\.tutorial-coach \{[^}]*\}/);
   assert.ok(block, "the coach needs a positioning block");
-  assert.match(block[0], /bottom:/, "the coach must default to anchoring above the action button");
+  assert.match(block[0], /top:/, "the coach anchors to a fixed top position");
+  assert.doesNotMatch(css, /data-phase/, "positioning must not depend on which phase is live");
+  assert.doesNotMatch(coach, /tutorial-action-clear/, "no measured clearance — the anchor no longer moves");
 
-  const shopOverride = css.match(/\.tutorial-shell\[data-phase="shop"\] \.tutorial-coach \{[^}]*\}/);
-  assert.ok(shopOverride, "the shipyard needs its own top-anchored override");
-  assert.match(shopOverride[0], /top:/, "the shipyard override must anchor to the top");
+  // The player decides whether to see the full tip or the board — a real
+  // minimize/maximize toggle, not an automatic reposition.
+  assert.match(coach, /useState/, "maximized/minimized needs real component state");
+  assert.match(coach, /setMaximized\(true\)/, "a fresh step must open maximized so the tip gets read");
+  assert.match(coach, /setMaximized\(false\)/, "there must be an explicit way to minimize");
+  assert.match(coach, /tutorial-coach-bar/, "the minimized state renders as its own slim bar");
+  assert.match(coach, /Minimize/, "the maximize->minimize control must be labeled, not just an icon");
+  assert.match(coach, /Show tip/, "the minimize->maximize control must be labeled, not just an icon");
 
-  // The measured clearance above the action button has to actually be
-  // measured, or the card could still land on top of the button it names.
-  assert.match(coach, /--tutorial-action-clear/, "the action clearance must be measured, not guessed");
+  // The bar has to be a real, small, fixed-height affordance — not another
+  // measured-and-guessed height like the two designs before it.
+  const barBlock = css.match(/\.tutorial-coach-bar \{[^}]*\}/);
+  assert.ok(barBlock, "the minimized bar needs its own style block");
+  assert.doesNotMatch(barBlock[0], /max-height|height:/, "the bar's height comes from its content, not a guess");
 
-  // Because the card can never overlap its target, there is nothing to
-  // collapse. If an accordion ever comes back, so has the bug it worked
-  // around.
-  assert.doesNotMatch(coach, /tutorial-coach-bar/, "no collapsed bar should be needed");
-  assert.doesNotMatch(coach, /setOpen/, "no open/closed state should be needed");
-  assert.doesNotMatch(coach, /Got it — show the board/, "nothing should need dismissing");
+  // The shipyard still needs its grid pushed clear, but now against the
+  // bar's fixed height, not a value read off the current card.
+  const yardBlock = css.match(/\.tutorial-shell \.yard \{[^}]*\}/);
+  assert.ok(yardBlock, "the shipyard needs its own push-down rule");
+  assert.doesNotMatch(yardBlock[0], /var\(--tutorial/, "the push-down must be a fixed constant, not measured");
 
   // The board is never veiled — the dice are the subject of the lesson.
   assert.doesNotMatch(css, /\.tutorial-preface-scrim/);

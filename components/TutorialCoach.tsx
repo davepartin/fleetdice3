@@ -1,17 +1,21 @@
 "use client";
 
 /**
- * Tutorial coach — docks above the live action button, never over the board.
+ * Tutorial coach — a minimize/maximize card, not a card that repositions.
  *
- * On the match screen the board sits in the middle band, so the coach anchors
- * to the bottom (right above whichever action button is live) and covers the
- * dock's own totals instead. The shipyard is the exception: no board to
- * protect, so the card stays top-anchored there and the grid is pushed clear.
- * Either way the tip and the control it names never share pixels — no
- * accordion, nothing to hide, tip always points at something you can tap.
+ * Two earlier versions of this tried to dodge the board by relocating the
+ * card — top-anchored, then bottom-anchored above the action button — and
+ * each time the board (or, at the bottom, the flagship weapon control) was
+ * one step's layout away from getting covered again. The game's own layout
+ * never moves for the tutorial now; the card is a fixed-position overlay
+ * that the player controls directly. Every new step opens maximized so the
+ * tip gets read, with an explicit Minimize button. Minimized, it is a slim
+ * bar — small enough to never meaningfully cover anything — with an equally
+ * explicit way back in. Read the tip, minimize it, look at the board, act;
+ * tap the bar again if you forget what it said.
  */
 
-import { useEffect, useRef } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "./ui";
 import { HelpFlagFace, HelpShipFace } from "./HelpArt";
 import { HullShape } from "./HullShape";
@@ -139,63 +143,12 @@ export function TutorialCoach({
 }: Props) {
   const awaiting = awaitedAction(step);
   const showNext = !!step.allow.coachNext && !!step.nextLabel;
-  const cardRef = useRef<HTMLDivElement>(null);
+  const hint = awaiting ? (AWAIT_HINT[awaiting] ?? "Take your turn on the board") : null;
 
-  /*
-   * Publish how tall the card actually is, as --tutorial-coach-h on the shell.
-   * The match screen doesn't need this (its controls are all at the bottom),
-   * but the shipyard is a full-screen overlay whose grid starts at the very
-   * top — it has to be pushed clear of however much room this card is taking,
-   * which changes with the step's copy and the viewport. Measured, not guessed.
-   */
-  useEffect(() => {
-    const card = cardRef.current;
-    const shell = card?.closest(".tutorial-shell") as HTMLElement | null;
-    if (!card || !shell) return;
-    const publish = () => {
-      shell.style.setProperty("--tutorial-coach-h", `${Math.round(card.getBoundingClientRect().height)}px`);
-    };
-    publish();
-    const observer = new ResizeObserver(publish);
-    observer.observe(card);
-    window.addEventListener("resize", publish);
-    return () => {
-      observer.disconnect();
-      window.removeEventListener("resize", publish);
-    };
-  }, [stepId]);
-
-  /*
-   * On every screen except the shipyard, the coach docks at the BOTTOM —
-   * right above whichever action button is live — instead of the top. The
-   * board sits in the middle of the real match screen; anchoring the card
-   * to the top parks it right over the board, which is the one thing a
-   * lesson about dice can't afford to hide. Anchored to the bottom, it
-   * covers the dock's own totals instead — those are redundant with what
-   * the card itself is teaching. Measured, not guessed, same as the height
-   * above: the action row's own padding differs slightly panel to panel.
-   */
-  useEffect(() => {
-    const shell = document.querySelector<HTMLElement>(".tutorial-shell");
-    if (!shell) return;
-    const publish = () => {
-      const action = document.querySelector<HTMLElement>(".match-bottom .btn-primary");
-      if (!action) return;
-      const clear = Math.max(0, Math.round(window.innerHeight - action.getBoundingClientRect().top));
-      shell.style.setProperty("--tutorial-action-clear", `${clear}px`);
-    };
-    publish();
-    const raf = requestAnimationFrame(publish);
-    const bottom = document.querySelector<HTMLElement>(".match-bottom");
-    const observer = bottom ? new ResizeObserver(publish) : null;
-    observer?.observe(bottom!);
-    window.addEventListener("resize", publish);
-    return () => {
-      cancelAnimationFrame(raf);
-      observer?.disconnect();
-      window.removeEventListener("resize", publish);
-    };
-  }, [stepId, awaiting]);
+  // Every new step opens maximized — the player should read a fresh tip
+  // before deciding to tuck it away.
+  const [maximized, setMaximized] = useState(true);
+  useEffect(() => setMaximized(true), [stepId]);
 
   /*
    * Bring whatever this step lit up into view. Mostly a no-op — the dock is
@@ -213,15 +166,38 @@ export function TutorialCoach({
     return () => window.clearTimeout(timer);
   }, [stepId, awaiting]);
 
+  if (!maximized) {
+    return (
+      <div className="tutorial-coach" role="dialog" aria-label="Tutorial coach, minimized">
+        <button
+          type="button"
+          className="tutorial-coach-bar panel"
+          onClick={() => setMaximized(true)}
+        >
+          <span className="tutorial-coach-bar-text">
+            <span className="tutorial-coach-bar-title">{step.title}</span>
+            {hint && <span className="tutorial-coach-bar-hint">↓ {hint}</span>}
+          </span>
+          <span className="tutorial-coach-bar-cta">Show tip</span>
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className="tutorial-coach" role="dialog" aria-label="Tutorial coach">
-      <div ref={cardRef} className="tutorial-coach-card panel">
+      <div className="tutorial-coach-card panel">
         <div className="tutorial-coach-scroll">
           <div className="tutorial-coach-top">
             <p className="t-eyebrow c-energy">{step.eyebrow}</p>
-            <p className="tutorial-coach-progress t-num">
-              {stepNumber}/{stepCount}
-            </p>
+            <div className="tutorial-coach-top-right">
+              <p className="tutorial-coach-progress t-num">
+                {stepNumber}/{stepCount}
+              </p>
+              <button type="button" className="tutorial-coach-minimize" onClick={() => setMaximized(false)}>
+                Minimize
+              </button>
+            </div>
           </div>
 
           <h2 className="t-display tutorial-coach-title">{step.title}</h2>
@@ -242,14 +218,14 @@ export function TutorialCoach({
             <Button tone="primary" full onClick={onNext}>
               {step.nextLabel}
             </Button>
-          ) : awaiting ? (
+          ) : hint ? (
             /* No button — the board is the button. Name the target and point
                at it; the real control is already lit up down in the dock. */
             <p className="tutorial-coach-await" role="status">
               <span className="tutorial-coach-caret" aria-hidden>
                 ↓
               </span>
-              {AWAIT_HINT[awaiting] ?? "Take your turn on the board"}
+              {hint}
             </p>
           ) : (
             <span className="flex-1" />

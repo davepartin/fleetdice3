@@ -974,7 +974,8 @@ function RollDock({
             disabled={busy}
             ariaLabel="Use flagship weapon"
           >
-            Flagship weapon
+            <span className="flagship-weapon-long">Flagship weapon</span>
+            <span className="flagship-weapon-compact">Weapon</span>
           </Button>
         )}
       </div>

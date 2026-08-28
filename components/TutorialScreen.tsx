@@ -56,11 +56,7 @@ export function TutorialScreen() {
   const awaiting = awaitedAction(tutorial.step);
 
   return (
-    <div
-      className="tutorial-shell"
-      data-awaiting={awaiting ?? undefined}
-      data-phase={tutorial.you?.phase ?? undefined}
-    >
+    <div className="tutorial-shell" data-awaiting={awaiting ?? undefined}>
       {/* The board is never veiled. You are being taught about these dice —
           dimming them to make room for a text card defeats the whole point. */}
       {tutorial.status === "ready" && <MatchScreen controller={controller} onExit={goHome} />}
