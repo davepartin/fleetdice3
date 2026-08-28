@@ -66,11 +66,14 @@ export type Difficulty = "cadet" | "captain" | "admiral";
  * instead of saving it (`rerollThreshold` — the minimum value gained per
  * Energy spent; lower means more willing to spend), how big a swing the
  * once-a-match flagship token needs before it's worth using
- * (`tokenThreshold`), and how eagerly it throws extra hulls in front of a
+ * (`tokenThreshold`), how eagerly it throws extra hulls in front of a
  * volley beyond what survival requires (`braceCaution` — the health
  * fraction below which it starts feeding ships it doesn't strictly need
  * to; low means it commits hulls only when truly squeezed, high means it
- * plays it safe and burns ships early).
+ * plays it safe and burns ships early), and how much Energy it holds back
+ * while shopping once its fleet is established (`rerollReserve`) — a tier
+ * that spends paid rerolls precisely should keep some Energy in the bank
+ * for them rather than dumping it all on the shipyard.
  */
 export const DIFFICULTY: Record<
   Difficulty,
@@ -81,6 +84,7 @@ export const DIFFICULTY: Record<
     rerollThreshold: number;
     tokenThreshold: number;
     braceCaution: number;
+    rerollReserve: number;
     label: string;
     blurb: string;
   }
@@ -92,6 +96,7 @@ export const DIFFICULTY: Record<
     rerollThreshold: 2.4,
     tokenThreshold: 9,
     braceCaution: 0.65,
+    rerollReserve: 0,
     label: "Cadet",
     blurb: "Learning the ropes. Spots a formation but reads it poorly, and rarely spends Energy to chase one.",
   },
@@ -102,6 +107,7 @@ export const DIFFICULTY: Record<
     rerollThreshold: 1.7,
     tokenThreshold: 6,
     braceCaution: 0.45,
+    rerollReserve: 2,
     label: "Captain",
     blurb: "Plays the board properly — chases formations and straights, spends Energy when it's worth it.",
   },
@@ -112,6 +118,7 @@ export const DIFFICULTY: Record<
     rerollThreshold: 1.15,
     tokenThreshold: 4,
     braceCaution: 0.3,
+    rerollReserve: 4,
     label: "Admiral",
     blurb: "Reads every line, never wastes a roll or a hull, and knows exactly when a paid reroll pays for itself.",
   },
@@ -480,11 +487,17 @@ function buyScore(player: PlayerState, buy: Buy, plan: Plan, round: number): num
 }
 
 /** One shopping trip. Returns the actions to apply, in order. */
-export function planShopping(player: PlayerState, plan: Plan, round: number, greed = 1): MatchAction[] {
+export function planShopping(
+  player: PlayerState,
+  plan: Plan,
+  round: number,
+  greed = 1,
+  rerollReserve = 2,
+): MatchAction[] {
   const actions: MatchAction[] = [];
   const scratch = structuredClone(player);
   // Keep a little back for paid rerolls once the fleet is established.
-  const reserve = scratch.ships.length >= 6 ? 2 : 0;
+  const reserve = scratch.ships.length >= 6 ? rerollReserve : 0;
 
   for (let step = 0; step < 8; step += 1) {
     const buys = affordableBuys(scratch).filter((buy) => buy.cost <= scratch.energy - reserve);
@@ -573,7 +586,10 @@ export function nextActions(state: MatchState, side: SideId, brain: Brain): Matc
 
   switch (player.phase) {
     case "shop": {
-      return [...planShopping(player, brain.plan, player.round, knobs.greed), { type: "ready" }];
+      return [
+        ...planShopping(player, brain.plan, player.round, knobs.greed, knobs.rerollReserve),
+        { type: "ready" },
+      ];
     }
     case "ready":
       return [{ type: "roll", dice: [] }];
