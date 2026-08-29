@@ -1791,6 +1791,40 @@ button {
   opacity: 0.85;
 }
 
+/* ---------------- the final volley ---------------- */
+
+.recap-lastround-title {
+  padding-bottom: 0.35rem;
+  text-align: center;
+}
+.recap-lastround-hp {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 0.3rem;
+  padding-bottom: 0.4rem;
+  margin-bottom: 0.25rem;
+  border-bottom: 1px solid rgb(255 255 255 / 0.08);
+  font-size: var(--text-base);
+}
+.recap-lastround-arrow {
+  color: var(--color-hull-400);
+  font-size: var(--text-sm);
+}
+.recap-lastround-sep {
+  color: var(--color-hull-400);
+  margin-inline: 0.15rem;
+}
+.recap-lastround-note {
+  margin-top: 0.5rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid rgb(255 255 255 / 0.08);
+  font-size: var(--text-xs);
+  line-height: 1.4;
+  color: var(--color-hull-200);
+  text-align: center;
+}
+
 .recap-foot {
   flex: none;
   display: flex;

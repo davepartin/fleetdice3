@@ -108,6 +108,73 @@ function StatRow({
   );
 }
 
+/**
+ * The volley that ended it. Both commanders lock in blind, so the two
+ * fleets shown side by side are the only way — on a phone, not next to
+ * each other — to see why the match actually went the way it did.
+ */
+function LastRound({
+  you,
+  them,
+  enemyName,
+}: {
+  you: PlayerState;
+  them: PlayerState;
+  enemyName: string;
+}) {
+  const yourReport = you.report;
+  const theirReport = them.report;
+  if (!yourReport || !theirReport) return null;
+
+  const yourAttack = yourReport.tally.attack;
+  const theirAttack = theirReport.tally.attack;
+  const yourShields = yourReport.tally.defense;
+  const theirShields = theirReport.tally.defense;
+  const yourDirect = yourReport.tally.direct;
+  const theirDirect = theirReport.tally.direct;
+
+  // Both flagships falling in the same volley is the one outcome the HP
+  // numbers alone don't explain — the engine breaks that tie on the
+  // heavier volley, then on damage across the whole match, so this reads
+  // out exactly the numbers it used.
+  const bothFell = you.hp <= 0 && them.hp <= 0;
+  let tiebreak: string | null = null;
+  if (bothFell) {
+    if (yourAttack !== theirAttack) {
+      const youHadIt = yourAttack > theirAttack;
+      tiebreak = `Both flagships fell in the same volley — ${youHadIt ? "you" : enemyName} fired the heavier Attack that round, ${Math.max(yourAttack, theirAttack)} to ${Math.min(yourAttack, theirAttack)}, and it decided it.`;
+    } else if (you.stats.damageDealt !== them.stats.damageDealt) {
+      const youHadIt = you.stats.damageDealt > them.stats.damageDealt;
+      tiebreak = `Both flagships fell in the same volley with equal Attack — it came down to total damage across the whole match, ${Math.max(you.stats.damageDealt, them.stats.damageDealt)} to ${Math.min(you.stats.damageDealt, them.stats.damageDealt)}, and ${youHadIt ? "you" : enemyName} had it.`;
+    } else {
+      tiebreak = "Both flagships fell in the same volley, dead even all the way down — a draw.";
+    }
+  }
+
+  return (
+    <div className="panel recap-stats">
+      <p className="t-eyebrow recap-lastround-title">Round {yourReport.round} — the final volley</p>
+      <div className="recap-stats-head">
+        <span className="t-eyebrow">You</span>
+        <span className="t-eyebrow">{enemyName}</span>
+      </div>
+      <p className="recap-lastround-hp">
+        <span className="c-hp t-num">{Math.max(0, yourReport.hpBefore)}</span>
+        <span className="recap-lastround-arrow" aria-hidden="true">→</span>
+        <span className="c-hp t-num">{Math.max(0, yourReport.hpAfter)}</span>
+        <span className="recap-lastround-sep" aria-hidden="true">·</span>
+        <span className="c-hp t-num">{Math.max(0, theirReport.hpBefore)}</span>
+        <span className="recap-lastround-arrow" aria-hidden="true">→</span>
+        <span className="c-hp t-num">{Math.max(0, theirReport.hpAfter)}</span>
+      </p>
+      <StatRow label="Attack" you={yourAttack} them={theirAttack} color="attack" />
+      <StatRow label="Shields" you={yourShields} them={theirShields} color="shield" />
+      <StatRow label="Direct" you={yourDirect} them={theirDirect} color="direct" />
+      {tiebreak && <p className="recap-lastround-note">{tiebreak}</p>}
+    </div>
+  );
+}
+
 export function BattleRecap({
   won,
   draw,
@@ -149,6 +216,8 @@ export function BattleRecap({
                   : `${enemyName} wins`}
           </h2>
         </div>
+
+        {them && <LastRound you={you} them={them} enemyName={enemyName} />}
 
         <div className="recap-fleets">
           <FleetPanel player={you} name="You" you />
