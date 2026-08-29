@@ -21,6 +21,7 @@ import {
   cellForSlot,
   escalationFor,
   flagBonusSize,
+  fleetSoak,
   previewTally,
   runMemberIds,
   straightPrizeTakes,
@@ -543,6 +544,8 @@ export function MatchScreen({ controller, onExit, title, subtitle }: Props) {
             enemyName={enemyName}
             enemyHp={them?.hp ?? 0}
             round={you.round}
+            yourFleet={fleetSoak(you)}
+            enemyFleet={them ? fleetSoak(them) : undefined}
             className="min-w-0 flex-1"
           />
 

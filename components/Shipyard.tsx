@@ -23,6 +23,7 @@ import {
   cellForSlot,
   flagshipUpgradeCost,
   flagBonusSize,
+  fleetSoak,
   nextSlotCost,
   openSlotCount,
   priceOf,
@@ -182,7 +183,12 @@ export function Shipyard({ player, enemyName, enemyHp, onAction, onDone, busy }:
       {/* The shipyard is a full-screen overlay above the match header (see
          .yard's own note), so it carries its own copy of the same HP rail
          rather than relying on one it has covered up. */}
-      <HpRail yourHp={player.hp} enemyName={enemyName} enemyHp={enemyHp} />
+      <HpRail
+        yourHp={player.hp}
+        enemyName={enemyName}
+        enemyHp={enemyHp}
+        yourFleet={fleetSoak(player)}
+      />
 
       {/* ---------------- header ---------------- */}
       <header className="yard-head">

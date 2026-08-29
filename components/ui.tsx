@@ -260,6 +260,8 @@ export function HpRail({
   enemyName,
   enemyHp,
   round,
+  yourFleet,
+  enemyFleet,
   className = "",
 }: {
   yourHp: number;
@@ -267,6 +269,14 @@ export function HpRail({
   enemyHp: number;
   /** Omit on a screen that already states the round elsewhere. */
   round?: number;
+  /**
+   * How much your fleet could soak right now, next to the flagship's own
+   * health — a die a brace disabled last round doesn't count until it's
+   * back. Omit where that number isn't known (e.g. the enemy's fleet on a
+   * screen that only carries their HP).
+   */
+  yourFleet?: number;
+  enemyFleet?: number;
   className?: string;
 }) {
   return (
@@ -274,12 +284,24 @@ export function HpRail({
       <div className="flex items-center justify-between gap-2">
         <span className="hp-rail-side min-w-0 truncate text-sm font-semibold text-white">
           You <Ticker value={Math.max(0, yourHp)} className="hp-rail-number c-hp-glow" />
+          {yourFleet !== undefined && (
+            <>
+              <span className="hp-rail-plus">+</span>
+              <Ticker value={yourFleet} className="hp-rail-fleet" />
+            </>
+          )}
         </span>
         {round !== undefined && (
           <span className="t-eyebrow hp-rail-round shrink-0 text-xs">Round {round}</span>
         )}
         <span className="hp-rail-side hp-rail-side-enemy min-w-0 truncate text-right text-sm font-semibold text-white">
           {enemyName} <Ticker value={Math.max(0, enemyHp)} className="hp-rail-number c-hp-glow" />
+          {enemyFleet !== undefined && (
+            <>
+              <span className="hp-rail-plus">+</span>
+              <Ticker value={enemyFleet} className="hp-rail-fleet" />
+            </>
+          )}
         </span>
       </div>
     </div>

@@ -507,6 +507,15 @@ export function emptyOpenSlots(player: PlayerState): number[] {
 export function activeShips(player: PlayerState, round: number): Ship[] {
   return player.ships.filter((ship) => ship.disabledRound !== round);
 }
+/**
+ * The flagship's own health is a separate number from what stands in front
+ * of it. This is that second number: how much a brace could soak right now,
+ * across every ship able to take the hit this round. A ship still sitting
+ * out from an earlier brace does not count until it returns.
+ */
+export function fleetSoak(player: PlayerState): number {
+  return activeShips(player, player.round).reduce((sum, ship) => sum + ship.sides, 0);
+}
 export function fleetValue(player: PlayerState): number {
   return player.ships.reduce((sum, ship) => sum + priceOf(ship.sides), 0);
 }
