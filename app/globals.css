@@ -1789,7 +1789,6 @@ button {
   height: 4px;
   border-radius: 999px;
   background: rgb(255 255 255 / 0.08);
-  overflow: hidden;
 }
 .recap-row-bar-fill {
   position: absolute;
@@ -1801,6 +1800,25 @@ button {
 }
 .recap-row-track-them .recap-row-bar-fill {
   inset: 0 0 0 auto;
+}
+/* The bright dot at a bar's growing tip — the only thing that still shows
+   when the bar itself is a sliver too thin to see, so "some" never reads
+   as "none." Sits on the fill's leading edge: the right end for the bar
+   that grows from the left, the left end for the one growing from the
+   right. */
+.recap-row-bar-tip {
+  position: absolute;
+  top: 50%;
+  right: -3px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  transform: translateY(-50%);
+  box-shadow: 0 0 5px 1px currentColor;
+}
+.recap-row-track-them .recap-row-bar-tip {
+  right: auto;
+  left: -3px;
 }
 
 /* ---------------- the final volley ---------------- */

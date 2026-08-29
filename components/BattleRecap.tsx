@@ -75,7 +75,10 @@ function FleetPanel({
  *  same colour carrying all three, so the row reads before it's parsed.
  *  The bar is two thin lines stacked, not one: yours grows from the left
  *  on top, theirs grows from the right underneath, both the row's colour —
- *  a single bar could only ever show one side actually scored anything. */
+ *  a single bar could only ever show one side actually scored anything.
+ *  Each line ends in a bright dot at its growing tip, so a bar too thin to
+ *  see still shows up as a dot — the only way "1" reads differently from
+ *  "0" when the other side ran up a much bigger number. */
 function StatRow({
   label,
   you,
@@ -88,10 +91,15 @@ function StatRow({
   color: string;
 }) {
   const total = you + them;
-  const yourShare = total > 0 ? (you / total) * 100 : 50;
-  const theirShare = total > 0 ? (them / total) * 100 : 50;
+  // Neither side scoring at all is a real, visible answer — an empty bar,
+  // not a coin-flip 50/50 that would claim both sides did something.
+  const yourShare = total > 0 ? (you / total) * 100 : 0;
+  const theirShare = total > 0 ? (them / total) * 100 : 0;
   const tone = { color: `var(--color-${color})` };
   const fill = { background: `var(--color-${color})` };
+  // The tip's glow reads its colour off `color` (for `currentColor` in its
+  // box-shadow), not `background` — a plain background wouldn't tint it.
+  const tip = { background: `var(--color-${color})`, color: `var(--color-${color})` };
   return (
     <div className="recap-row">
       <span className="recap-row-value recap-row-value-you t-num" style={tone}>
@@ -101,10 +109,14 @@ function StatRow({
         <span className="recap-row-label">{label}</span>
         <div className="recap-row-bar">
           <div className="recap-row-track">
-            <span className="recap-row-bar-fill" style={{ width: `${yourShare}%`, ...fill }} />
+            <span className="recap-row-bar-fill" style={{ width: `${yourShare}%`, ...fill }}>
+              {you > 0 && <span className="recap-row-bar-tip" style={tip} />}
+            </span>
           </div>
           <div className="recap-row-track recap-row-track-them">
-            <span className="recap-row-bar-fill" style={{ width: `${theirShare}%`, ...fill }} />
+            <span className="recap-row-bar-fill" style={{ width: `${theirShare}%`, ...fill }}>
+              {them > 0 && <span className="recap-row-bar-tip" style={tip} />}
+            </span>
           </div>
         </div>
       </div>
