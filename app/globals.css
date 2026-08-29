@@ -811,8 +811,15 @@ button {
 }
 
 @media (max-width: 640px), (max-height: 640px) {
+  /* "‹ Home" and the "…" menu share a top row; the HP rail gets a full
+     row of its own underneath. Cramming "You 60+16 · Round 4 · Enemy
+     60+16" between two buttons on one line only ever ends in truncation —
+     real phones proved it, not just a narrow test viewport — so this
+     gives the numbers a row wide enough that they never need to. */
   .match-hud-solo .match-header {
+    flex-wrap: wrap;
     align-items: flex-start;
+    justify-content: space-between;
     gap: 0.4rem;
     padding: max(0.45rem, var(--hud-safe-top)) 0.45rem 0;
   }
@@ -825,26 +832,13 @@ button {
   .match-hud-solo .leave-label-full { display: none; }
   .match-hud-solo .leave-label-short { display: inline; }
 
+  .match-hud-solo .match-header .match-leave { order: 1; }
+  .match-hud-solo .match-header .match-mobile-menu { order: 2; }
   .match-hud-solo .match-header .hp-rail {
+    order: 3;
+    flex-basis: 100%;
     min-height: 44px;
     padding: 0.5rem 0.7rem;
-  }
-  /* The fleet number is new company for a rail that was already tight
-     against "‹ Home" and the "…" menu on a narrow phone. Give the round
-     label and both extra numbers less room so "You 60+16" still fits
-     without truncating down to "You 6…". */
-  .match-hud-solo .match-header .hp-rail-round {
-    font-size: 0.6rem;
-    letter-spacing: 0.14em;
-  }
-  .match-hud-solo .match-header .hp-rail-number {
-    font-size: var(--text-sm);
-    margin-left: 0.2em;
-  }
-  .match-hud-solo .match-header .hp-rail-plus,
-  .match-hud-solo .match-header .hp-rail-fleet {
-    font-size: 0.66rem;
-    margin-left: 0.1em;
   }
 
   .match-hud-solo .match-desktop-utilities {
