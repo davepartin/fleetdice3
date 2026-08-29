@@ -72,7 +72,10 @@ function FleetPanel({
 }
 
 /** One line of the totals: your number, a share bar, their number — the
- *  same colour carrying all three, so the row reads before it's parsed. */
+ *  same colour carrying all three, so the row reads before it's parsed.
+ *  The bar is two thin lines stacked, not one: yours grows from the left
+ *  on top, theirs grows from the right underneath, both the row's colour —
+ *  a single bar could only ever show one side actually scored anything. */
 function StatRow({
   label,
   you,
@@ -86,7 +89,9 @@ function StatRow({
 }) {
   const total = you + them;
   const yourShare = total > 0 ? (you / total) * 100 : 50;
+  const theirShare = total > 0 ? (them / total) * 100 : 50;
   const tone = { color: `var(--color-${color})` };
+  const fill = { background: `var(--color-${color})` };
   return (
     <div className="recap-row">
       <span className="recap-row-value recap-row-value-you t-num" style={tone}>
@@ -95,10 +100,12 @@ function StatRow({
       <div className="recap-row-mid">
         <span className="recap-row-label">{label}</span>
         <div className="recap-row-bar">
-          <span
-            className="recap-row-bar-fill"
-            style={{ width: `${yourShare}%`, background: `var(--color-${color})` }}
-          />
+          <div className="recap-row-track">
+            <span className="recap-row-bar-fill" style={{ width: `${yourShare}%`, ...fill }} />
+          </div>
+          <div className="recap-row-track recap-row-track-them">
+            <span className="recap-row-bar-fill" style={{ width: `${theirShare}%`, ...fill }} />
+          </div>
         </div>
       </div>
       <span className="recap-row-value recap-row-value-them t-num" style={tone}>

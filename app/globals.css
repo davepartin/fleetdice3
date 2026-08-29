@@ -1774,7 +1774,16 @@ button {
   color: var(--color-hull-400);
   text-align: center;
 }
+/* Two lines, not one — yours on top growing from the left, theirs
+   underneath growing from the right, the same colour and the same
+   thickness as before, just staggered so both sides visibly register. */
 .recap-row-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+}
+.recap-row-track {
   position: relative;
   width: 100%;
   height: 4px;
@@ -1789,6 +1798,9 @@ button {
   border-radius: 999px;
   transition: width 0.5s var(--ease-snap);
   opacity: 0.85;
+}
+.recap-row-track-them .recap-row-bar-fill {
+  inset: 0 0 0 auto;
 }
 
 /* ---------------- the final volley ---------------- */
