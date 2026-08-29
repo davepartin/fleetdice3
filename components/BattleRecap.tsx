@@ -158,15 +158,18 @@ function LastRound({
         <span className="t-eyebrow">You</span>
         <span className="t-eyebrow">{enemyName}</span>
       </div>
-      <p className="recap-lastround-hp">
-        <span className="c-hp t-num">{Math.max(0, yourReport.hpBefore)}</span>
-        <span className="recap-lastround-arrow" aria-hidden="true">→</span>
-        <span className="c-hp t-num">{Math.max(0, yourReport.hpAfter)}</span>
-        <span className="recap-lastround-sep" aria-hidden="true">·</span>
-        <span className="c-hp t-num">{Math.max(0, theirReport.hpBefore)}</span>
-        <span className="recap-lastround-arrow" aria-hidden="true">→</span>
-        <span className="c-hp t-num">{Math.max(0, theirReport.hpAfter)}</span>
-      </p>
+      <div className="recap-lastround-hp">
+        <span className="recap-lastround-hp-side recap-lastround-hp-you">
+          <span className="c-hp t-num">{Math.max(0, yourReport.hpBefore)}</span>
+          <span className="recap-lastround-arrow" aria-hidden="true">→</span>
+          <span className="c-hp t-num">{Math.max(0, yourReport.hpAfter)}</span>
+        </span>
+        <span className="recap-lastround-hp-side recap-lastround-hp-them">
+          <span className="c-hp t-num">{Math.max(0, theirReport.hpBefore)}</span>
+          <span className="recap-lastround-arrow" aria-hidden="true">→</span>
+          <span className="c-hp t-num">{Math.max(0, theirReport.hpAfter)}</span>
+        </span>
+      </div>
       <StatRow label="Attack" you={yourAttack} them={theirAttack} color="attack" />
       <StatRow label="Shields" you={yourShields} them={theirShields} color="shield" />
       <StatRow label="Direct" you={yourDirect} them={theirDirect} color="direct" />
