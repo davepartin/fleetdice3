@@ -12,7 +12,7 @@
 import type { RoundReport as Report } from "@/lib/engine";
 import { Button, Notice } from "./ui";
 
-type BoxKind = "attack" | "shield" | "direct" | "repair";
+export type BoxKind = "attack" | "shield" | "direct" | "repair";
 
 // Written literally (not built from a template string) so Tailwind's static
 // scan can actually find these classes — a `${kind}`-interpolated class name
@@ -27,7 +27,7 @@ const BOX_TONE: Record<BoxKind, string> = {
 /** One boxed number in a battle line — colour carries the meaning (red
  *  attack, blue shield, purple direct, green repair), no glyph needed once
  *  every screen in the game already uses that same colour language. */
-function Box({ kind, value, big }: { kind: BoxKind; value: number; big?: boolean }) {
+export function Box({ kind, value, big }: { kind: BoxKind; value: number; big?: boolean }) {
   return (
     <span
       className={`t-num inline-flex items-center rounded-md border font-bold leading-none ${BOX_TONE[kind]} ${
@@ -42,7 +42,7 @@ function Box({ kind, value, big }: { kind: BoxKind; value: number; big?: boolean
 /** Hit points, and only hit points, are ever this colour — hpBefore and
  *  hpAfter aren't damage terms, they're the anchors the line starts and
  *  ends on, so they get the one hue nothing else on screen uses. */
-function HpBox({ value, big }: { value: number; big?: boolean }) {
+export function HpBox({ value, big }: { value: number; big?: boolean }) {
   return (
     <span
       className={`t-num inline-flex items-center rounded-md border border-[--color-hp]/45 bg-[--color-hp]/[0.16] c-hp font-bold leading-none ${

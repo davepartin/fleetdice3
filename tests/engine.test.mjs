@@ -466,6 +466,52 @@ test("repair that would pass 60 grows the flagship instead of being thrown away"
   assert.ok(host.stats.repaired > 0);
 });
 
+test("the battle recap totals split rows from columns and credit shields that actually stopped something", () => {
+  const state = freshMatch(9);
+  // Host's middle row (cells 3, 4, 5) all show 3 — an odd row, so it also
+  // gives host real Shields to block with, not just a formation to count.
+  // Cells 1 and 7 stay off that value so no column forms by accident.
+  lockFleets(
+    state,
+    { 1: 1, 3: 3, 4: 3, 5: 3, 7: 1 },
+    // Guest's middle column (cells 1, 4, 7) all show 2 — an even column, for
+    // Attack. Cells 3 and 5 add more Attack outside the line.
+    { 1: 2, 3: 4, 4: 2, 5: 4, 7: 2 },
+  );
+  const host = state.players.host;
+  const guest = state.players.guest;
+
+  assert.equal(host.stats.rows, 1, "host's matching middle row must count as a row, not a column");
+  assert.equal(host.stats.cols, 0);
+  assert.equal(guest.stats.cols, 1, "guest's matching middle column must count as a column, not a row");
+  assert.equal(guest.stats.rows, 0);
+
+  // Host's Shields (defenseOf(1) + defenseOf(3) + defenseOf(3) + defenseOf(1) = 8)
+  // block part of guest's Attack (attackOf(2)*3 + attackOf(4) + the column's
+  // own 10 Attack prize = 20), so all 8 Shields land and shieldsBlocked
+  // should equal host's own defense total, not guest's full attack.
+  const hostDefense = defenseOf(1) + defenseOf(3) + defenseOf(3) + defenseOf(1);
+  assert.equal(host.stats.shieldsBlocked, hostDefense);
+  assert.equal(host.incoming, Math.max(0, guest.tally.attack - hostDefense));
+
+  // Damage dealt is the incoming damage the *other* side actually took.
+  assert.equal(host.stats.damageDealt, guest.incoming);
+  assert.equal(guest.stats.damageDealt, host.incoming);
+});
+
+test("a paid reroll spends Energy and books it as Energy spent rerolling", () => {
+  const state = freshMatch(11);
+  const host = state.players.host;
+  applyAction(state, "host", { type: "roll", dice: [] });
+  host.rolls = TUNING.rollsPerRound;
+  host.energy = 10;
+  const dieIds = host.dice.filter((die) => !die.flag).slice(0, 2).map((die) => die.id);
+  const before = host.energy;
+  applyAction(state, "host", { type: "roll", dice: dieIds });
+  assert.equal(host.stats.rerollEnergy, dieIds.length);
+  assert.equal(host.energy, before - dieIds.length);
+});
+
 /** What every health readout on screen does with the raw engine number. */
 function displayHp(hp) {
   return Math.max(0, hp);

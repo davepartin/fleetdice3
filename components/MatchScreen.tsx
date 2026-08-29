@@ -40,6 +40,7 @@ import { Button, Chip, HpRail, Notice, Sheet, Stat } from "./ui";
 import { HowToPlaySheet } from "./HowToPlay";
 import { Shipyard } from "./Shipyard";
 import { RoundReportCard } from "./RoundReport";
+import { BattleRecap } from "./BattleRecap";
 
 type Props = {
   controller: MatchController;
@@ -661,12 +662,13 @@ export function MatchScreen({ controller, onExit, title, subtitle }: Props) {
               busy={busy}
             />
           ) : phase === "over" ? (
-            <ResultDock
+            <BattleRecap
               won={state.winner === controller.side}
               draw={state.winner === "draw"}
               cancelledBy={state.cancelledBy ?? null}
               youCancelled={Boolean(state.cancelledBy && you.name === state.cancelledBy)}
               you={you}
+              them={them}
               enemyName={enemyName}
               onExit={onExit}
               onRestart={controller.restart}
@@ -1205,66 +1207,6 @@ function BraceDock({
             ? "Flagship takes all damage"
             : `${chosen.size} ${chosen.size === 1 ? "ship blocks" : "ships block"} ${Math.min(blocked, you.incoming)} damage`}
         </Button>
-      </div>
-    </div>
-  );
-}
-
-function ResultDock({
-  won,
-  draw,
-  cancelledBy,
-  youCancelled,
-  you,
-  enemyName,
-  onExit,
-  onRestart,
-}: {
-  won: boolean;
-  draw: boolean;
-  cancelledBy?: string | null;
-  youCancelled?: boolean;
-  you: PlayerState;
-  enemyName: string;
-  onExit(): void;
-  onRestart?(): void;
-}) {
-  const cancelled = Boolean(cancelledBy);
-  return (
-    <div className="panel panel-you anim-rise flex flex-col gap-3 p-5">
-      <div className="text-center">
-        <p className="t-eyebrow">
-          {cancelled ? "Game cancelled" : draw ? "Both flagships fell" : won ? "Victory" : "Defeat"}
-        </p>
-        <h2 className={`t-display text-3xl ${cancelled ? "text-white" : won ? "c-repair" : draw ? "text-white" : "c-attack"}`}>
-          {cancelled
-            ? youCancelled
-              ? `You ended the ${NOUN.game}`
-              : `${cancelledBy} ended the ${NOUN.game}`
-            : draw
-              ? "A draw"
-              : won
-                ? `You beat ${enemyName}`
-                : `${enemyName} wins`}
-        </h2>
-      </div>
-
-      <div className="grid grid-cols-4 gap-1 border-y border-white/10 py-3">
-        <Stat kind="attack" value={you.stats.damageDealt} label="Damage" size="sm" animate />
-        <Stat kind="direct" value={you.stats.directDealt} label="Direct" size="sm" animate />
-        <Stat kind="repair" value={you.stats.repaired} label="Repaired" size="sm" animate />
-        <Stat kind="run" value={you.stats.straights} label="Straights" size="sm" animate />
-      </div>
-
-      <div className="flex gap-2">
-        <Button tone="ghost" size="lg" full onClick={onExit}>
-          Back to {NOUN.home}
-        </Button>
-        {onRestart && !cancelled && (
-          <Button tone="primary" size="lg" full onClick={onRestart}>
-            Again
-          </Button>
-        )}
       </div>
     </div>
   );

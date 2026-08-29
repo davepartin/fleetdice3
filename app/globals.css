@@ -1541,6 +1541,251 @@ button {
 }
 
 /* ==================================================================
+   Battle recap
+   The screen a match ends on. Both fleets, board and board, and the
+   totals from the whole match — built to be screenshotted and sent to
+   a friend, the way the shipyard is built to be shopped in.
+   ================================================================== */
+
+.recap {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding: calc(var(--hud-safe-top) + 0.75rem) 0.9rem calc(var(--hud-safe-bottom) + 0.75rem);
+  background:
+    radial-gradient(120% 70% at 50% 0%, rgb(255 210 61 / 0.08) 0%, transparent 55%),
+    linear-gradient(180deg, var(--color-yard-bg-top) 0%, var(--color-yard-bg-bottom) 55%);
+  backdrop-filter: blur(18px) saturate(1.1);
+  -webkit-backdrop-filter: blur(18px) saturate(1.1);
+  overflow: hidden;
+}
+
+.recap-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding-bottom: 0.5rem;
+}
+
+.recap-head {
+  flex: none;
+  text-align: center;
+  padding-top: 0.25rem;
+}
+.recap-title-won { color: var(--color-repair); }
+.recap-title-lost { color: var(--color-attack); }
+.recap-title-draw,
+.recap-title-cancelled { color: var(--color-hull-100); }
+
+/* ---------------- the two fleets ---------------- */
+
+.recap-fleets {
+  display: flex;
+  gap: 0.6rem;
+  align-items: stretch;
+}
+
+.recap-fleet {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.7rem 0.6rem;
+}
+
+.recap-fleet-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.4rem;
+}
+.recap-fleet-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: var(--text-sm);
+  color: var(--color-hull-100);
+}
+.recap-fleet-hp {
+  flex: none;
+  font-size: var(--text-base);
+  color: var(--color-hp);
+  text-shadow: 0 0 14px rgb(255 122 26 / 0.4);
+}
+.recap-fleet-hp-unit {
+  font-family: var(--font-body);
+  font-size: var(--text-xs);
+  font-weight: 700;
+  opacity: 0.75;
+}
+
+.recap-board {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.3rem;
+}
+
+.recap-cell {
+  position: relative;
+  min-width: 0;
+  aspect-ratio: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.05rem;
+  border-radius: 9px;
+  border: 1px solid rgb(255 255 255 / 0.1);
+  background: linear-gradient(180deg, rgb(255 255 255 / 0.05), rgb(255 255 255 / 0.012));
+}
+.recap-cell-empty {
+  border-style: dashed;
+  border-color: rgb(255 255 255 / 0.14);
+  background: rgb(10 10 22 / 0.5);
+}
+.recap-cell-ship {
+  border-color: rgb(77 180 255 / 0.4);
+  background:
+    radial-gradient(circle at 50% 25%, rgb(77 180 255 / 0.14), transparent 48%),
+    linear-gradient(180deg, rgb(17 37 67 / 0.86), rgb(7 15 29 / 0.96));
+}
+.recap-cell-flag {
+  background: linear-gradient(180deg, rgb(200 164 78 / 0.32), rgb(70 48 8 / 0.4));
+  border-color: rgb(255 220 130 / 0.5);
+}
+.recap-cell-hull {
+  width: 52%;
+  height: 52%;
+}
+.recap-cell-hull-label {
+  font-size: 0.55rem;
+  line-height: 1;
+  color: var(--color-hull-400);
+}
+.recap-cell-flag-star {
+  font-size: var(--text-base);
+  line-height: 1;
+  color: var(--color-flag-glow);
+  text-shadow: 0 0 12px rgb(255 210 61 / 0.6);
+}
+.recap-cell-flag-level {
+  font-size: 0.6rem;
+  line-height: 1;
+  color: var(--color-flag-glow);
+  opacity: 0.85;
+}
+
+/* ---------------- the totals ---------------- */
+
+.recap-stats {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  padding: 0.5rem 0.8rem 0.35rem;
+}
+
+.recap-stats-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 0.3rem;
+  margin-bottom: 0.15rem;
+  border-bottom: 1px solid rgb(255 255 255 / 0.08);
+}
+.recap-stats-head span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 40%;
+}
+
+.recap-row {
+  display: grid;
+  grid-template-columns: 2.6rem 1fr 2.6rem;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0;
+}
+.recap-row + .recap-row {
+  border-top: 1px solid rgb(255 255 255 / 0.05);
+}
+.recap-row-value {
+  font-size: var(--text-base);
+  font-weight: 700;
+  line-height: 1;
+}
+.recap-row-value-you { text-align: left; }
+.recap-row-value-them { text-align: right; }
+
+.recap-row-mid {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  min-width: 0;
+}
+.recap-row-label {
+  font-family: var(--font-body);
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-hull-400);
+  text-align: center;
+}
+.recap-row-bar {
+  position: relative;
+  width: 100%;
+  height: 4px;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 0.08);
+  overflow: hidden;
+}
+.recap-row-bar-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.5s var(--ease-snap);
+  opacity: 0.85;
+}
+
+.recap-foot {
+  flex: none;
+  display: flex;
+  gap: 0.5rem;
+  padding-top: 0.15rem;
+}
+
+/* Wider screens: fleets and totals side by side rather than stacked. */
+@media (min-width: 46rem) and (min-height: 34rem) {
+  .recap-scroll {
+    display: grid;
+    grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+    align-content: start;
+    column-gap: 1.4rem;
+    max-width: 62rem;
+    margin: 0 auto;
+    width: 100%;
+  }
+  .recap-head { grid-column: 1 / -1; }
+  .recap-fleets { grid-column: 1; flex-direction: column; }
+  .recap-stats { grid-column: 2; }
+}
+
+/* ==================================================================
    How to play — one long illustrated scroll
    ================================================================== */
 

@@ -123,8 +123,22 @@ export type PlayerState = {
   directIncoming: number;
   braceShips: string[];
   report: RoundReport | null;
-  /** Running totals for the end-of-match card. */
-  stats: { damageDealt: number; directDealt: number; repaired: number; straights: number; lines: number };
+  /** Running totals for the end-of-match battle recap. */
+  stats: {
+    damageDealt: number;
+    directDealt: number;
+    repaired: number;
+    straights: number;
+    /** Three-across formations locked in, over the whole match. */
+    rows: number;
+    /** Three-down formations locked in, over the whole match. */
+    cols: number;
+    /** Damage shields actually stopped — min(defense, incoming attack), not
+     *  just the defense rolled, since unused defense blocks nothing. */
+    shieldsBlocked: number;
+    /** Energy spent on paid rerolls (after the free rolls ran out). */
+    rerollEnergy: number;
+  };
 };
 
 export type MatchState = {
@@ -397,7 +411,16 @@ export function newPlayer(uid: string, name: string, phase: PlayerPhase): Player
     directIncoming: 0,
     braceShips: [],
     report: null,
-    stats: { damageDealt: 0, directDealt: 0, repaired: 0, straights: 0, lines: 0 },
+    stats: {
+      damageDealt: 0,
+      directDealt: 0,
+      repaired: 0,
+      straights: 0,
+      rows: 0,
+      cols: 0,
+      shieldsBlocked: 0,
+      rerollEnergy: 0,
+    },
   };
 }
 
@@ -791,7 +814,10 @@ function handleRoll(player: PlayerState, chosen: string[]) {
   for (const id of unique) {
     if (!player.dice.some((die) => die.id === id)) throw new Error("That die is not in your fleet.");
   }
-  if (player.rolls >= TUNING.rollsPerRound) spend(player, unique.length);
+  if (player.rolls >= TUNING.rollsPerRound) {
+    spend(player, unique.length);
+    player.stats.rerollEnergy += unique.length;
+  }
 
   for (const die of player.dice) {
     if (!unique.includes(die.id)) continue;
@@ -852,9 +878,16 @@ function resolveSubmissions(state: MatchState) {
   host.stats.directDealt += guest.directIncoming;
   guest.stats.damageDealt += host.incoming;
   guest.stats.directDealt += host.directIncoming;
+  // Shields only ever block up to what actually arrived — the unused rest
+  // of a big roll of odds isn't a stat worth crediting.
+  host.stats.shieldsBlocked += Math.max(0, (guest.tally?.attack ?? 0) + escalation - host.incoming);
+  guest.stats.shieldsBlocked += Math.max(0, (host.tally?.attack ?? 0) + escalation - guest.incoming);
   for (const player of [host, guest]) {
     if (player.tally?.run) player.stats.straights += 1;
-    player.stats.lines += player.tally?.lines.length ?? 0;
+    for (const line of player.tally?.lines ?? []) {
+      if (line.kind === "row") player.stats.rows += 1;
+      else player.stats.cols += 1;
+    }
   }
 
   for (const player of [host, guest]) {
