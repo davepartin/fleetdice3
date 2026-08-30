@@ -22,9 +22,26 @@ import {
   type HelpBlock,
   type ShopRow,
 } from "@/lib/reference";
-import type { DieSize } from "@/lib/engine";
-import { Button, Sheet } from "./ui";
+import type { DieSize, Tally } from "@/lib/engine";
+import { Button, HpRail, Sheet, TallyStrip } from "./ui";
 import type { ReactNode } from "react";
+
+/** A plausible mid-round roll — not a real match, just something worth reading. */
+const SCREEN_SAMPLE_TALLY: Tally = {
+  attack: 12,
+  defense: 8,
+  energy: 4,
+  heal: 3,
+  direct: 2,
+  face: 4,
+  flagBonus: { attack: 0, defense: 0, energy: 0, heal: 0, direct: 0 },
+  run: null,
+  lines: [],
+};
+
+/** The four cells a fleet opens with, one of each hull, for a diagram that
+ *  actually shows every shape rather than four of the same triangle. */
+const SCREEN_SAMPLE_SHIPS: Partial<Record<number, DieSize>> = { 1: 4, 3: 6, 5: 8, 7: 10 };
 
 function section(id: string) {
   return HOW_TO_PLAY.find((entry) => entry.id === id);
@@ -124,6 +141,92 @@ export function HowToPlayBody() {
       {texts("one-minute").map((text) => (
         <Copy key={text}>{text}</Copy>
       ))}
+
+      <Card title="Read the roll screen">
+        <Copy>
+          Every match opens on this exact screen. Here is what each part is,
+          the same way the first page of a board game&rsquo;s rulebook walks
+          you around the box before you ever draw a card.
+        </Copy>
+        <div className="help-screen-diagram">
+          <div className="help-screen-callout">
+            <div className="help-screen-callout-head">
+              <span className="help-step-num t-num">1</span>
+              <strong>Your vitals</strong>
+            </div>
+            <div className="help-screen-callout-art">
+              <HpRail
+                yourHp={60}
+                enemyName="Rival fleet"
+                enemyHp={54}
+                round={3}
+                yourFleet={16}
+                enemyFleet={12}
+              />
+            </div>
+            <p className="help-screen-callout-copy">
+              Your flagship&rsquo;s health, bold and bright. The smaller
+              number right after it is your fleet&rsquo;s soak — how much
+              damage your ships could still absorb in a brace this round.
+              The same pair, mirrored, for the enemy on the other side.
+            </p>
+          </div>
+
+          <div className="help-screen-callout">
+            <div className="help-screen-callout-head">
+              <span className="help-step-num t-num">2</span>
+              <strong>Your fleet</strong>
+            </div>
+            <div className="help-screen-callout-art">
+              <div className="recap-board help-screen-board" role="img" aria-label="A sample fleet board">
+                {Array.from({ length: 9 }, (_, cell) => cell).map((cell) => {
+                  if (cell === 4) {
+                    return (
+                      <div key={cell} className="recap-cell recap-cell-flag">
+                        <span className="recap-cell-flag-star" aria-hidden="true">
+                          ★
+                        </span>
+                      </div>
+                    );
+                  }
+                  const sides = SCREEN_SAMPLE_SHIPS[cell];
+                  return (
+                    <div key={cell} className={`recap-cell ${sides ? "recap-cell-ship" : "recap-cell-empty"}`}>
+                      {sides && (
+                        <>
+                          <span className="recap-cell-hull">
+                            <HullShape sides={sides} tone="live" />
+                          </span>
+                          <span className="recap-cell-hull-label t-num">d{sides}</span>
+                        </>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+            <p className="help-screen-callout-copy">
+              Nine cells. The centre is always your flagship. Every other
+              cell can hold a ship — its shape tells you the hull size
+              before you even read the number on it.
+            </p>
+          </div>
+
+          <div className="help-screen-callout">
+            <div className="help-screen-callout-head">
+              <span className="help-step-num t-num">3</span>
+              <strong>This roll&rsquo;s totals</strong>
+            </div>
+            <div className="help-screen-callout-art">
+              <TallyStrip tally={SCREEN_SAMPLE_TALLY} />
+            </div>
+            <p className="help-screen-callout-copy">
+              Attack, Shields, Direct, Repair and Energy — everything your
+              current dice add up to, updating live every time you reroll.
+            </p>
+          </div>
+        </div>
+      </Card>
 
       <Card title={round?.title ?? "A round, step by step"}>
         <Copy>{round?.summary ?? ""}</Copy>

@@ -13,6 +13,8 @@ export type TutorialStepId =
   | "faces"
   | "marks"
   | "roll1"
+  | "tour_hp"
+  | "tour_board"
   | "read1"
   | "reroll1"
   | "row_done"
@@ -36,6 +38,13 @@ export type TutorialStepId =
 
 export type CoachTone = "good" | "warn" | "info";
 
+/**
+ * A real region of the roll screen this step is talking about. The shell
+ * puts this on a data attribute; CSS rings the matching element in place —
+ * the tutorial points at the actual HUD, not a mockup of it.
+ */
+export type TutorialSpotlight = "hp" | "board" | "tally";
+
 export type TutorialStep = {
   id: TutorialStepId;
   /** Short eyebrow above the coach card. */
@@ -49,6 +58,8 @@ export type TutorialStep = {
   allow: TutorialAllow;
   /** Optional board setup applied when this step begins (after the triggering act). */
   script?: TutorialScript;
+  /** A real HUD region to ring while this step is showing. */
+  spotlight?: TutorialSpotlight;
 };
 
 export type TutorialAllow = {
@@ -134,12 +145,31 @@ export const TUTORIAL_STEPS: TutorialStep[] = [
     allow: { rollAll: true },
   },
   {
+    id: "tour_hp",
+    eyebrow: "Read the screen",
+    title: "Your vitals live up top",
+    body: "That's the same bar every screen in the game keeps on top. Your flagship's health is the bold number on the left; the smaller number right after it is your fleet's soak — how much your ships could still absorb in a brace this round. Same pair, mirrored, for the enemy on the right.",
+    nextLabel: "Show me the board",
+    allow: { coachNext: true },
+    spotlight: "hp",
+  },
+  {
+    id: "tour_board",
+    eyebrow: "Read the screen",
+    title: "Nine cells, one fleet",
+    body: "Your flagship sits in the centre — it never fights, but its face rings the ships around it every round. Every other cell can hold a ship, and its shape tells you the hull size before you even read the number: triangle d4, square d6, diamond d8, pentagon d10.",
+    nextLabel: "Show me the totals",
+    allow: { coachNext: true },
+    spotlight: "board",
+  },
+  {
     id: "read1",
-    eyebrow: "Read the board",
+    eyebrow: "Read the screen",
     title: "Look at the five totals",
     body: "Attack, Shields, Direct, Repair, and Energy add up from every face — including the flagship's bonus face at the bottom. Your middle row is almost three 4s. One die is spoiling it.",
     nextLabel: "Help me fix the row",
     allow: { coachNext: true },
+    spotlight: "tally",
     script: {
       kind: "board",
       // Near a middle-row of 4s: W and E show 4, flag shows 3 — odd one out.

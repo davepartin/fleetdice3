@@ -178,7 +178,7 @@ function advanceAfterAct(stepId: TutorialStepId, action: MatchAction): TutorialS
     return "row_done";
   }
   if (stepId === "roll1" && action.type === "roll") {
-    return "read1";
+    return "tour_hp";
   }
   if (
     (stepId === "lock1" || stepId === "lock2" || stepId === "lock3") &&
