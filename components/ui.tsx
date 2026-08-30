@@ -343,8 +343,8 @@ export function HpRail({
 }) {
   return (
     <div className={`hp-rail panel panel-flush px-3 py-2 ${className}`}>
-      <div className="flex items-center justify-between gap-2">
-        <span className="hp-rail-side min-w-0 truncate text-sm font-semibold text-white">
+      <div className="flex items-start justify-between gap-2">
+        <span className="hp-rail-side min-w-0 text-sm font-semibold text-white">
           You <Ticker value={Math.max(0, yourHp)} className="hp-rail-number c-hp-glow" />
           {yourFleet !== undefined && (
             <>
@@ -356,7 +356,7 @@ export function HpRail({
         {round !== undefined && (
           <span className="t-eyebrow hp-rail-round shrink-0 text-xs">Round {round}</span>
         )}
-        <span className="hp-rail-side hp-rail-side-enemy min-w-0 truncate text-right text-sm font-semibold text-white">
+        <span className="hp-rail-side hp-rail-side-enemy min-w-0 text-right text-sm font-semibold text-white">
           {enemyName} <Ticker value={Math.max(0, enemyHp)} className="hp-rail-number c-hp-glow" />
           {enemyFleet !== undefined && (
             <>
