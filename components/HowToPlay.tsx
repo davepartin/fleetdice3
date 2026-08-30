@@ -48,6 +48,16 @@ const SCREEN_SAMPLE_SHIPS: Partial<Record<number, DieSize>> = { 1: 4, 3: 6, 5: 8
 
 const SYMBOL_ORDER: StatKind[] = ["attack", "shield", "energy", "repair", "direct"];
 
+/** "Level 1 is +2, Level 2 is +3, Level 3 maxes out at +4" — built from the
+ *  engine's own bonus ladder, which every flagship face shares. */
+const FLAG_LEVELS = (FLAGSHIP_FACES[0]?.levels ?? [])
+  .map((level, index, all) =>
+    index === all.length - 1
+      ? `Level ${level.level} maxes out at +${level.bonus}`
+      : `Level ${level.level} is +${level.bonus}`,
+  )
+  .join(", ");
+
 const STRAIGHT_LENGTHS = [...new Set(STRAIGHT_LADDER.map((rung) => rung.length))];
 const STRAIGHT_HULLS = [...new Set(STRAIGHT_LADDER.map((rung) => rung.biggest))] as DieSize[];
 const LONGEST_STRAIGHT = STRAIGHT_LENGTHS[STRAIGHT_LENGTHS.length - 1] ?? 0;
@@ -199,7 +209,11 @@ export function HowToPlayBody() {
           ))}
         </dl>
         <Copy>
-          {`Levelling the flagship makes every one of those boosts bigger. And once a game you may turn it one face up or down — often the nudge that completes a straight or a line.`}
+          {`How big the boost is comes from the flagship's level: ${FLAG_LEVELS} — upgrade it in the shipyard.`}
+        </Copy>
+        <Copy>
+          Once a game you may also turn it one face up or down — often the
+          nudge that completes a straight or a line.
         </Copy>
       </Card>
 
