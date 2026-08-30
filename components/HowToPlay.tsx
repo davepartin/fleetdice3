@@ -92,7 +92,11 @@ export function HowToPlayBody() {
           {SYMBOL_ORDER.map((kind) => (
             <div key={kind} className={`help-symbol c-${kind}`}>
               <StatIcon kind={kind} size={26} />
-              <dt>{STAT_SYMBOL[kind].shape}</dt>
+              <dt>
+                <span className="help-symbol-colour">{STAT_SYMBOL[kind].colour}</span>
+                <span className="help-symbol-dash" aria-hidden="true">—</span>
+                <span className="help-symbol-name">{STAT_SYMBOL[kind].name}</span>
+              </dt>
               <dd>{STAT_SYMBOL[kind].means}</dd>
             </div>
           ))}
@@ -103,7 +107,7 @@ export function HowToPlayBody() {
       <Card title="How to read a die">
         <div className="help-die-legend">
           <div className="help-die-legend-item">
-            <HelpShipFace value={6} size={72} />
+            <HelpShipFace value={6} size={80} />
             <div>
               <strong className="c-attack">
                 <StatIcon kind="attack" size={15} /> Attack 6
@@ -112,7 +116,7 @@ export function HowToPlayBody() {
             </div>
           </div>
           <div className="help-die-legend-item">
-            <HelpShipFace value={5} size={72} />
+            <HelpShipFace value={5} size={80} />
             <div>
               <strong className="c-shield">
                 <StatIcon kind="shield" size={15} /> Shield 5
@@ -121,7 +125,7 @@ export function HowToPlayBody() {
             </div>
           </div>
           <div className="help-die-legend-item">
-            <HelpShipFace value={1} size={72} />
+            <HelpShipFace value={1} size={80} />
             <div>
               <strong className="c-energy">
                 <StatIcon kind="energy" size={15} /> Energy 2
@@ -181,7 +185,7 @@ export function HowToPlayBody() {
       <Card title="Your flagship">
         <div className="help-die-legend">
           <div className="help-die-legend-item">
-            <HelpFlagFace face={1} size={72} />
+            <HelpFlagFace face={1} size={80} />
             <div>
               <strong>Never fights. Boosts the fleet.</strong>
               <span>
@@ -354,29 +358,29 @@ export function HowToPlayBody() {
           <li>
             <span className="help-step-num t-num">1</span>
             <span>
-              <strong>Shop.</strong> Spend Energy on bays, ships, upgrades or
-              flagship levels.
-            </span>
-          </li>
-          <li>
-            <span className="help-step-num t-num">2</span>
-            <span>
               <strong>Roll.</strong> {TUNING.rollsPerRound} rolls free, then 1
               Energy per die. Keep what you like.
             </span>
           </li>
           <li>
-            <span className="help-step-num t-num">3</span>
+            <span className="help-step-num t-num">2</span>
             <span>
               <strong>Lock in.</strong> Both fleets reveal at once — you are
               guessing at their board, not answering it.
             </span>
           </li>
           <li>
-            <span className="help-step-num t-num">4</span>
+            <span className="help-step-num t-num">3</span>
             <span>
               <strong>Block.</strong> Choose which ships step in front of the
               damage. They sit out next round.
+            </span>
+          </li>
+          <li>
+            <span className="help-step-num t-num">4</span>
+            <span>
+              <strong>Shop.</strong> Spend the Energy you earned on bays,
+              ships, upgrades or flagship levels — then roll again.
             </span>
           </li>
         </ol>

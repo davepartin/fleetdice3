@@ -809,13 +809,16 @@ export const STAT_LABEL: Record<StatKind, string> = {
  * faces, so a player meets them before they ever open the help. The other two
  * name the fight itself. Rendered by components/StatIcon.tsx.
  */
-export const STAT_SYMBOL: Record<StatKind, { shape: string; means: string }> = {
-  attack: { shape: "Red star", means: "Damage you deal. Even faces roll it." },
-  shield: { shape: "Blue shield", means: "Cancels their Attack. Odd faces roll it." },
-  energy: { shape: "Lightning bolt", means: "Money — buys ships, bays and rerolls." },
-  repair: { shape: "Plus", means: "Health back on your flagship." },
-  direct: { shape: "Chevron", means: "Damage no Shield and no block can stop." },
-  run: { shape: "Rising bars", means: `A straight — ${TUNING.runMin}+ numbers in a row.` },
+export const STAT_SYMBOL: Record<
+  StatKind,
+  { colour: string; name: string; means: string }
+> = {
+  attack: { colour: "Red", name: "Attack", means: "Damage you deal. Even faces roll it." },
+  shield: { colour: "Blue", name: "Shields", means: "Cancels their Attack. Odd faces roll it." },
+  energy: { colour: "Yellow bolt", name: "Energy", means: "Money — buys ships, bays and rerolls." },
+  repair: { colour: "Green plus", name: "Repair", means: "Health back on your flagship." },
+  direct: { colour: "Purple chevron", name: "Direct Hit", means: "Nothing stops it — no Shield, no block." },
+  run: { colour: "Rising bars", name: "Straight", means: `${TUNING.runMin}+ numbers in a row.` },
 };
 
 export const NOUN = {

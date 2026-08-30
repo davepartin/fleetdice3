@@ -311,6 +311,19 @@ button {
     opacity 0.15s ease;
   will-change: transform;
 }
+/*
+ * A full-width button is the one place nowrap is a liability rather than a
+ * nicety: its width is fixed by the panel, its label is written by whatever
+ * the round happens to be ("Block 12 with 3 ships", "Flagship Weapon"), and
+ * .btn has no ellipsis — so an over-long label used to run straight past
+ * both edges, hard-clipped mid-word. Three separate labels have been cut
+ * back to fit this rule; letting the text wrap fixes the class of bug
+ * instead of the next instance of it.
+ */
+.btn.w-full {
+  white-space: normal;
+  text-wrap: balance;
+}
 .btn:active:not(:disabled) {
   transform: translateY(1px) scale(0.985);
 }
@@ -634,7 +647,6 @@ button {
 
 .match-mobile-menu,
 .flagship-compact,
-.flagship-weapon-compact,
 .commander-name-mobile,
 .leave-label-short {
   display: none;
@@ -1025,11 +1037,6 @@ button {
   }
   .match-hud-solo .flagship-long { display: none; }
   .match-hud-solo .flagship-compact { display: inline; }
-  /* "Flagship weapon" doesn't fit the 112px button below at this size —
-     it was overflowing past the panel edge, hard-clipped mid-word since
-     .btn has no ellipsis. Same long/compact swap as the line above it. */
-  .match-hud-solo .flagship-weapon-long { display: none; }
-  .match-hud-solo .flagship-weapon-compact { display: inline; }
   .match-hud-solo .flagship-token-controls .btn {
     min-width: 40px;
     min-height: 40px;
@@ -1038,10 +1045,14 @@ button {
 
   .match-hud-solo .flagship-control-row > .btn {
     min-height: 40px;
-    max-width: 112px;
-    padding-inline: 0.55rem;
+    max-width: 8.5rem;
+    padding-inline: 0.5rem;
     font-size: var(--text-xs);
-    line-height: 1.05;
+    line-height: 1.1;
+    /* "Flagship Weapon" is two words: let it stack rather than run past the
+       panel edge, which is what a fixed one-line cap did before. */
+    white-space: normal;
+    text-wrap: balance;
   }
 
   .match-hud-solo .flagship-token-popover .btn-lg {
@@ -1077,6 +1088,11 @@ button {
     flex: 0 0 auto;
     border-top: 1px solid rgb(255 255 255 / 0.09);
     padding-top: 0.42rem;
+  }
+  /* Uppercase at 0.06em tracking is most of why these labels run long. */
+  .match-hud-solo .brace-dock-action .btn {
+    letter-spacing: 0.03em;
+    padding-inline: 0.75rem;
   }
   .match-hud-solo .brace-dock h2 {
     font-size: var(--text-xl);
@@ -1940,8 +1956,23 @@ button {
   justify-self: center;
 }
 .help-symbol dt {
+  display: flex;
+  align-items: baseline;
+  gap: 0.32rem;
   font-weight: 700;
   font-size: var(--text-sm);
+  color: white;
+}
+/* The colour word is the cue you actually use at the table; the stat name is
+   what the rest of the game calls it. Same line, different weight. */
+.help-symbol-colour {
+  color: currentColor;
+}
+.help-symbol-dash {
+  color: var(--color-hull-400);
+  font-weight: 400;
+}
+.help-symbol-name {
   color: white;
 }
 .help-symbol dd {

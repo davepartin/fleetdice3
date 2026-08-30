@@ -934,8 +934,7 @@ function RollDock({
             disabled={busy}
             ariaLabel="Use flagship weapon"
           >
-            <span className="flagship-weapon-long">Flagship weapon</span>
-            <span className="flagship-weapon-compact">Weapon</span>
+            Flagship Weapon
           </Button>
         )}
       </div>
@@ -1152,8 +1151,8 @@ function BraceDock({
       <div className="brace-dock-action">
         <Button tone="primary" size="lg" full onClick={onConfirm} disabled={busy}>
           {chosen.size === 0
-            ? "Block nothing — flagship takes it all"
-            : `${chosen.size} ${chosen.size === 1 ? "ship blocks" : "ships block"} ${Math.min(blocked, you.incoming)} damage`}
+            ? "Take it all on the flagship"
+            : `Block ${Math.min(blocked, you.incoming)} with ${chosen.size} ${chosen.size === 1 ? "ship" : "ships"}`}
         </Button>
       </div>
     </div>

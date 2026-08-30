@@ -186,6 +186,10 @@ type FaceLayout = {
   numberY: number;
   markY: number;
   numberSize?: number;
+  /** Caption centre, as a fraction of the face. */
+  captionY?: number;
+  /** Half-width of the caption plate, as a fraction of the face. */
+  captionHalfWidth?: number;
 };
 
 function paintFace(
@@ -372,13 +376,14 @@ function paintFace(
     ctx.save();
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    const capY = size * 0.775;
+    const capY = size * (layout?.captionY ?? 0.775);
+    const capHalf = size * (layout?.captionHalfWidth ?? 0.345);
     if (mode === "albedo") {
       // A dark plate under the word. Small caps on a bright panel are the
       // first thing to disappear when the die tilts away from the camera.
       ctx.fillStyle = "rgba(18,11,0,0.62)";
       ctx.beginPath();
-      ctx.roundRect(size * 0.155, capY - size * 0.082, size * 0.69, size * 0.164, size * 0.05);
+      ctx.roundRect(cx - capHalf, capY - size * 0.082, capHalf * 2, size * 0.164, size * 0.05);
       ctx.fill();
     }
     ctx.font = `900 ${size * 0.105}px ${captionFont}`;
@@ -420,10 +425,27 @@ function paintFace(
 }
 
 /** Sit the numeral inside the hull silhouette How to play clips to. */
+/**
+ * Where the number, marks and caption sit on a *help* face.
+ *
+ * The 3D dice paint onto a full square texture, so the stock layout can push
+ * marks down to 0.785 and the caption to 0.775 — on a cube face there is
+ * nothing below to fall off. Help art is clipped to the hull silhouette
+ * instead, and every silhouette is narrower than its square: a d6 square runs
+ * 0.172–0.828, a d4 triangle pinches to nothing at the top, a d8 diamond and
+ * d10 pentagon both taper. Reusing the stock numbers cut the bottom off every
+ * mark on a d6 and clipped the flagship's caption plate at both ends.
+ *
+ * Every value below is chosen so the ink stays inside its own outline.
+ */
 const HELP_HULL_LAYOUT: Partial<Record<number, FaceLayout>> = {
-  4: { numberY: 0.5, markY: 0.7, numberSize: 0.42 },
-  8: { numberY: 0.48, markY: 0.68, numberSize: 0.42 },
-  10: { numberY: 0.47, markY: 0.68, numberSize: 0.4 },
+  // Triangle: widest at the base, so the number rides low and the marks
+  // sit just above the base line where there is finally room for three.
+  4: { numberY: 0.5, markY: 0.695, numberSize: 0.4 },
+  // Square, 0.172–0.828. Marks at 0.785 fell 0.09 outside the bottom edge.
+  6: { numberY: 0.44, markY: 0.675, numberSize: 0.46, captionY: 0.7, captionHalfWidth: 0.28 },
+  8: { numberY: 0.47, markY: 0.665, numberSize: 0.4 },
+  10: { numberY: 0.46, markY: 0.67, numberSize: 0.39 },
 };
 
 /** Same plates and marks as the 3D dice, for How to play illustrations. */
