@@ -14,11 +14,13 @@ test("how to play is one illustrated scroll, not an accordion", () => {
   assert.match(src, /HelpFlagFace/);
   assert.match(src, /HullShape/);
   assert.match(src, /from "@\/lib\/reference"/);
-  assert.match(src, /help-shop-row/);
+  // Exhaustive listings (every face, every flagship face, every straight,
+  // every shop price) render as compact data tables rather than one
+  // illustrated card per row — the tables reuse the same head/rows data
+  // reference.ts already builds, not a hand-rolled shop-specific one.
+  assert.match(src, /help-data/);
   assert.doesNotMatch(src, /setOpenId/);
   assert.doesNotMatch(src, /aria-expanded/);
-  assert.doesNotMatch(src, /help-data/);
-  assert.doesNotMatch(src, /shopTable/);
 });
 
 test("help faces are painted with the same plates as the 3D dice", () => {

@@ -3,25 +3,18 @@
 /**
  * The one help button.
  *
- * One long illustrated scroll, like Fleet Dice 1/2 How to play. Every number
- * comes from `lib/reference.ts`, which reads the engine — so the pictures a
- * player is taught are the same plates they roll, and the numbers match the
- * match. A help screen that drifts from the rules is worse than no help screen.
+ * A reference, not a novel. Every number comes from `lib/reference.ts`, which
+ * reads the engine — so the numbers a player is taught are the numbers they
+ * roll. Exhaustive listings (every face, every flagship face, every straight,
+ * every shop price) render as compact tables, not one big illustrated card
+ * per row — the art is spent once, on the roll-screen diagram and a couple of
+ * anchor icons, not repeated ten times for ten numbers that already share a
+ * pattern once you've seen it stated.
  */
 
 import { HelpFlagFace, HelpShipFace } from "@/components/HelpArt";
 import { HullShape } from "@/components/HullShape";
-import {
-  FACE_ROWS,
-  FLAGSHIP_FACES,
-  FORMATIONS,
-  GLOSSARY,
-  HOW_TO_PLAY,
-  SHOP_ROWS,
-  STRAIGHT_LADDER,
-  type HelpBlock,
-  type ShopRow,
-} from "@/lib/reference";
+import { FORMATIONS, HOW_TO_PLAY, type HelpBlock } from "@/lib/reference";
 import type { DieSize, Tally } from "@/lib/engine";
 import { Button, HpRail, Sheet, TallyStrip } from "./ui";
 import type { ReactNode } from "react";
@@ -47,52 +40,17 @@ function section(id: string) {
   return HOW_TO_PLAY.find((entry) => entry.id === id);
 }
 
-function texts(id: string): string[] {
-  return (
-    section(id)?.blocks.filter((block): block is Extract<HelpBlock, { kind: "text" }> => block.kind === "text").map(
-      (block) => block.text,
-    ) ?? []
-  );
+function table(id: string): Extract<HelpBlock, { kind: "table" }> | undefined {
+  const block = section(id)?.blocks.find((entry) => entry.kind === "table");
+  return block?.kind === "table" ? block : undefined;
 }
 
 function steps(id: string) {
   const block = section(id)?.blocks.find((entry) => entry.kind === "steps");
-  return block && block.kind === "steps" ? block.steps : [];
+  return block?.kind === "steps" ? block.steps : [];
 }
 
-const HULLS = SHOP_ROWS.filter((row) => row.kind === "hull");
-const STRAIGHT_LENGTHS = [...new Set(STRAIGHT_LADDER.map((rung) => rung.length))];
-const STRAIGHT_HULLS = [...new Set(STRAIGHT_LADDER.map((rung) => rung.biggest))] as DieSize[];
-const LONGEST_STRAIGHT = STRAIGHT_LENGTHS[STRAIGHT_LENGTHS.length - 1] ?? 0;
-
-function dieSizesIn(name: string): DieSize[] {
-  const found: DieSize[] = [];
-  for (const match of name.matchAll(/d(\d+)/g)) {
-    const sides = Number(match[1]);
-    if (sides === 4 || sides === 6 || sides === 8 || sides === 10) found.push(sides);
-  }
-  return found;
-}
-
-function shopTitle(row: ShopRow): string {
-  if (row.kind === "hull") {
-    const sides = dieSizesIn(row.name)[0];
-    return sides ? `d${sides}` : row.name;
-  }
-  if (row.kind === "upgrade") {
-    const [from, to] = dieSizesIn(row.name);
-    return from && to ? `d${from} → d${to}` : row.name;
-  }
-  return row.name;
-}
-
-function Card({
-  title,
-  children,
-}: {
-  title: string;
-  children: ReactNode;
-}) {
+function Card({ title, children }: { title: string; children: ReactNode }) {
   return (
     <article className="help-card">
       <h3 className="t-display">{title}</h3>
@@ -105,25 +63,44 @@ function Copy({ children }: { children: string }) {
   return <p className="help-copy">{children}</p>;
 }
 
-function ShopItem({ row }: { row: ShopRow }) {
-  const sides = dieSizesIn(row.name);
+/** Column headers reference.ts wrote for a wide desktop table, shortened for
+ *  a phone-width column head — "Level 1" and "Biggest is a d4" both fit one
+ *  reading at their full length, but not at 298px with four siblings next
+ *  to them. The row itself already says which stat or run this is. */
+function shortHead(text: string): string {
+  return text.replace(/^Level (\d)$/, "L$1").replace(/^Biggest is a (d\d+)$/, "$1");
+}
+
+/** Every exhaustive listing in this screen — every face, every flagship face,
+ *  every straight, every shop price — renders through this one table so the
+ *  reference data stays dense instead of one illustrated card per row. */
+function DataTable({ id }: { id: string }) {
+  const block = table(id);
+  if (!block) return null;
   return (
-    <div className="help-shop-row">
-      <span className="help-shop-art">
-        {row.kind === "flagship" ? (
-          <HelpFlagFace face={1} size={48} />
-        ) : sides.length ? (
-          sides.map((size) => <HullShape key={size} sides={size} tone="live" />)
-        ) : (
-          <span className="help-shop-slot t-num">+</span>
-        )}
-      </span>
-      <div>
-        <strong>{shopTitle(row)}</strong>
-        <span className="help-shop-cost">{row.cost} Energy</span>
-        <p>{row.gain}</p>
+    <>
+      <div className="help-table-scroll">
+        <table className="help-data">
+          <thead>
+            <tr>
+              {block.head.map((cell) => (
+                <th key={cell}>{shortHead(cell)}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {block.rows.map((row, index) => (
+              <tr key={index}>
+                {row.map((cell, cellIndex) => (
+                  <td key={cellIndex}>{cell}</td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
-    </div>
+      {block.note && <p className="help-note">{block.note}</p>}
+    </>
   );
 }
 
@@ -138,15 +115,10 @@ export function HowToPlayBody() {
   return (
     <div className="help-scroll">
       <p className="help-lede">{intro?.summary}</p>
-      {texts("one-minute").map((text) => (
-        <Copy key={text}>{text}</Copy>
-      ))}
 
       <Card title="Read the roll screen">
         <Copy>
-          Every match opens on this exact screen. Here is what each part is,
-          the same way the first page of a board game&rsquo;s rulebook walks
-          you around the box before you ever draw a card.
+          Every match opens on this exact screen — here is what each part is.
         </Copy>
         <div className="help-screen-diagram">
           <div className="help-screen-callout">
@@ -165,10 +137,9 @@ export function HowToPlayBody() {
               />
             </div>
             <p className="help-screen-callout-copy">
-              Your flagship&rsquo;s health, bold and bright. The smaller
-              number right after it is your fleet&rsquo;s soak — how much
-              damage your ships could still absorb in a brace this round.
-              The same pair, mirrored, for the enemy on the other side.
+              Your flagship&rsquo;s health, bold and bright, then your
+              fleet&rsquo;s soak — how much a brace could still absorb this
+              round. Same pair, mirrored, for the enemy.
             </p>
           </div>
 
@@ -206,9 +177,8 @@ export function HowToPlayBody() {
               </div>
             </div>
             <p className="help-screen-callout-copy">
-              Nine cells. The centre is always your flagship. Every other
-              cell can hold a ship — its shape tells you the hull size
-              before you even read the number on it.
+              The centre is always your flagship. Every other cell&rsquo;s
+              shape tells you the hull size before you read the number.
             </p>
           </div>
 
@@ -222,14 +192,13 @@ export function HowToPlayBody() {
             </div>
             <p className="help-screen-callout-copy">
               Attack, Shields, Direct, Repair and Energy — everything your
-              current dice add up to, updating live every time you reroll.
+              dice add up to, live as you reroll.
             </p>
           </div>
         </div>
       </Card>
 
       <Card title={round?.title ?? "A round, step by step"}>
-        <Copy>{round?.summary ?? ""}</Copy>
         <ol className="help-steps">
           {steps("a-round").map((step, index) => (
             <li key={step.name}>
@@ -242,147 +211,54 @@ export function HowToPlayBody() {
         </ol>
       </Card>
 
-      <Card title="Ship shapes">
-        <p className="help-copy">
-          The hull is the size. Once you know the silhouette, you can read the
-          board at a glance — the same shapes you see in the shipyard and on
-          the table.
-        </p>
-        <div className="help-hulls">
-          {HULLS.map((row) => {
-            const sides = dieSizesIn(row.name)[0];
-            if (!sides) return null;
-            return (
-              <div key={row.name} className="help-hull">
-                <span className="help-hull-art">
-                  <HullShape sides={sides} tone="live" />
-                </span>
-                <strong className="t-num">d{sides}</strong>
-                <span>{row.cost} Energy</span>
-              </div>
-            );
-          })}
-        </div>
-      </Card>
-
       <Card title="How to read a die">
-        <Copy>{dice?.summary ?? ""}</Copy>
+        <Copy>
+          Even faces hit, odd faces block, and the number is the size — a 6
+          hits for 6, a 5 blocks for 5. The mark under it always pays too,
+          win or lose the fight.
+        </Copy>
         <div className="help-die-legend">
           <div className="help-die-legend-item">
-            <HelpShipFace value={2} size={88} />
+            <HelpShipFace value={2} size={64} />
             <div>
               <strong>Even · hit</strong>
-              <span>{FACE_ROWS.find((row) => row.value === 2)?.line}</span>
             </div>
           </div>
           <div className="help-die-legend-item">
-            <HelpShipFace value={3} size={88} />
+            <HelpShipFace value={3} size={64} />
             <div>
               <strong>Odd · block</strong>
-              <span>{FACE_ROWS.find((row) => row.value === 3)?.line}</span>
-            </div>
-          </div>
-          <div className="help-die-legend-item">
-            <HelpShipFace value={1} size={88} />
-            <div>
-              <strong>Marks always pay</strong>
-              <span>{FACE_ROWS.find((row) => row.value === 1)?.line}</span>
             </div>
           </div>
         </div>
-      </Card>
-
-      <Card title="What each number does">
-        <div className="help-face-grid">
-          {FACE_ROWS.map((row) => (
-            <div key={row.value} className="help-face-row">
-              <HelpShipFace value={row.value} size={64} />
-              <div>
-                <strong className="t-num">
-                  {row.value} · {row.fightText}
-                </strong>
-                <span>
-                  {row.markText === "pays nothing extra"
-                    ? row.hullsText
-                    : `${row.markText} · ${row.hullsText}`}
-                </span>
-              </div>
-            </div>
-          ))}
-        </div>
-        {texts("your-dice").slice(-1).map((text) => (
-          <Copy key={text}>{text}</Copy>
-        ))}
+        <DataTable id="your-dice" />
       </Card>
 
       <Card title={flag?.title ?? "Your flagship"}>
-        <Copy>{flag?.summary ?? ""}</Copy>
-        <div className="help-face-grid">
-          {FLAGSHIP_FACES.map((face) => (
-            <div key={face.face} className="help-face-row">
-              <HelpFlagFace face={face.face} size={64} />
-              <div>
-                <strong>
-                  {face.face} · {face.name}
-                </strong>
-                <span>
-                  {face.short}. {face.levels.map((level) => `L${level.level} +${level.bonus}`).join(" · ")}
-                </span>
-              </div>
+        <div className="help-die-legend">
+          <div className="help-die-legend-item">
+            <HelpFlagFace face={4} size={64} />
+            <div>
+              <strong>Your flagship&rsquo;s face</strong>
+              <span>{flag?.summary ?? ""}</span>
             </div>
-          ))}
+          </div>
         </div>
-        {texts("flagship")
-          .slice(2)
-          .map((text) => (
-            <Copy key={text}>{text}</Copy>
-          ))}
+        <DataTable id="flagship" />
+        <Copy>
+          Once a game, after rolling, you may turn the flagship one face up
+          or down — often the nudge that completes a straight or a line.
+        </Copy>
       </Card>
 
       <Card title={lines?.title ?? "Straights and formations"}>
         <Copy>{lines?.summary ?? ""}</Copy>
-        <div className="help-prize-row" aria-hidden>
-          <HelpShipFace value={1} size={48} />
-          <HelpShipFace value={2} size={48} />
-          <HelpShipFace value={3} size={48} />
-          <HelpShipFace value={4} size={48} />
-          <HelpShipFace value={5} size={48} />
-        </div>
-        <div className="help-prize-list">
-          {STRAIGHT_LENGTHS.map((length) => (
-            <div key={length} className="help-prize-card">
-              <strong>
-                {length >= LONGEST_STRAIGHT ? `${length} or more in a row` : `${length} in a row`}
-              </strong>
-              <div className="help-prize-hulls">
-                {STRAIGHT_HULLS.map((biggest) => {
-                  const rung = STRAIGHT_LADDER.find(
-                    (entry) => entry.length === length && entry.biggest === biggest,
-                  );
-                  return (
-                    <div
-                      key={biggest}
-                      className={`help-prize-hull${rung?.possible ? "" : " is-empty"}`}
-                    >
-                      <span className="help-hull-art">
-                        <HullShape sides={biggest} tone={rung?.possible ? "live" : "ghost"} />
-                      </span>
-                      <span>d{biggest}</span>
-                      <span>{rung?.possible ? rung.label : "—"}</span>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          ))}
-        </div>
+        <DataTable id="straights-formations" />
         <dl className="help-table">
           {FORMATIONS.map((formation) => (
             <div key={formation.kind}>
               <dt>{formation.name}</dt>
-              <dd>
-                {formation.rule} {formation.note}
-              </dd>
+              <dd>{formation.rule}</dd>
             </div>
           ))}
         </dl>
@@ -390,29 +266,11 @@ export function HowToPlayBody() {
 
       <Card title={yard?.title ?? "The shipyard"}>
         <Copy>{yard?.summary ?? ""}</Copy>
-        <div className="help-shop-list">
-          {SHOP_ROWS.map((row) => (
-            <ShopItem key={row.name} row={row} />
-          ))}
-        </div>
+        <DataTable id="shipyard" />
       </Card>
 
       <Card title={win?.title ?? "Winning"}>
         <Copy>{win?.summary ?? ""}</Copy>
-        {texts("winning").map((text) => (
-          <Copy key={text}>{text}</Copy>
-        ))}
-      </Card>
-
-      <Card title="Words used in this game">
-        <dl className="help-glossary">
-          {GLOSSARY.map((entry) => (
-            <div key={entry.term}>
-              <dt>{entry.term}</dt>
-              <dd>{entry.text}</dd>
-            </div>
-          ))}
-        </dl>
       </Card>
     </div>
   );

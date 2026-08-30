@@ -2114,6 +2114,12 @@ button {
   color: var(--color-hull-300);
 }
 
+/* The flagship table runs five columns wide — never let it force the whole
+   sheet to scroll sideways, only itself. */
+.help-table-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
 .help-data {
   width: 100%;
   min-width: 19rem;
