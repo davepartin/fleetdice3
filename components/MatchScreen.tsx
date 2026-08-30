@@ -37,7 +37,7 @@ import { pendingThrow, pendingThrowReady, type PendingThrow } from "@/lib/throwS
 import { createArena, type Arena, type Focus } from "@/lib/three/arena";
 import { waitForFonts } from "@/lib/three/fonts";
 import { audio } from "@/lib/audio";
-import { Button, Chip, HpRail, Notice, Sheet, Stat } from "./ui";
+import { Button, Chip, HpRail, Notice, Sheet, TallyStrip } from "./ui";
 import { HowToPlaySheet } from "./HowToPlay";
 import { Shipyard } from "./Shipyard";
 import { RoundReportCard } from "./RoundReport";
@@ -644,7 +644,6 @@ export function MatchScreen({ controller, onExit, title, subtitle }: Props) {
               <RoundReportCard
                 report={you.report}
                 enemyName={enemyName}
-                enemyHp={them?.hp ?? 0}
                 waitingForOpponent={them?.phase === "brace"}
                 busy={busy}
                 onContinue={() => {
@@ -753,60 +752,6 @@ export function MatchScreen({ controller, onExit, title, subtitle }: Props) {
 /* ------------------------------------------------------------------ */
 /* The dock, one per phase                                             */
 /* ------------------------------------------------------------------ */
-
-function TallyStrip({ tally }: { tally: ReturnType<typeof previewTally> | null }) {
-  return (
-    <div className="tally-strip grid gap-1">
-      <div className="tally-cell tally-cell-attack">
-        <Stat
-          kind="attack"
-          value={tally?.attack ?? 0}
-          label="Attack"
-          size="lg"
-          showGlyph={false}
-          colorLabel
-        />
-      </div>
-      <div className="tally-cell tally-cell-shield">
-        <Stat
-          kind="shield"
-          value={tally?.defense ?? 0}
-          label="Shields"
-          size="lg"
-          showGlyph={false}
-          colorLabel
-        />
-      </div>
-      <div className="tally-cell tally-cell-direct">
-        <Stat
-          kind="direct"
-          value={tally?.direct ?? 0}
-          label="Direct"
-          showGlyph={false}
-          colorLabel
-        />
-      </div>
-      <div className="tally-cell tally-cell-repair">
-        <Stat
-          kind="repair"
-          value={tally?.heal ?? 0}
-          label="Repair"
-          showGlyph={false}
-          colorLabel
-        />
-      </div>
-      <div className="tally-cell tally-cell-energy">
-        <Stat
-          kind="energy"
-          value={tally?.energy ?? 0}
-          label="Energy"
-          showGlyph={false}
-          colorLabel
-        />
-      </div>
-    </div>
-  );
-}
 
 function runWorldPoints(arena: Arena, you: PlayerState, run: Straight) {
   const members = runMemberIds(you.dice, run);

@@ -10,7 +10,7 @@
  */
 
 import type { RoundReport as Report } from "@/lib/engine";
-import { Button, Notice } from "./ui";
+import { Button, Notice, TallyStrip } from "./ui";
 
 export type BoxKind = "attack" | "shield" | "direct" | "repair";
 
@@ -89,26 +89,17 @@ function ShipBlockBox({ value, big }: { value: number; big?: boolean }) {
 export function RoundReportCard({
   report,
   enemyName,
-  enemyHp,
   waitingForOpponent = false,
   onContinue,
   busy,
 }: {
   report: Report;
   enemyName: string;
-  /**
-   * Their HP as of right now — their starting point for this round if they
-   * haven't resolved their own brace yet, already their result if they
-   * have. Shown the same way yours is, for the same reason: a number is
-   * easier to read next to another number than floating alone.
-   */
-  enemyHp: number;
   /** The other commander is still choosing which ships absorb their volley. */
   waitingForOpponent?: boolean;
   onContinue(): void;
   busy?: boolean;
 }) {
-  const t = report.tally;
   const enemy = report.enemyTally;
   const survived = report.hpAfter > 0;
 
@@ -119,13 +110,6 @@ export function RoundReportCard({
   // completely separately — nothing, not shields or ships, blocks Direct.
   // Repair is the very last step, after all of that damage is applied.
   const shieldsStopped = Math.max(0, (enemy?.attack ?? 0) + report.escalation - report.incoming);
-
-  // What you dealt them is only ever a ceiling — their own brace choice
-  // (which ships stepped in front of it) isn't known from this side of the
-  // match, so this assumes zero and says so, rather than guessing.
-  const enemyShieldsStopped = Math.min(t.attack, enemy?.defense ?? 0);
-  const enemyRepair = enemy?.heal ?? 0;
-  const dealtCeiling = Math.max(0, t.attack - (enemy?.defense ?? 0)) + report.escalation + t.direct;
 
   return (
     <div className="round-report flex min-h-0 flex-1 flex-col gap-3">
@@ -138,10 +122,11 @@ export function RoundReportCard({
         <span className="t-num c-energy text-sm">+{report.energyEarned} energy</span>
       </div>
 
-      {/* The whole round, in the two lines each commander actually needs.
-       * Yours is exact — hpBefore, every real term, hpAfter, in the order
-       * the engine itself applies them. Theirs can only ever be a ceiling:
-       * their own brace choice isn't visible from this side of the match. */}
+      {/* Yours is exact — hpBefore, every real term, hpAfter, in the order
+       * the engine itself applies them. Theirs is just what they rolled,
+       * the same strip the roll screen shows for your own fleet: what they
+       * did with it (who braced, what got through) isn't visible from this
+       * side of the match, so this never pretends to total that up. */}
       <div className="round-report-mobile-summary">
         <p className="t-eyebrow mb-1">Your fleet damage report</p>
         <p className="battle-line flex flex-wrap items-center gap-1">
@@ -182,39 +167,8 @@ export function RoundReportCard({
           <HpBox value={report.hpAfter} big />
         </p>
 
-        <p className="t-eyebrow mb-1 mt-2.5">{enemyName}</p>
-        <p className="battle-line flex flex-wrap items-center gap-1">
-          <HpBox value={enemyHp} />
-          <span className="c-dim">·</span>
-          <Box kind="attack" value={t.attack} />
-          {enemyShieldsStopped > 0 && (
-            <>
-              <span className="c-dim">−</span>
-              <Box kind="shield" value={enemyShieldsStopped} />
-            </>
-          )}
-          {report.escalation > 0 && (
-            <>
-              <span className="c-dim">+</span>
-              <Box kind="attack" value={report.escalation} />
-            </>
-          )}
-          {t.direct > 0 && (
-            <>
-              <span className="c-dim">+</span>
-              <Box kind="direct" value={t.direct} />
-            </>
-          )}
-          <span className="c-dim">=</span>
-          <Box kind="attack" value={dealtCeiling} big />
-          {enemyRepair > 0 && (
-            <>
-              <span className="c-dim">+</span>
-              <Box kind="repair" value={enemyRepair} />
-            </>
-          )}
-          <span className="c-dim text-xs">· their blocks unknown</span>
-        </p>
+        <p className="t-eyebrow mb-1 mt-2.5">{enemyName} rolled</p>
+        <TallyStrip tally={enemy} />
       </div>
 
       {!survived && (

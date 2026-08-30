@@ -9,6 +9,7 @@
  */
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import type { Tally } from "@/lib/engine";
 import { STAT_GLYPH, STAT_LABEL, type StatKind } from "@/lib/reference";
 
 /* ------------------------------------------------------------------ */
@@ -192,6 +193,67 @@ export function Stat({
           {label ?? STAT_LABEL[kind]}
         </span>
       )}
+    </div>
+  );
+}
+
+/**
+ * A fleet's whole roll, five numbers in one strip: Attack, Shields, Direct,
+ * Repair, Energy. The roll screen uses it for your own dice; the round
+ * report reuses this same component for the enemy's, so what they actually
+ * rolled reads exactly the way yours does — no separate "what got through"
+ * math standing in for numbers this side of the match never truly knows.
+ */
+export function TallyStrip({ tally }: { tally: Tally | null }) {
+  return (
+    <div className="tally-strip grid gap-1">
+      <div className="tally-cell tally-cell-attack">
+        <Stat
+          kind="attack"
+          value={tally?.attack ?? 0}
+          label="Attack"
+          size="lg"
+          showGlyph={false}
+          colorLabel
+        />
+      </div>
+      <div className="tally-cell tally-cell-shield">
+        <Stat
+          kind="shield"
+          value={tally?.defense ?? 0}
+          label="Shields"
+          size="lg"
+          showGlyph={false}
+          colorLabel
+        />
+      </div>
+      <div className="tally-cell tally-cell-direct">
+        <Stat
+          kind="direct"
+          value={tally?.direct ?? 0}
+          label="Direct"
+          showGlyph={false}
+          colorLabel
+        />
+      </div>
+      <div className="tally-cell tally-cell-repair">
+        <Stat
+          kind="repair"
+          value={tally?.heal ?? 0}
+          label="Repair"
+          showGlyph={false}
+          colorLabel
+        />
+      </div>
+      <div className="tally-cell tally-cell-energy">
+        <Stat
+          kind="energy"
+          value={tally?.energy ?? 0}
+          label="Energy"
+          showGlyph={false}
+          colorLabel
+        />
+      </div>
     </div>
   );
 }
