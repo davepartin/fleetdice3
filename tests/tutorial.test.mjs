@@ -29,7 +29,10 @@ test("tutorial route and homepage button exist", () => {
   assert.match(script, /Three down/);
   assert.match(script, /Flagship weapon/);
   assert.match(script, /Happy fleet battles/);
-  assert.match(script, /Even hits\. Odd blocks/);
+  // The game keeps two words strictly apart: Shields are what odd faces
+  // roll, blocking is what a ship does. Never "hits", never "brace".
+  assert.match(script, /Even attacks\. Odd shields/);
+  assert.doesNotMatch(script, /\bsoak|\babsorb/i);
 });
 
 test("scripted middle row of 4s is a real formation", () => {

@@ -82,7 +82,7 @@ export type RoundReport = {
   round: number;
   hpBefore: number;
   hpAfter: number;
-  /** Blockable damage that arrived, before soak. */
+  /** Blockable damage that arrived, before ships blocked any of it. */
   incoming: number;
   /** Unblockable damage that arrived. */
   direct: number;
@@ -90,7 +90,7 @@ export type RoundReport = {
   damage: number;
   repair: number;
   energyEarned: number;
-  soaked: number;
+  blocked: number;
   bracedShips: { id: string; sides: DieSize }[];
   escalation: number;
   tally: Tally;
@@ -509,11 +509,11 @@ export function activeShips(player: PlayerState, round: number): Ship[] {
 }
 /**
  * The flagship's own health is a separate number from what stands in front
- * of it. This is that second number: how much a brace could soak right now,
+ * of it. This is that second number: how much your ships could block right now,
  * across every ship able to take the hit this round. A ship still sitting
  * out from an earlier brace does not count until it returns.
  */
-export function fleetSoak(player: PlayerState): number {
+export function fleetBlock(player: PlayerState): number {
   return activeShips(player, player.round).reduce((sum, ship) => sum + ship.sides, 0);
 }
 export function fleetValue(player: PlayerState): number {
@@ -924,15 +924,15 @@ function handleBrace(state: MatchState, player: PlayerState, selected: string[])
 
 function settlePlayer(state: MatchState, player: PlayerState) {
   const before = player.hp;
-  let soaked = 0;
+  let blocked = 0;
   const braced: { id: string; sides: DieSize }[] = [];
   for (const ship of player.ships) {
     if (!player.braceShips.includes(ship.id)) continue;
-    soaked += ship.sides;
+    blocked += ship.sides;
     ship.disabledRound = player.round + 1;
     braced.push({ id: ship.id, sides: ship.sides });
   }
-  const damage = Math.max(0, player.incoming - soaked) + player.directIncoming;
+  const damage = Math.max(0, player.incoming - blocked) + player.directIncoming;
   const repair = player.tally?.heal ?? 0;
   const after = before - damage + repair;
   if (after > player.maxHp) player.maxHp = after;
@@ -965,7 +965,7 @@ function settlePlayer(state: MatchState, player: PlayerState) {
     damage,
     repair,
     energyEarned: earned,
-    soaked: Math.min(soaked, player.incoming),
+    blocked: Math.min(blocked, player.incoming),
     bracedShips: braced,
     escalation: escalationFor(player.round),
     tally: player.tally!,
@@ -976,11 +976,11 @@ function settlePlayer(state: MatchState, player: PlayerState) {
   player.phase = "report";
 }
 
-/** True when soaking with every available ship still leaves HP at 0 or below. */
+/** True when blocking with every available ship still leaves HP at 0 or below. */
 function inescapableDeath(player: PlayerState): boolean {
   if (player.phase !== "brace") return false;
-  const maxSoak = activeShips(player, player.round).reduce((sum, ship) => sum + ship.sides, 0);
-  const damage = Math.max(0, player.incoming - maxSoak) + player.directIncoming;
+  const maxBlock = activeShips(player, player.round).reduce((sum, ship) => sum + ship.sides, 0);
+  const damage = Math.max(0, player.incoming - maxBlock) + player.directIncoming;
   const repair = player.tally?.heal ?? 0;
   return player.hp - damage + repair <= 0;
 }

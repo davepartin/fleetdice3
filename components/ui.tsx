@@ -10,7 +10,8 @@
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import type { Tally } from "@/lib/engine";
-import { STAT_GLYPH, STAT_LABEL, type StatKind } from "@/lib/reference";
+import { STAT_LABEL, type StatKind } from "@/lib/reference";
+import { StatIcon } from "./StatIcon";
 
 /* ------------------------------------------------------------------ */
 /* Buttons                                                             */
@@ -180,7 +181,9 @@ export function Stat({
     <div className="flex flex-col items-center gap-1">
       <div className="flex w-full items-baseline justify-center gap-1 text-center">
         {showGlyph && (
-          <span className={`c-${kind} text-xs opacity-80`}>{STAT_GLYPH[kind]}</span>
+          <span className={`c-${kind} inline-flex self-center opacity-90`}>
+            <StatIcon kind={kind} size={13} />
+          </span>
         )}
         {body}
       </div>
@@ -332,10 +335,10 @@ export function HpRail({
   /** Omit on a screen that already states the round elsewhere. */
   round?: number;
   /**
-   * How much your fleet could soak right now, next to the flagship's own
-   * health — a die a brace disabled last round doesn't count until it's
-   * back. Omit where that number isn't known (e.g. the enemy's fleet on a
-   * screen that only carries their HP).
+   * How much your fleet could block right now, next to the flagship's own
+   * health — a ship that blocked last round doesn't count until it's back.
+   * Omit where that number isn't known (e.g. the enemy's fleet on a screen
+   * that only carries their HP).
    */
   yourFleet?: number;
   enemyFleet?: number;

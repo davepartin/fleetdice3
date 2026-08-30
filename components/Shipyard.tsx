@@ -23,7 +23,7 @@ import {
   cellForSlot,
   flagshipUpgradeCost,
   flagBonusSize,
-  fleetSoak,
+  fleetBlock,
   nextSlotCost,
   openSlotCount,
   priceOf,
@@ -187,7 +187,7 @@ export function Shipyard({ player, enemyName, enemyHp, onAction, onDone, busy }:
         yourHp={player.hp}
         enemyName={enemyName}
         enemyHp={enemyHp}
-        yourFleet={fleetSoak(player)}
+        yourFleet={fleetBlock(player)}
       />
 
       {/* ---------------- header ---------------- */}

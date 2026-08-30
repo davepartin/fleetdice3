@@ -350,8 +350,8 @@ test("the round report adds up, every round, in a real match", () => {
       const report = state.players[side].report;
       if (!report) continue;
 
-      const expected = Math.max(0, report.incoming - report.soaked) + report.direct;
-      assert.equal(report.damage, expected, "damage must equal what got past the soak");
+      const expected = Math.max(0, report.incoming - report.blocked) + report.direct;
+      assert.equal(report.damage, expected, "damage must equal what got past the blocking ships");
 
       const settled = report.hpBefore - report.damage + report.repair;
       assert.equal(report.hpAfter, settled, "health must equal before minus damage plus repair");
@@ -361,7 +361,7 @@ test("the round report adds up, every round, in a real match", () => {
           "overflow repair must raise the maximum instead of being thrown away",
         );
       }
-      assert.ok(report.soaked <= report.incoming, "you cannot soak more than arrived");
+      assert.ok(report.blocked <= report.incoming, "you cannot block more than arrived");
     }
   }
   assert.equal(state.status, "finished", "the match must end");

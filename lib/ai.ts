@@ -364,9 +364,9 @@ export function chooseBrace(player: PlayerState, caution = 0.45): string[] {
 
   // How much blockable damage can land and still leave us alive with room?
   const chosen: string[] = [];
-  let soaked = 0;
+  let blocked = 0;
   for (const ship of available) {
-    const landing = Math.max(0, incoming - soaked);
+    const landing = Math.max(0, incoming - blocked);
     if (landing === 0) break;
     const hpAfter = survivable - landing;
     // Always survive. Beyond that, feed a hull only when it stops more than it costs.
@@ -374,7 +374,7 @@ export function chooseBrace(player: PlayerState, caution = 0.45): string[] {
     const worthIt = landing >= ship.sides && hpAfter < player.maxHp * caution;
     if (!mustBlock && !worthIt) break;
     chosen.push(ship.id);
-    soaked += ship.sides;
+    blocked += ship.sides;
   }
   return chosen;
 }

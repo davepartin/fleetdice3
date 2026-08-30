@@ -137,18 +137,22 @@ function runLengthLabel(length: number): string {
 
 export type FaceReference = {
   value: number;
-  /** Even faces hit, odd faces block. */
+  /**
+   * Even faces roll Attack, odd faces roll Shields. The two words the game
+   * uses everywhere for this — never "hits" or "blocks," which are reserved
+   * for what a *ship* does when it steps in front of damage.
+   */
   fights: "hits" | "blocks";
-  /** How much it hits or blocks for. */
+  /** How much Attack or Shields it rolls. */
   amount: number;
   energy: number;
   repair: number;
   direct: number;
-  /** "hits for 6" */
+  /** "Attack 6" */
   fightText: string;
   /** "fires 1 Direct" */
   markText: string;
-  /** "A 6 hits for 6 and fires 1 Direct." */
+  /** "A 6 rolls Attack 6 and fires 1 Direct." */
   line: string;
   /** "on d6, d8 and d10" — which hulls can even show this face. */
   hullsText: string;
@@ -167,9 +171,9 @@ export function hullForFace(value: number): DieSize {
   return HULLS.find((sides) => sides >= value) ?? BIG;
 }
 
-/** Every face 1–10: what it hits or blocks for, and exactly what its mark pays. */
+/** Every face 1–10: the Attack or Shields it rolls, and what its mark pays. */
 export const FACE_ROWS: readonly FaceReference[] = faceTable().map((row) => {
-  const fightText = `${row.fights === "hits" ? "hits" : "blocks"} for ${row.amount}`;
+  const fightText = `${row.fights === "hits" ? "Attack" : "Shield"} ${row.amount}`;
   const mark = markText(row);
   const hulls = HULLS.filter((sides) => sides >= row.value).map(die);
   return {
@@ -181,7 +185,7 @@ export const FACE_ROWS: readonly FaceReference[] = faceTable().map((row) => {
     direct: row.direct,
     fightText,
     markText: mark,
-    line: `A ${row.value} ${fightText} and ${mark}.`,
+    line: `A ${row.value} rolls ${fightText} and ${mark}.`,
     hullsText: `on ${joinWords(hulls)}`,
   };
 });
@@ -220,9 +224,9 @@ function flagLevelText(face: number, bonus: number): string {
     case 4:
       return `every 4 in your fleet pays ${bonus} more Energy`;
     case 5:
-      return `every odd ship blocks ${bonus} more`;
+      return `every odd ship adds ${bonus} more Shields`;
     default:
-      return `every even ship hits ${bonus} more`;
+      return `every even ship adds ${bonus} more Attack`;
   }
 }
 
@@ -241,9 +245,9 @@ function flagShort(face: number): string {
     case 4:
       return "Every 4 in your fleet pays more Energy";
     case 5:
-      return "Every odd ship blocks more";
+      return "Every odd ship adds more Shields";
     default:
-      return "Every even ship hits more";
+      return "Every even ship adds more Attack";
   }
 }
 
@@ -258,9 +262,9 @@ function flagDetail(face: number): string {
     case 4:
       return "Counts the ships showing a 4 and adds Energy for each one.";
     case 5:
-      return "Counts every ship showing an odd number, not just the 5s, and adds to what each one blocks.";
+      return "Counts every ship showing an odd number, not just the 5s, and adds to the Shields each one rolls.";
     default:
-      return "Counts every ship showing an even number, not just the 6s, and adds to what each one hits.";
+      return "Counts every ship showing an even number, not just the 6s, and adds to the Attack each one rolls.";
   }
 }
 
@@ -393,7 +397,7 @@ const UPGRADE_ROWS: ShopRow[] = HULLS.flatMap((sides) => {
       kind: "upgrade" as const,
       name: `Upgrade a ${die(sides)} to a ${die(next)}`,
       cost,
-      gain: `Two more faces. Average Attack goes ${num(from.attack)} to ${num(to.attack)}, average Shields ${num(from.defense)} to ${num(to.defense)}. It also soaks ${next - sides} more when it braces.`,
+      gain: `Two more faces. Average Attack goes ${num(from.attack)} to ${num(to.attack)}, average Shields ${num(from.defense)} to ${num(to.defense)}, and it blocks ${next - sides} more damage when you send it in to block.`,
     },
   ];
 });
@@ -461,10 +465,10 @@ export type HelpSection = {
 
 const FACE_TABLE_BLOCK: HelpBlock = {
   kind: "table",
-  head: ["Face", "In the fight", "On top of that"],
+  head: ["Face", "Rolls", "Mark pays"],
   rows: FACE_ROWS.map((row) => [
     String(row.value),
-    `${row.fights === "hits" ? "Hits" : "Blocks"} for ${row.amount}`,
+    `${row.fights === "hits" ? "Attack" : "Shield"} ${row.amount}`,
     row.markText === "pays nothing extra"
       ? "—"
       : row.markText.charAt(0).toUpperCase() + row.markText.slice(1),
@@ -518,27 +522,27 @@ export const HOW_TO_PLAY: readonly HelpSection[] = [
       },
       {
         kind: "text",
-        text: "Every round you both roll your fleet, keep what you want, and lock it in at the same time. Even faces hit, odd faces block, and whatever gets past the other commander's blocking comes off their flagship. Between rounds you spend Energy, the money of this game, on better dice and more bays. The first flagship to reach 0 loses.",
+        text: "Every round you both roll your fleet, keep what you want, and lock it in at the same time. Even faces roll Attack, odd faces roll Shields, and whatever Attack gets past their Shields comes off their flagship. Between rounds you spend Energy, the money of this game, on better dice and more bays. The first flagship to reach 0 loses.",
       },
     ],
   },
   {
     id: "your-dice",
     title: "Your dice",
-    summary: "Even hits for its own number, odd blocks for its own number, and the small mark under the number always pays as well.",
+    summary: "Even faces roll Attack, odd faces roll Shields, both for their own number — and the small mark under the number always pays as well.",
     blocks: [
       {
         kind: "text",
-        text: "Every ship is a die, and every face on every die works the same way. Even faces hit for their own number, so a 6 hits for 6. Odd faces block for their own number, so a 5 blocks for 5. There is no other rule for the fight. A bigger hull is worth having because it can show bigger numbers, not because it works differently.",
+        text: "Every ship is a die, and every face on every die works the same way. Even faces roll Attack equal to their own number, so a 6 rolls 6 Attack. Odd faces roll Shields equal to their own number, so a 5 rolls 5 Shields. There is no other rule for the fight. A bigger hull is worth having because it can show bigger numbers, not because it works differently.",
       },
       {
         kind: "text",
-        text: "Under the number sits a mark, and the mark always pays. It pays whether the face hit or blocked, and it pays before anyone works out who got through. Energy is money for the shipyard. Repair puts health back on your flagship. Direct is damage that ignores blocking altogether: no shield stops it and no ship can step in front of it.",
+        text: "Under the number sits a mark, and the mark always pays. It pays whether the face rolled Attack or Shields, and it pays before anyone works out who got through. Energy is money for the shipyard. Repair puts health back on your flagship. Direct is damage nothing stops: no Shields reduce it and no ship can block it.",
       },
       FACE_TABLE_BLOCK,
       {
         kind: "text",
-        text: `So a fleet showing 2, 4, 6 and 8 hits for ${attackOf(2) + attackOf(4) + attackOf(6) + attackOf(8)} and, on top of that, fires ${directOf(2) + directOf(4) + directOf(6) + directOf(8)} Direct. A fleet showing 1, 3, 5 and 7 blocks ${defenseOf(1) + defenseOf(3) + defenseOf(5) + defenseOf(7)}, banks ${energyOf(1) + energyOf(3) + energyOf(5) + energyOf(7)} Energy and repairs ${repairOf(1) + repairOf(3) + repairOf(5) + repairOf(7)}.`,
+        text: `So a fleet showing 2, 4, 6 and 8 rolls ${attackOf(2) + attackOf(4) + attackOf(6) + attackOf(8)} Attack and, on top of that, fires ${directOf(2) + directOf(4) + directOf(6) + directOf(8)} Direct. A fleet showing 1, 3, 5 and 7 rolls ${defenseOf(1) + defenseOf(3) + defenseOf(5) + defenseOf(7)} Shields, banks ${energyOf(1) + energyOf(3) + energyOf(5) + energyOf(7)} Energy and repairs ${repairOf(1) + repairOf(3) + repairOf(5) + repairOf(7)}.`,
       },
     ],
   },
@@ -573,7 +577,7 @@ export const HOW_TO_PLAY: readonly HelpSection[] = [
     blocks: [
       {
         kind: "text",
-        text: `Your flagship is a ${die(FLAG_SIDES)} in the centre square. It rolls with the fleet every round, but it never hits and it never blocks. What it does is ring the ships around it. Its face decides which kind of help arrives, and its level decides how much.`,
+        text: `Your flagship is a ${die(FLAG_SIDES)} in the centre square. It rolls with the fleet every round, but it never rolls Attack and never rolls Shields. What it does is ring the ships around it. Its face decides which kind of help arrives, and its level decides how much.`,
       },
       FLAGSHIP_TABLE_BLOCK,
       {
@@ -616,11 +620,11 @@ export const HOW_TO_PLAY: readonly HelpSection[] = [
           },
           {
             name: "5. The volley",
-            text: "Nothing to decide. Both boards turn over. Your Attack minus their blocking is what arrives from the dice. After round 8 the war adds extra on top of that, and shields cannot stop the extra. Blocking that is not needed is simply wasted; it does not carry over. Direct is added on afterwards and ignores blocking completely.",
+            text: "Nothing to decide. Both boards turn over. Your Attack minus their Shields is what arrives from the dice. After round 8 the war adds extra on top of that, and Shields cannot stop the extra. Shields you did not need are simply wasted; they do not carry over. Direct is added on afterwards and Shields do nothing about it.",
           },
           {
-            name: "6. Brace",
-            text: `You decide who takes the hit. Any ship that rolled this round can step in front of the incoming damage and soak its own size: a ${die(SMALL)} soaks ${SMALL}, a ${die(BIG)} soaks ${BIG}. A ship that braces sits out the whole of next round, so it neither rolls nor blocks nor helps a line. Direct still goes through: bracing does nothing about it.`,
+            name: "6. Block",
+            text: `You decide who takes the hit. Any ship that rolled this round can block, stopping damage equal to its own size: a ${die(SMALL)} blocks ${SMALL}, a ${die(BIG)} blocks ${BIG}. A ship that blocks sits out the whole of next round, so it does not roll, shield, or help a line. Direct still goes through: blocking does nothing about it.`,
           },
           {
             name: "7. Repairs and pay",
@@ -649,7 +653,7 @@ export const HOW_TO_PLAY: readonly HelpSection[] = [
   {
     id: "winning",
     title: "Winning",
-    summary: `Knock the enemy flagship from ${TUNING.hp} to 0. From round ${FIRST_ESCALATED_ROUND} both fleets hit harder every round, and if the clock runs out the higher health wins.`,
+    summary: `Knock the enemy flagship from ${TUNING.hp} to 0. From round ${FIRST_ESCALATED_ROUND} the war adds damage to both flagships every round, and if the clock runs out the higher health wins.`,
     blocks: [
       {
         kind: "text",
@@ -693,7 +697,7 @@ export const GLOSSARY: readonly GlossaryEntry[] = [
   },
   {
     term: "Direct",
-    text: "Damage that skips the whole fight. Shields do not reduce it and a bracing ship does not stop it. Whatever Direct you fire lands on the enemy flagship.",
+    text: "Damage that skips the whole fight. Shields do not reduce it and a blocking ship does not stop it. Whatever Direct you fire lands on the enemy flagship.",
   },
   {
     term: "Straight",
@@ -705,15 +709,15 @@ export const GLOSSARY: readonly GlossaryEntry[] = [
   },
   {
     term: "Flagship",
-    text: `The ${die(FLAG_SIDES)} in the centre square. It starts at ${TUNING.hp} health and can grow, it never hits and never blocks, and its face each round boosts the ships around it.`,
+    text: `The ${die(FLAG_SIDES)} in the centre square. It starts at ${TUNING.hp} health and can grow, it never attacks and never shields, and its face each round boosts the ships around it.`,
   },
   {
     term: "Volley",
     text: "The moment both commanders' boards are revealed and the damage for the round is worked out. Nobody sees the other board until both have locked in.",
   },
   {
-    term: "Brace",
-    text: "Putting a ship in front of the incoming damage. It soaks its own size and then sits out the whole of the next round.",
+    term: "Block",
+    text: "Sending a ship in front of the incoming damage. It stops damage equal to its own size, then sits out the whole of the next round. Shields are what your odd faces roll; blocking is what your ships do afterwards.",
   },
   {
     term: "Escalation",
@@ -757,12 +761,12 @@ export const TIPS: readonly Tip[] = [
     text: `The ${TUNING.startSlots} bays you start with are the four around your flagship, so from the very first roll you can finish the middle row across (${TUNING.lineAcrossEnergy} Energy) or the middle column down (${TUNING.lineDownAttack} Attack) — and your flagship counts as the middle of both. Every bay you buy after that is a corner, and a corner opens whole new lines rather than finishing the ones you have.`,
   },
   {
-    title: "Brace with the smallest ship that does the job",
-    text: `A braced ${die(SMALL)} soaks ${SMALL} and takes an average of ${num(AVG_SMALL.attack + AVG_SMALL.defense)} hitting and blocking off your next board. A braced ${die(BIG)} soaks ${BIG} but takes ${num(AVG_BIG.attack + AVG_BIG.defense)} off it. Soak with the big one only when the small ones cannot cover the damage.`,
+    title: "Block with the smallest ship that does the job",
+    text: `A ${die(SMALL)} blocks ${SMALL} and takes an average of ${num(AVG_SMALL.attack + AVG_SMALL.defense)} of Attack and Shields off your next board. A ${die(BIG)} blocks ${BIG} but takes ${num(AVG_BIG.attack + AVG_BIG.defense)} off it. Block with the big one only when the small ones cannot cover the damage.`,
   },
   {
     title: "Direct is the answer to a wall of shields",
-    text: `Shields above what the enemy throws are thrown away; Direct never is. A ${die(BIG)} showing ${BIG} fires ${directOf(BIG)} Direct on its own, and no shield and no bracing ship takes any of it off.`,
+    text: `Shields above what the enemy throws are thrown away; Direct never is. A ${die(BIG)} showing ${BIG} fires ${directOf(BIG)} Direct on its own, and no shield and no blocking ship takes any of it off.`,
   },
   {
     title: "Save the token for a straight, not a nudge",
@@ -770,7 +774,7 @@ export const TIPS: readonly Tip[] = [
   },
   {
     title: "Long games are decided before they get long",
-    text: `Escalation adds ${TUNING.escalateStep} damage a round to both flagships from round ${FIRST_ESCALATED_ROUND}, and shields cannot eat it, so by round ${FIRST_ESCALATED_ROUND + 5} both sides take ${escalationFor(FIRST_ESCALATED_ROUND + 5)} before a single die is read. A fleet built only to block still has to throw ships in front or the flagship melts.`,
+    text: `Escalation adds ${TUNING.escalateStep} damage a round to both flagships from round ${FIRST_ESCALATED_ROUND}, and shields cannot eat it, so by round ${FIRST_ESCALATED_ROUND + 5} both sides take ${escalationFor(FIRST_ESCALATED_ROUND + 5)} before a single die is read. A fleet built only to shield still has to send ships in to block or the flagship melts.`,
   },
 ];
 
@@ -798,13 +802,20 @@ export const STAT_LABEL: Record<StatKind, string> = {
   run: "Straight",
 };
 
-export const STAT_GLYPH: Record<StatKind, string> = {
-  attack: "▲",
-  shield: "◆",
-  energy: "⚡",
-  repair: "✚",
-  direct: "⌁",
-  run: "⋯",
+/**
+ * What each symbol *is*, in a few words, and what it does in one line.
+ *
+ * Three of these shapes (bolt, plus, chevron) are printed on the real dice
+ * faces, so a player meets them before they ever open the help. The other two
+ * name the fight itself. Rendered by components/StatIcon.tsx.
+ */
+export const STAT_SYMBOL: Record<StatKind, { shape: string; means: string }> = {
+  attack: { shape: "Red star", means: "Damage you deal. Even faces roll it." },
+  shield: { shape: "Blue shield", means: "Cancels their Attack. Odd faces roll it." },
+  energy: { shape: "Lightning bolt", means: "Money — buys ships, bays and rerolls." },
+  repair: { shape: "Plus", means: "Health back on your flagship." },
+  direct: { shape: "Chevron", means: "Damage no Shield and no block can stop." },
+  run: { shape: "Rising bars", means: `A straight — ${TUNING.runMin}+ numbers in a row.` },
 };
 
 export const NOUN = {

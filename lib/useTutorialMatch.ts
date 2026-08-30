@@ -79,7 +79,7 @@ function applyFaces(player: PlayerState, faces: TutorialFaces) {
 }
 
 function ensureRollingDice(player: PlayerState) {
-  // Tutorial boards need the full cross visible — clear stun from braces.
+  // Tutorial boards need the full cross visible — clear the sit-out from blocks.
   for (const ship of player.ships) ship.disabledRound = null;
   player.dice = player.ships.map((ship) => ({
     id: ship.id,

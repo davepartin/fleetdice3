@@ -95,7 +95,7 @@ export function RoundReportCard({
 }: {
   report: Report;
   enemyName: string;
-  /** The other commander is still choosing which ships absorb their volley. */
+  /** The other commander is still choosing which ships block their volley. */
   waitingForOpponent?: boolean;
   onContinue(): void;
   busy?: boolean;
@@ -125,7 +125,7 @@ export function RoundReportCard({
       {/* Yours is exact — hpBefore, every real term, hpAfter, in the order
        * the engine itself applies them. Theirs is just what they rolled,
        * the same strip the roll screen shows for your own fleet: what they
-       * did with it (who braced, what got through) isn't visible from this
+       * did with it (who blocked, what got through) isn't visible from this
        * side of the match, so this never pretends to total that up. */}
       <div className="round-report-mobile-summary">
         <p className="t-eyebrow mb-1">Your fleet damage report</p>
@@ -139,10 +139,10 @@ export function RoundReportCard({
               <Box kind="shield" value={shieldsStopped} />
             </>
           )}
-          {report.soaked > 0 && (
+          {report.blocked > 0 && (
             <>
               <span className="c-dim">+</span>
-              <ShipBlockBox value={report.soaked} />
+              <ShipBlockBox value={report.blocked} />
             </>
           )}
           {report.escalation > 0 && (
@@ -177,7 +177,7 @@ export function RoundReportCard({
 
       {waitingForOpponent && survived && (
         <p className="round-report-wait" role="status">
-          {enemyName} is choosing ships to take the hit. Your shipyard will open when they finish.
+          {enemyName} is choosing which ships block. Your shipyard will open when they finish.
         </p>
       )}
       </div>

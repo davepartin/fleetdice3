@@ -21,7 +21,7 @@ import {
   cellForSlot,
   escalationFor,
   flagBonusSize,
-  fleetSoak,
+  fleetBlock,
   previewTally,
   runMemberIds,
   straightPrizeTakes,
@@ -270,7 +270,7 @@ export function MatchScreen({ controller, onExit, title, subtitle }: Props) {
             ? "wide"
             : phase === "submitted"
               ? "both"
-              // Brace is a decision about your own ships, not a look at the
+              // Blocking is a decision about your own ships, not a look at the
               // enemy's — the wider "both" framing only made the dice you can
               // actually tap smaller and harder to read.
               : "fleet";
@@ -324,7 +324,7 @@ export function MatchScreen({ controller, onExit, title, subtitle }: Props) {
     const yourAttack = (you.tally?.attack ?? 0) + report.escalation;
     const yourDirect = you.tally?.direct ?? 0;
 
-    // A ship that braced against a volley reacts on its own cell — a guard
+    // A ship that blocked a volley reacts on its own cell — a guard
     // ring, a hard white spark, then the colour draining out of it — instead
     // of just turning up flattened and grey once the next round syncs.
     const reactShips = (side: "you" | "enemy", player: PlayerState, braced: { id: string }[]) => {
@@ -362,7 +362,7 @@ export function MatchScreen({ controller, onExit, title, subtitle }: Props) {
         .volley({ from: enemyFlag, to: yourFlag, amount: incoming, kind: "attack" })
         .then(() => {
           reactShips("you", you, report.bracedShips);
-          if (report.soaked > 0) arena.vfx.shieldBlock(yourFlag, report.soaked);
+          if (report.blocked > 0) arena.vfx.shieldBlock(yourFlag, report.blocked);
           if (report.damage > 0) {
             arena.vfx.impact(yourFlag, report.damage, "attack");
             audio.play(report.damage > 12 ? "impact-heavy" : "impact-light");
@@ -544,8 +544,8 @@ export function MatchScreen({ controller, onExit, title, subtitle }: Props) {
             enemyName={enemyName}
             enemyHp={them?.hp ?? 0}
             round={you.round}
-            yourFleet={fleetSoak(you)}
-            enemyFleet={them ? fleetSoak(them) : undefined}
+            yourFleet={fleetBlock(you)}
+            enemyFleet={them ? fleetBlock(them) : undefined}
             className="min-w-0 flex-1"
           />
 
@@ -1033,7 +1033,7 @@ function EnergyBolt() {
   );
 }
 
-/** One number in the brace screen's HP arithmetic — "Now − Damage = After". */
+/** One number in the block screen's HP arithmetic — "Now − Damage = After". */
 function EquationTerm({
   value,
   label,
@@ -1081,7 +1081,7 @@ function BraceDock({
        * area scrolls; the action below it never does. */}
       <div className="brace-dock-body flex min-h-0 flex-col gap-3">
         <div>
-          <p className="t-eyebrow">Choose damage</p>
+          <p className="t-eyebrow">Choose your blockers</p>
           <h2 className="t-display text-xl">
             <span className="c-attack">{you.incoming}</span>
             <span className="c-dim text-base"> blockable</span>
@@ -1095,15 +1095,15 @@ function BraceDock({
           </h2>
           {war > 0 && (
             <p className="mt-1 text-sm font-semibold c-attack">
-              Includes war +{war} — shields cannot stop that extra.
+              Includes war +{war} — Shields cannot stop that extra, but ships can block it.
             </p>
           )}
           <p className="brace-explanation mt-1 text-sm leading-snug c-dim">
-            Throw ships in front of it. Each one blocks its own size and is out of commission
-            for one round. Nothing stops Direct.
+            Send ships in to block. Each one blocks damage equal to its own size, then sits out
+            the next round. Nothing blocks Direct.
           </p>
           <p className="brace-mobile-guide mt-1 text-sm font-semibold c-attack">
-            Tap a ship to block — it takes the hit and is out of commission for one round.
+            Tap a ship to block — it takes the hit, then sits out the next round.
           </p>
         </div>
 
@@ -1144,7 +1144,7 @@ function BraceDock({
 
         {fatal && (
           <Notice tone="warn">
-            This volley finishes your flagship even with everything in front of it.
+            This volley finishes your flagship even with every ship blocking.
           </Notice>
         )}
       </div>
@@ -1152,7 +1152,7 @@ function BraceDock({
       <div className="brace-dock-action">
         <Button tone="primary" size="lg" full onClick={onConfirm} disabled={busy}>
           {chosen.size === 0
-            ? "Flagship takes all damage"
+            ? "Block nothing — flagship takes it all"
             : `${chosen.size} ${chosen.size === 1 ? "ship blocks" : "ships block"} ${Math.min(blocked, you.incoming)} damage`}
         </Button>
       </div>
