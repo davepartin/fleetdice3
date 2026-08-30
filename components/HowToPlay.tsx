@@ -195,26 +195,29 @@ export function HowToPlayBody() {
       {/* ---------- 4. The flagship ---------- */}
       <Card title="Your flagship">
         <Copy>
-          The centre die rolls with your fleet but rolls no Attack and no
-          Shields of its own. Whatever face it lands on boosts the ships
-          around it — so there are six of these to know, not one.
+          The flagship number gives a different bonus based on the roll.
         </Copy>
         <dl className="help-flag-faces">
           {FLAGSHIP_FACES.map((face) => (
             <div key={face.face} className="help-flag-face">
-              <HelpFlagFace face={face.face} size={54} />
+              <HelpFlagFace face={face.face} size={44} />
               <dt>{face.name}</dt>
               <dd>{face.short}</dd>
             </div>
           ))}
         </dl>
         <Copy>
-          {`How big the boost is comes from the flagship's level: ${FLAG_LEVELS} — upgrade it in the shipyard.`}
+          {`Bonus size comes from the flagship's level: ${FLAG_LEVELS} — upgrade it in the shipyard.`}
         </Copy>
-        <Copy>
-          Once a game you may also turn it one face up or down — often the
-          nudge that completes a straight or a line.
-        </Copy>
+        {/* The one control on the roll screen that is not self-explanatory,
+            shown as the button it actually is rather than described. */}
+        <div className="help-weapon">
+          <span className="help-weapon-btn">Flagship Weapon</span>
+          <p>
+            Once a game, after rolling, this turns the flagship one number up
+            or down — often the nudge that completes a straight or a line.
+          </p>
+        </div>
       </Card>
 
       {/* ---------- 5. The two ways to score big ---------- */}
@@ -281,10 +284,6 @@ export function HowToPlayBody() {
             </tbody>
           </table>
         </div>
-        <p className="help-note">
-          A dash is a run that cannot happen — small hulls cannot show the high
-          numbers a long run needs.
-        </p>
       </Card>
 
       {/* ---------- 6. The screen ---------- */}
@@ -293,7 +292,7 @@ export function HowToPlayBody() {
           <div className="help-screen-callout">
             <div className="help-screen-callout-head">
               <span className="help-step-num t-num">1</span>
-              <strong>Your vitals</strong>
+              <strong>Flagship Health</strong>
             </div>
             <div className="help-screen-callout-art">
               <HpRail
@@ -306,8 +305,8 @@ export function HowToPlayBody() {
               />
             </div>
             <p className="help-screen-callout-copy">
-              Flagship health in bold, then how much your ships could still
-              block this round. Mirrored for the enemy.
+              Flagship health is in orange, and the blocking potential is in
+              white, based on your fleet dice total size.
             </p>
           </div>
 
@@ -372,26 +371,19 @@ export function HowToPlayBody() {
           <li>
             <span className="help-step-num t-num">1</span>
             <span>
-              <strong>Roll.</strong> {TUNING.rollsPerRound} rolls free, then 1
-              Energy per die. Keep what you like.
+              <strong>Roll.</strong> {TUNING.rollsPerRound} rolls free, then
+              spend 1 Energy per die to reroll — then lock in your decision.
             </span>
           </li>
           <li>
             <span className="help-step-num t-num">2</span>
-            <span>
-              <strong>Lock in.</strong> Both fleets reveal at once — you are
-              guessing at their board, not answering it.
-            </span>
-          </li>
-          <li>
-            <span className="help-step-num t-num">3</span>
             <span>
               <strong>Block.</strong> Choose which ships step in front of the
               damage. They sit out next round.
             </span>
           </li>
           <li>
-            <span className="help-step-num t-num">4</span>
+            <span className="help-step-num t-num">3</span>
             <span>
               <strong>Shop.</strong> Spend the Energy you earned on bays,
               ships, upgrades or flagship levels — then roll again.

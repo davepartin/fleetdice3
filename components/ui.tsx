@@ -469,6 +469,27 @@ export function Sheet({
     return () => window.removeEventListener("keydown", onKey);
   }, [open, onClose]);
 
+  /*
+   * Lock the page behind the sheet while it is open.
+   *
+   * The sheet is position:fixed, but the document behind it was still
+   * scrollable — so a drag that started anywhere non-scrolling (the footer
+   * button, the header) panned the document instead, and iOS Safari moves
+   * fixed elements with the visual viewport as it does. The result was that
+   * holding the footer button let you drag the whole sheet up off screen.
+   * Freezing the document underneath is what actually stops that; the
+   * sheet's own scroll region keeps working because it is a real scroller.
+   */
+  useEffect(() => {
+    if (!open) return;
+    const { body } = document;
+    const previous = body.style.overflow;
+    body.style.overflow = "hidden";
+    return () => {
+      body.style.overflow = previous;
+    };
+  }, [open]);
+
   if (!open) return null;
 
   return (
@@ -488,11 +509,11 @@ export function Sheet({
             </Button>
           </div>
           <Rule />
-          <div className="scroll-y min-h-0 flex-1 px-5 py-4">{children}</div>
+          <div className="sheet-scroll scroll-y min-h-0 flex-1 px-5 py-4">{children}</div>
           {footer && (
             <>
               <Rule />
-              <div className="px-5 py-3">{footer}</div>
+              <div className="sheet-foot px-5 py-3">{footer}</div>
             </>
           )}
         </div>

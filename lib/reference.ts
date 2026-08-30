@@ -345,7 +345,7 @@ export type FormationReference = {
 export const FORMATIONS: readonly FormationReference[] = [
   {
     kind: "row",
-    name: "Row of three",
+    name: "Three Across",
     rule: `Three matching numbers across a row of your board pays ${TUNING.lineAcrossEnergy} Energy.`,
     amount: TUNING.lineAcrossEnergy,
     pays: "Energy",
@@ -353,7 +353,7 @@ export const FORMATIONS: readonly FormationReference[] = [
   },
   {
     kind: "col",
-    name: "Column of three",
+    name: "Three Down",
     rule: `Three matching numbers down a column of your board pays ${TUNING.lineDownAttack} Attack.`,
     amount: TUNING.lineDownAttack,
     pays: "Attack",
@@ -653,7 +653,7 @@ export const HOW_TO_PLAY: readonly HelpSection[] = [
   {
     id: "winning",
     title: "Winning",
-    summary: `Knock the enemy flagship from ${TUNING.hp} to 0. From round ${FIRST_ESCALATED_ROUND} the war adds damage to both flagships every round, and if the clock runs out the higher health wins.`,
+    summary: `Destroy the enemy flagship to 0 health. From round ${FIRST_ESCALATED_ROUND} onward a War Escalation attack adds +${TUNING.escalateStep} to each side every round until there is a victory.`,
     blocks: [
       {
         kind: "text",
@@ -815,7 +815,7 @@ export const STAT_SYMBOL: Record<
 > = {
   attack: { colour: "Red", name: "Attack", means: "Damage you deal. Even faces roll it." },
   shield: { colour: "Blue", name: "Shields", means: "Cancels their Attack. Odd faces roll it." },
-  energy: { colour: "Yellow bolt", name: "Energy", means: "Money — buys ships, bays and rerolls." },
+  energy: { colour: "Yellow bolt", name: "Energy", means: "Buys bays, ships and upgrades." },
   repair: { colour: "Green plus", name: "Repair", means: "Health back on your flagship." },
   direct: { colour: "Purple chevron", name: "Direct Hit", means: "Nothing stops it — no Shield, no block." },
   run: { colour: "Rising bars", name: "Straight", means: `${TUNING.runMin}+ numbers in a row.` },
