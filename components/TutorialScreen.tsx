@@ -55,11 +55,18 @@ export function TutorialScreen() {
   // is something you see, not just something you read.
   const awaiting = awaitedAction(tutorial.step);
 
+  // The shipyard is its own full-screen overlay with no match header behind
+  // it, so the coach doesn't need to clear one there — pointing this out to
+  // CSS keeps the shop screen from carrying a top gap sized for a header
+  // that isn't on screen.
+  const inShop = tutorial.you?.phase === "shop";
+
   return (
     <div
       className="tutorial-shell"
       data-awaiting={awaiting ?? undefined}
       data-spotlight={tutorial.step.spotlight ?? undefined}
+      data-shop={inShop ? "" : undefined}
     >
       {/* The board is never veiled. You are being taught about these dice —
           dimming them to make room for a text card defeats the whole point. */}
