@@ -19,6 +19,7 @@ import { HelpFlagFace, HelpShipFace } from "@/components/HelpArt";
 import { HullShape } from "@/components/HullShape";
 import { StatIcon } from "@/components/StatIcon";
 import {
+  FLAGSHIP_FACES,
   FORMATIONS,
   HOW_TO_PLAY,
   STRAIGHT_LADDER,
@@ -183,23 +184,22 @@ export function HowToPlayBody() {
 
       {/* ---------- 4. The flagship ---------- */}
       <Card title="Your flagship">
-        <div className="help-die-legend">
-          <div className="help-die-legend-item">
-            <HelpFlagFace face={1} size={80} />
-            <div>
-              <strong>Never fights. Boosts the fleet.</strong>
-              <span>
-                The centre die rolls with your fleet but rolls no Attack and no
-                Shields of its own. Whatever face it lands on boosts every
-                matching ship around it, and levelling it up makes that boost
-                bigger.
-              </span>
-            </div>
-          </div>
-        </div>
         <Copy>
-          Once a game you may turn it one face up or down — often the nudge
-          that completes a straight or a line.
+          The centre die rolls with your fleet but rolls no Attack and no
+          Shields of its own. Whatever face it lands on boosts the ships
+          around it — so there are six of these to know, not one.
+        </Copy>
+        <dl className="help-flag-faces">
+          {FLAGSHIP_FACES.map((face) => (
+            <div key={face.face} className="help-flag-face">
+              <HelpFlagFace face={face.face} size={54} />
+              <dt>{face.name}</dt>
+              <dd>{face.short}</dd>
+            </div>
+          ))}
+        </dl>
+        <Copy>
+          {`Levelling the flagship makes every one of those boosts bigger. And once a game you may turn it one face up or down — often the nudge that completes a straight or a line.`}
         </Copy>
       </Card>
 

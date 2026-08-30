@@ -109,6 +109,13 @@ export function HomeScreen() {
               </h1>
             </header>
 
+            {/* Straight under the wordmark, above the name field and the
+                modes: someone who has never played this should not have to
+                scroll past three ways to start a match to find the rules. */}
+            <Button tone="ghost" full onClick={() => setHelpOpen(true)}>
+              How to play
+            </Button>
+
             {/* Name */}
             <Panel className="p-3.5">
               <label className="t-eyebrow mb-1.5 block" htmlFor="commander">
@@ -242,10 +249,6 @@ export function HomeScreen() {
                 </div>
               </Panel>
             )}
-
-            <Button tone="ghost" full onClick={() => setHelpOpen(true)}>
-              How to play
-            </Button>
 
             {/* Now on the field */}
             {firebaseConfigured && (
