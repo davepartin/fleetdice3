@@ -975,21 +975,30 @@ button {
     box-shadow: 0 0 15px rgb(255 210 61 / 0.18);
   }
 
-  .match-hud-solo .tally-strip {
+  /* Same shrink for the How to play diagram's TallyStrip — it has less
+     room than the real roll dock (two more levels of card padding around
+     it), so without this its labels ran into the card's edge. */
+  .match-hud-solo .tally-strip,
+  .help-screen-callout-art .tally-strip {
     gap: 0.32rem;
   }
-  .match-hud-solo .tally-cell {
+  .match-hud-solo .tally-cell,
+  .help-screen-callout-art .tally-cell {
     min-height: 48px;
     padding: 0.35rem 0.1rem 0.3rem;
   }
-  .match-hud-solo .tally-cell .t-num {
+  .match-hud-solo .tally-cell .t-num,
+  .help-screen-callout-art .tally-cell .t-num {
     font-size: var(--text-sm);
   }
   .match-hud-solo .tally-cell-attack .t-num,
-  .match-hud-solo .tally-cell-shield .t-num {
+  .match-hud-solo .tally-cell-shield .t-num,
+  .help-screen-callout-art .tally-cell-attack .t-num,
+  .help-screen-callout-art .tally-cell-shield .t-num {
     font-size: var(--text-base);
   }
-  .match-hud-solo .tally-cell .t-eyebrow {
+  .match-hud-solo .tally-cell .t-eyebrow,
+  .help-screen-callout-art .tally-cell .t-eyebrow {
     font-size: var(--text-xs);
     letter-spacing: 0.07em;
   }
@@ -1931,14 +1940,19 @@ button {
 .help-screen-diagram {
   display: flex;
   flex-direction: column;
-  gap: 0.9rem;
   margin-top: 0.85rem;
 }
+/* No box of its own — the card it lives in already draws one border, and
+   the real HUD pieces inside (HpRail, the board cells, TallyStrip) each
+   draw their own too. A third nested border here was one too many; a top
+   rule between callouts is enough to tell them apart. */
 .help-screen-callout {
-  padding: 0.85rem 0.85rem 0.95rem;
-  border-radius: 14px;
-  border: 1px solid rgb(255 255 255 / 0.08);
-  background: rgb(255 255 255 / 0.025);
+  padding: 1.1rem 0 0;
+  border-top: 1px solid rgb(255 255 255 / 0.08);
+}
+.help-screen-callout:first-child {
+  padding-top: 0;
+  border-top: none;
 }
 .help-screen-callout-head {
   display: flex;
@@ -1953,6 +1967,13 @@ button {
 .help-screen-callout-art {
   display: flex;
   justify-content: center;
+}
+/* Flex items default to a min-width sized to their own content, so a wide
+   piece (TallyStrip's five labelled cells, especially) would rather push
+   past this callout's edge than shrink to fit it. */
+.help-screen-callout-art > * {
+  width: 100%;
+  min-width: 0;
 }
 .help-screen-board {
   width: 100%;

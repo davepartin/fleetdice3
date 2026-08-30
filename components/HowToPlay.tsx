@@ -265,8 +265,10 @@ export function HowToPlayBody() {
       </Card>
 
       <Card title={yard?.title ?? "The shipyard"}>
-        <Copy>{yard?.summary ?? ""}</Copy>
-        <DataTable id="shipyard" />
+        <Copy>
+          With your Energy: upgrade the flagship, open a new bay, buy a new
+          ship, or upgrade a ship you already have.
+        </Copy>
       </Card>
 
       <Card title={win?.title ?? "Winning"}>
