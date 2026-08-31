@@ -502,15 +502,15 @@ export function Sheet({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col">
+    <div className="sheet-overlay fixed inset-x-0 top-0 z-50 flex flex-col">
       <button
         type="button"
         aria-label="Close"
         onClick={onClose}
         className="absolute inset-0 bg-black/72 backdrop-blur-sm"
       />
-      <div className="anim-rise relative mt-auto flex max-h-[92dvh] flex-col">
-        <div className="panel mx-2 mb-2 flex min-h-0 flex-col overflow-hidden rounded-[22px]">
+      <div className="anim-rise relative mt-auto flex max-h-full flex-col">
+        <div className="sheet-panel panel mx-2 flex min-h-0 flex-col overflow-hidden rounded-[22px]">
           <div className="flex items-center justify-between gap-3 px-5 pb-3 pt-4">
             <h2 className="t-display text-xl">{title}</h2>
             <Button tone="ghost" size="sm" onClick={onClose} ariaLabel="Close">
