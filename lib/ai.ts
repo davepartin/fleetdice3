@@ -84,9 +84,20 @@ export const DIFFICULTIES: Difficulty[] = ["low", "medium", "hard", "expert"];
  * for them rather than dumping it all on the shipyard.
  *
  * Expert is not a cheater. Same dice, same prizes, no peeking at your roll.
- * It thinks as well as Hard, then starts with a tougher flagship you can
- * see on the health bar. Extra health without a brain still dies in a long
- * fight — that is why the two are stacked, not swapped.
+ * What it has over Hard is `readsOpponent` — the race arithmetic in
+ * `readOpponent` — plus a starting health edge you can see on the bar.
+ *
+ * The health is there because the read alone did not carry the tier, and
+ * that was measured twice rather than assumed. Wiring it into Energy and
+ * blocking scored 47.8% +/- 4.0 against Hard; also pricing it into every
+ * shipyard purchase scored 47.6% +/- 3.7. Both are coin flips. Hard already
+ * samples 120 reroll shapes, plays every line and blocks near-optimally, so
+ * there is little left to be smarter about inside these rules.
+ *
+ * The read stays anyway, because it is what makes Expert *play* unlike Hard
+ * — racing when ahead, digging in when behind — and a top tier that merely
+ * outlasts you is the dullest way to lose. The health is what makes the
+ * rung mean something, and it is half of what it used to be.
  */
 export type DifficultyKnobs = {
   samples: number;
@@ -161,11 +172,11 @@ export const DIFFICULTY: Record<Difficulty, DifficultyKnobs> = {
     tokenThreshold: 3,
     braceCaution: 0.22,
     rerollReserve: 5,
-    startHpBonus: 0,
+    startHpBonus: 10,
     startEnergyBonus: 0,
     readsOpponent: true,
     label: "Expert",
-    blurb: "Reads your fleet and works out who wins the race, then races or digs in to suit. Same dice, same rules, same health as you — it just plays better.",
+    blurb: "Reads your fleet to work out who wins the race, then races or digs in to suit. Same dice and the same rules, and it starts on a little more health — you can see it on the bar.",
   },
 };
 
