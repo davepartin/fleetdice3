@@ -581,15 +581,15 @@ export function buildFacedownAtlas(
       : "rgba(182,193,220,0.55)"; // --color-hull-200, dimmed for the idle hull
     ctx.fillText(label, cx, cy);
     if (spent) {
-      // One bar straight through the size. A ship that is out for the round
-      // should read as struck through at a glance, without hiding the number
-      // that says what returns next round.
-      ctx.strokeStyle = "rgba(255,77,77,0.92)"; // --color-attack
-      ctx.lineWidth = cell * 0.055;
+      // A diagonal bar, the way a sign says "not this". Drawn across rather
+      // than through the middle of the glyph so the size stays readable
+      // underneath — that number is the whole point of the mark.
+      ctx.strokeStyle = "rgba(255,77,77,0.95)"; // --color-attack
+      ctx.lineWidth = cell * 0.06;
       ctx.lineCap = "round";
       ctx.beginPath();
-      ctx.moveTo(cx - cell * 0.26, cy);
-      ctx.lineTo(cx + cell * 0.26, cy);
+      ctx.moveTo(cx - cell * 0.24, cy + cell * 0.2);
+      ctx.lineTo(cx + cell * 0.24, cy - cell * 0.2);
       ctx.stroke();
     }
     ctx.restore();

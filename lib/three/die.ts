@@ -134,11 +134,18 @@ function sharedFor(kind: DieKind, font: string): Shared {
   // ship should look exactly alike.
   const spentMap =
     kind === "flag" ? null : buildFacedownAtlas(sides, 384, numeralFontFamily(), "spent");
+  // Lit exactly like the facedown hull above. There is almost nothing to
+  // reflect in this scene, so a rough, non-metal, clearcoat-less surface
+  // renders as a black hole — which is precisely what a damaged ship looked
+  // like before. The clearcoat and env intensity are what make it a hull.
   const spent = new THREE.MeshPhysicalMaterial({
     map: spentMap ?? undefined,
     color: new THREE.Color(spentMap ? 0xffffff : 0x4a2f36),
-    roughness: 0.88,
-    metalness: 0.02,
+    metalness: 0.35,
+    roughness: 0.52,
+    clearcoat: 0.7,
+    clearcoatRoughness: 0.3,
+    envMapIntensity: 0.9,
   });
 
   const shared: Shared = { built, atlas, material, hidden, hiddenMap, spent, spentMap, outline, outlineGeometry };
@@ -783,8 +790,11 @@ export function createDie(kind: DieKind, font: string, scale = 1, cellSize = 0, 
         const squash = 1 + (1 - punch) * 0.26;
         pivot.scale.set(squash, 2 - squash, squash);
       } else {
-        const restY = state.disabled ? 0.32 : 1;
-        const restXZ = state.disabled ? 1.18 : 1;
+        // Settled, not squashed. At 0.32 the hull collapsed into a puddle and
+        // took its size with it — the one thing you need from a ship that is
+        // out is which ship it was.
+        const restY = state.disabled ? 0.66 : 1;
+        const restXZ = state.disabled ? 1.06 : 1;
         if (
           Math.abs(pivot.scale.x - restXZ) > 0.001 ||
           Math.abs(pivot.scale.y - restY) > 0.001
