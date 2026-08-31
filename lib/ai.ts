@@ -564,7 +564,13 @@ const SHIP_WORTH: Record<DieSize, number> = { 4: 7.5, 6: 8.8, 8: 10.6, 10: 12.4 
 const UPGRADE_WORTH: Record<number, number> = { 4: 1.3, 6: 1.8, 8: 1.8 };
 
 /** Value per Energy of a purchase, shaded by the plan being played. */
-function buyScore(player: PlayerState, buy: Buy, plan: Plan, round: number): number {
+function buyScore(
+  player: PlayerState,
+  buy: Buy,
+  plan: Plan,
+  round: number,
+  urgency = 0,
+): number {
   const shipCount = player.ships.length;
   let worth: number;
   let cost = buy.cost;
@@ -605,6 +611,18 @@ function buyScore(player: PlayerState, buy: Buy, plan: Plan, round: number): num
     else if (hpRatio > 0.75 && round <= 6) bias *= 1.2;
   }
 
+  // What the other fleet is doing, priced in. Losing the race means buying
+  // hulls that can block a volley next round; winning it means buying the size
+  // that ends the match before the long game matters. A bay that pays in three
+  // rounds, or a flagship level that pays in five, is worth less to a
+  // commander who does not have three rounds.
+  if (urgency !== 0) {
+    if (buy.kind === "ship") bias *= 1 + urgency * 0.4;
+    else if (buy.kind === "upgrade") bias *= 1 - urgency * 0.3;
+    else if (buy.kind === "slot") bias *= 1 - urgency * 0.35;
+    else bias *= 1 - urgency * 0.55;
+  }
+
   return (worth / Math.max(1, cost)) * bias;
 }
 
@@ -615,6 +633,7 @@ export function planShopping(
   round: number,
   greed = 1,
   rerollReserve = 2,
+  urgency = 0,
 ): MatchAction[] {
   const actions: MatchAction[] = [];
   const scratch = structuredClone(player);
@@ -625,7 +644,7 @@ export function planShopping(
     const buys = affordableBuys(scratch).filter((buy) => buy.cost <= scratch.energy - reserve);
     if (!buys.length) break;
     const ranked = buys
-      .map((buy) => ({ buy, score: buyScore(scratch, buy, plan, round) }))
+      .map((buy) => ({ buy, score: buyScore(scratch, buy, plan, round, urgency) }))
       .sort((a, b) => b.score - a.score);
     const pick =
       greed >= 1 || Math.random() < greed
@@ -780,10 +799,7 @@ export function readOpponent(state: MatchState, side: SideId): Read | null {
  * and simply arrive first.
  */
 export function racePressure(base: number, read: Read | null): number {
-  if (!read || !Number.isFinite(read.edge)) return base;
-  // One round of margin either way is noise; three is a decided race.
-  const swing = Math.max(-1, Math.min(1, -read.edge / 3));
-  return Math.max(0, Math.min(1, base + swing * 0.3));
+  return Math.max(0, Math.min(1, base + urgencyOf(read) * 0.3));
 }
 
 /**
@@ -794,10 +810,18 @@ export function racePressure(base: number, read: Read | null): number {
  * the dice. When you are losing it, surviving to roll again is the only thing
  * that matters, so pay the ships.
  */
+/**
+ * The race as one dial: +1 you are losing badly, -1 you are winning easily.
+ * Everything that reads the other fleet goes through this, so the tier has one
+ * opinion about the match rather than three that can disagree.
+ */
+export function urgencyOf(read: Read | null): number {
+  if (!read || !Number.isFinite(read.edge)) return 0;
+  return Math.max(-1, Math.min(1, -read.edge / 3));
+}
+
 export function raceCaution(base: number, read: Read | null): number {
-  if (!read || !Number.isFinite(read.edge)) return base;
-  const swing = Math.max(-1, Math.min(1, -read.edge / 3));
-  return Math.max(0.1, Math.min(0.85, base + swing * 0.22));
+  return Math.max(0.1, Math.min(0.85, base + urgencyOf(read) * 0.22));
 }
 
 /**
@@ -829,7 +853,14 @@ export function nextActions(state: MatchState, side: SideId, brain: Brain): Matc
   switch (player.phase) {
     case "shop": {
       return [
-        ...planShopping(player, brain.plan, player.round, knobs.greed, knobs.rerollReserve),
+        ...planShopping(
+          player,
+          brain.plan,
+          player.round,
+          knobs.greed,
+          knobs.rerollReserve,
+          urgencyOf(read),
+        ),
         { type: "ready" },
       ];
     }
