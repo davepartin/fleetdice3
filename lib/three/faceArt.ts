@@ -8,6 +8,8 @@
  */
 
 import * as THREE from "three";
+import { addHullPath } from "@/components/HullShape";
+import type { DieSize } from "@/lib/engine";
 
 export type MarkKind = "energy" | "repair" | "direct";
 
@@ -615,4 +617,75 @@ export function flagFaceSpec(value: number): FaceSpec {
     role: "flag",
     caption: FLAG_CAPTION[value] ?? "",
   };
+}
+
+
+/**
+ * A hull drawn as its shape, flat and head-on.
+ *
+ * A die that has not rolled has no number to show, and its real 3D silhouette
+ * is no help: a d8 seen from the board's angle is a facetted lump, not the
+ * diamond the rest of the game uses for it. So an unrolled hull — and one out
+ * for the round — is drawn as the set shape instead: a d4 triangle, a d6
+ * square, a d8 diamond, a d10 pentagon, the same silhouettes the fleet icons
+ * and the help screen use.
+ *
+ * `spent` adds the red tint and the bar through it. Either way the size is
+ * written on the hull, because that is the thing a player needs and cannot
+ * recall: which ship this is, and when it comes back.
+ */
+export function paintHullPlate(
+  sides: DieSize,
+  size: number,
+  numeralFont: string,
+  variant: "idle" | "spent" = "spent",
+): HTMLCanvasElement {
+  const spent = variant === "spent";
+  const canvas = document.createElement("canvas");
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext("2d")!;
+
+  ctx.save();
+  addHullPath(ctx, sides, size);
+  ctx.fillStyle = spent ? "rgba(74,26,34,0.86)" : "rgba(43,52,80,0.92)";
+  ctx.fill();
+  ctx.strokeStyle = spent
+    ? "rgba(255,77,77,0.95)" // --color-attack
+    : "rgba(182,193,220,0.75)"; // --color-hull-200
+  ctx.lineWidth = size * 0.038;
+  ctx.lineJoin = "round";
+  ctx.stroke();
+  ctx.restore();
+
+  // The size, sitting inside the hull rather than on the deck beside it.
+  const cy = sides === 4 ? size * 0.6 : size * 0.5;
+  ctx.save();
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.font = `700 ${size * 0.24}px ${numeralFont}`;
+  ctx.strokeStyle = "rgba(10,4,8,0.8)";
+  ctx.lineWidth = size * 0.05;
+  ctx.lineJoin = "round";
+  ctx.strokeText(`D${sides}`, size / 2, cy);
+  ctx.fillStyle = spent ? "rgba(255,226,229,0.94)" : "rgba(214,223,244,0.9)";
+  ctx.fillText(`D${sides}`, size / 2, cy);
+  ctx.restore();
+
+  if (!spent) return canvas;
+
+  // Struck through, clipped to the hull so the bar never floats outside it.
+  ctx.save();
+  addHullPath(ctx, sides, size);
+  ctx.clip();
+  ctx.strokeStyle = "rgba(255,77,77,0.98)";
+  ctx.lineWidth = size * 0.062;
+  ctx.lineCap = "round";
+  ctx.beginPath();
+  ctx.moveTo(size * 0.12, size * 0.82);
+  ctx.lineTo(size * 0.88, size * 0.2);
+  ctx.stroke();
+  ctx.restore();
+
+  return canvas;
 }

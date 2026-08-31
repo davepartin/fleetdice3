@@ -97,6 +97,8 @@ export type SyncOptions = {
   selected?: Set<string>;
   /** Ship ids currently committed to taking the incoming volley. */
   damageSelected?: Set<string>;
+  /** Ship ids that can be tapped to block right now — they pulse to say so. */
+  blockable?: Set<string>;
   /** Live score while the player is still rerolling, including formations. */
   previewTally?: Tally | null;
   /** Show the enemy's dice. False until both commanders have locked in. */
@@ -330,6 +332,7 @@ export function createArena(canvas: HTMLCanvasElement, options: ArenaOptions = {
       die.setState({
         selected: deckKey === "you" && (opts.selected?.has(id) ?? false),
         damageSelected: deckKey === "you" && (opts.damageSelected?.has(id) ?? false),
+        blockable: deckKey === "you" && (opts.blockable?.has(id) ?? false),
         disabled: spec.disabled,
         enemy: deckKey === "enemy",
       });

@@ -1047,9 +1047,31 @@ button {
   .match-hud-solo .brace-mobile-guide {
     display: block;
   }
+  /* Five terms plus four operators do not fit 390px, and the dock clips
+     horizontally — so the row silently ate "After" rather than wrapping.
+     Let it wrap and tighten it instead; the body scrolls vertically. */
+  /* One line, always. The dock is capped at 240px and clips, so a second
+     row does not appear below the equation — it disappears behind the
+     confirm button. Everything here is sized to keep five terms on one. */
   .match-hud-solo .brace-summary {
-    min-height: 44px;
-    padding-block: 0.45rem;
+    flex-wrap: nowrap;
+    gap: 0.3rem;
+    padding-inline: 0.35rem;
+    padding-block: 0.4rem;
+  }
+  .match-hud-solo .brace-summary .t-num {
+    font-size: var(--text-lg);
+  }
+  .match-hud-solo .brace-summary .t-eyebrow {
+    font-size: 0.5rem;
+    letter-spacing: 0.06em;
+  }
+  .match-hud-solo .brace-equation {
+    gap: 0.3rem;
+  }
+  .match-hud-solo .brace-blocked-box {
+    min-width: 1.7rem;
+    padding-inline: 0.2rem;
   }
   .match-hud-solo .brace-dock .btn-lg {
     min-height: 56px;
@@ -3053,20 +3075,27 @@ button {
   position: relative;
 }
 
-/* Reads as a control, not a label — it has to invite a tap, because it is now
-   the only way to reach Home, sound and the rules. */
+/* Sized to the bar, not the other way round: the health numbers set the rail's
+   height, and this sits inside whatever they leave. The visible chip is small;
+   the tap target is not — ::after widens it past the border without taking any
+   layout, so a small control on a phone is still comfortably hittable. */
 .match-menu-btn {
+  position: relative;
   display: flex;
-  min-height: 34px;
   align-items: center;
-  gap: 0.35rem;
   border: 1px solid var(--color-hull-600);
-  border-radius: 0.55rem;
+  border-radius: 0.4rem;
   background: color-mix(in srgb, var(--color-hull-800) 80%, transparent);
-  padding: 0.25rem 0.5rem;
-  color: var(--color-hull-200);
+  padding: 0.12rem 0.42rem;
+  color: var(--color-hull-300);
   cursor: pointer;
   transition: border-color 120ms ease, color 120ms ease;
+}
+
+.match-menu-btn::after {
+  content: "";
+  position: absolute;
+  inset: -11px -8px;
 }
 
 .match-menu-btn:hover,
@@ -3075,11 +3104,11 @@ button {
   color: var(--color-hull-100);
 }
 
-.match-menu-round {
+.match-menu-btn {
   font-family: var(--font-display);
-  font-size: 0.72rem;
-  letter-spacing: 0.06em;
-  font-variant-numeric: tabular-nums;
+  font-size: 0.58rem;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
   white-space: nowrap;
 }
 
@@ -3117,17 +3146,56 @@ button {
 
 @media (min-width: 641px) and (min-height: 641px) {
   .match-menu-btn {
-    min-height: 38px;
-    padding-inline: 0.6rem;
+    padding-inline: 0.55rem;
+    font-size: 0.64rem;
   }
-  .match-menu-round { font-size: 0.78rem; }
 }
 
-/* A phone needs the whole 44px target even though the bar is tighter there. */
-@media (max-width: 640px), (max-height: 640px) {
-  .match-menu-btn {
-    min-height: 40px;
-    min-width: 44px;
-    justify-content: center;
-  }
+
+
+/* The round rides beside "Flagship" now that the top bar is one line: it is
+   context, not a headline, so it sits in the quieter type of the rail. */
+.commander-round {
+  margin-left: 0.5rem;
+  color: var(--color-hull-400);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* The running total of damage the fleet is taking for the flagship. Boxed and
+   white because it is the one number on this screen that answers to what you
+   are doing right now, rather than to what the enemy rolled. */
+.brace-blocked-box {
+  display: inline-flex;
+  min-width: 2.1rem;
+  align-items: center;
+  justify-content: center;
+  border: 1.5px solid rgb(255 255 255 / 0.85);
+  border-radius: 0.45rem;
+  padding: 0.05rem 0.3rem;
+  color: #fff;
+  font-variant-numeric: tabular-nums;
+}
+
+/* The four terms of the health arithmetic travel together. Wrapping happens
+   between the Blocked box and this group, never inside it — a stranded "= 50"
+   on its own line reads as a bug, not as a sum. */
+.brace-equation {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+/* Says why a turn was skipped. One line, under the arithmetic that already
+   shows the Direct hit landing anyway. */
+.report-noblock {
+  margin-top: 0.5rem;
+  border-left: 2px solid var(--color-shield);
+  padding-left: 0.5rem;
+  font-size: var(--text-sm);
+  line-height: 1.35;
+  color: var(--color-hull-200);
 }

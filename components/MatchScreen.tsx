@@ -34,7 +34,7 @@ import { FLAGSHIP_FACES, NOUN, STAT_LABEL } from "@/lib/reference";
 import { isPhoneLayout } from "@/lib/viewport";
 import type { MatchController } from "@/lib/useMatch";
 import { pendingThrow, pendingThrowReady, type PendingThrow } from "@/lib/throwSync";
-import { createArena, type Arena, type Focus } from "@/lib/three/arena";
+import { createArena, type Arena, type Focus, braceCandidates } from "@/lib/three/arena";
 import { waitForFonts } from "@/lib/three/fonts";
 import { audio } from "@/lib/audio";
 import { Button, Chip, HpRail, Notice, Sheet, TallyStrip } from "./ui";
@@ -194,6 +194,16 @@ export function MatchScreen({ controller, onExit, title, subtitle }: Props) {
       instant: firstSyncRef.current,
       selected,
       damageSelected: phase === "brace" ? braceShips : undefined,
+      // Only the ships still available to send in — one already committed
+      // shows through its own selection marker instead.
+      blockable:
+        phase === "brace" && you
+          ? new Set(
+              braceCandidates(you)
+                .map((ship) => ship.id)
+                .filter((id) => !braceShips.has(id)),
+            )
+          : undefined,
       previewTally: tally,
       revealEnemy: phase === "brace" || phase === "report" || phase === "over",
       thrown: throwReady ? pending?.ids : undefined,
@@ -531,7 +541,6 @@ export function MatchScreen({ controller, onExit, title, subtitle }: Props) {
             className="min-w-0 flex-1"
             center={
               <MatchMenu
-                round={you.round}
                 muted={muted}
                 onHome={() => {
                   if (cancel && state.status !== "finished") {
@@ -796,6 +805,7 @@ function YourHealth({ you }: { you: PlayerState }) {
       <span className="commander-name t-eyebrow shrink-0">
         <span className="commander-name-full">{you.name}</span>
         <span className="commander-name-mobile">{NOUN.flagship}</span>
+        <span className="commander-round">Round {you.round}</span>
       </span>
       <span className="commander-energy-cluster flex shrink-0 items-stretch gap-1">
         <span className="commander-bank t-num c-energy" aria-label={`${you.energy} Energy in bank`}>
@@ -1003,14 +1013,23 @@ function EquationTerm({
   value,
   label,
   tone,
+  boxed,
 }: {
   value: number;
   label: string;
   tone?: "attack" | "repair";
+  /** Draw the number in a white box — a running tally, not a fixed term. */
+  boxed?: boolean;
 }) {
   return (
     <div className="flex flex-col items-center leading-none">
-      <span className={`t-num text-xl ${tone ? `c-${tone}` : "text-white"}`}>{value}</span>
+      <span
+        className={`t-num text-xl ${boxed ? "brace-blocked-box" : ""} ${
+          tone ? `c-${tone}` : "text-white"
+        }`}
+      >
+        {value}
+      </span>
       <span className="t-eyebrow mt-0.5 text-[0.6rem] c-dim">{label}</span>
     </div>
   );
@@ -1038,6 +1057,7 @@ function BraceDock({
   const after = you.hp - landing + heal;
   const fatal = after <= 0;
   const war = you.round > TUNING.escalateAfterRound ? escalationFor(you.round) : 0;
+  const [lastStand, setLastStand] = useState(false);
 
   return (
     <div className="brace-dock panel panel-you flex flex-col gap-3 p-3.5">
@@ -1068,7 +1088,7 @@ function BraceDock({
             the next round. Nothing blocks Direct.
           </p>
           <p className="brace-mobile-guide mt-1 text-sm font-semibold c-attack">
-            Tap a ship to block — it takes the hit, then sits out the next round.
+            Tap ships to block, out for one round.
           </p>
         </div>
 
@@ -1094,33 +1114,90 @@ function BraceDock({
         </div>
 
         <div className="brace-summary flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-black/30 px-2 py-2.5">
-          <EquationTerm value={you.hp} label="Now" />
-          <span className="t-num c-dim text-lg">−</span>
-          <EquationTerm value={landing} label="Damage" tone="attack" />
-          {heal > 0 && (
-            <>
-              <span className="t-num c-dim text-lg">+</span>
-              <EquationTerm value={heal} label="Repair" tone="repair" />
-            </>
-          )}
-          <span className="t-num c-dim text-lg">=</span>
-          <EquationTerm value={Math.max(0, after)} label="After" tone={fatal ? "attack" : "repair"} />
+          {/* What the fleet is taking instead of the flagship. Starts at zero
+            * and climbs with every ship tapped, so the trade the screen is
+            * asking about has a number on it while you are still deciding. */}
+          <EquationTerm value={blocked} label="Blocked" boxed />
+          {/* The arithmetic is one unit. On a narrow phone it drops to its own
+            * line whole, rather than wrapping mid-expression and stranding
+            * "= 50" under a dangling equals. */}
+          <span className="brace-equation">
+            <EquationTerm value={you.hp} label="Now" />
+            <span className="t-num c-dim text-lg">−</span>
+            <EquationTerm value={landing} label="Damage" tone="attack" />
+            {heal > 0 && (
+              <>
+                <span className="t-num c-dim text-lg">+</span>
+                <EquationTerm value={heal} label="Repair" tone="repair" />
+              </>
+            )}
+            <span className="t-num c-dim text-lg">=</span>
+            <EquationTerm value={Math.max(0, after)} label="After" tone={fatal ? "attack" : "repair"} />
+          </span>
         </div>
 
         {fatal && (
           <Notice tone="warn">
-            This volley finishes your flagship even with every ship blocking.
+            {chosen.size === 0
+              ? "Taking this on the flagship destroys it. Send ships in to survive."
+              : "Still fatal. Send more ships in, or accept it."}
           </Notice>
         )}
       </div>
 
       <div className="brace-dock-action">
-        <Button tone="primary" size="lg" full onClick={onConfirm} disabled={busy}>
-          {chosen.size === 0
-            ? "Take it all on the flagship"
-            : `Block ${Math.min(blocked, you.incoming)} with ${chosen.size} ${chosen.size === 1 ? "ship" : "ships"}`}
+        <Button
+          tone="primary"
+          size="lg"
+          full
+          onClick={() => (fatal ? setLastStand(true) : onConfirm())}
+          disabled={busy}
+        >
+          {fatal
+            ? "Block or be destroyed"
+            : chosen.size === 0
+              ? "Take it all on the flagship"
+              : `Block ${Math.min(blocked, you.incoming)} with ${chosen.size} ${chosen.size === 1 ? "ship" : "ships"}`}
         </Button>
       </div>
+
+      {/* Losing the match to a mis-tap is a different feeling from choosing to
+        * go down. This is the difference between them: the last screen before
+        * the end says so plainly, and says it is still yours to take back. */}
+      <Sheet
+        open={lastStand}
+        onClose={() => setLastStand(false)}
+        title="Go down with the ship?"
+        footer={
+          <div className="flex flex-col gap-2">
+            <Button tone="ghost" full onClick={() => setLastStand(false)}>
+              Go back and block
+            </Button>
+            <Button
+              tone="primary"
+              full
+              disabled={busy}
+              onClick={() => {
+                setLastStand(false);
+                onConfirm();
+              }}
+            >
+              Accept defeat
+            </Button>
+          </div>
+        }
+      >
+        <p className="text-base leading-relaxed c-dim-bright">
+          This volley lands for <b className="c-attack">{landing}</b> and your flagship has{" "}
+          <b className="text-white">{you.hp}</b>. It will be <b className="c-attack">destroyed</b>,
+          and the {NOUN.game} ends here.
+        </p>
+        <p className="mt-3 text-base leading-relaxed c-dim-bright">
+          {available.length > chosen.size
+            ? "You still have ships that could step in front of it."
+            : "Every ship you have is already committed."}
+        </p>
+      </Sheet>
     </div>
   );
 }
@@ -1218,13 +1295,11 @@ function FlagshipLine({ you }: { you: PlayerState }) {
  * the least urgent thing on the bar, so it rides along on the button instead.
  */
 function MatchMenu({
-  round,
   muted,
   onHome,
   onSound,
   onHelp,
 }: {
-  round: number;
   muted: boolean;
   onHome(): void;
   onSound(): void;
@@ -1263,11 +1338,10 @@ function MatchMenu({
         className="match-menu-btn"
         aria-haspopup="menu"
         aria-expanded={open}
-        aria-label={`Round ${round} — game menu`}
+        aria-label="Settings"
         onClick={() => setOpen((was) => !was)}
       >
-        <GearIcon />
-        <span className="match-menu-round">Rd {round}</span>
+        Settings
       </button>
 
       {open && (
@@ -1287,16 +1361,6 @@ function MatchMenu({
         </div>
       )}
     </div>
-  );
-}
-
-function GearIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor"
-      strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <circle cx="12" cy="12" r="3.1" />
-      <path d="M12 2.6v2.6M12 18.8v2.6M21.4 12h-2.6M5.2 12H2.6M18.6 5.4l-1.8 1.8M7.2 16.8l-1.8 1.8M18.6 18.6l-1.8-1.8M7.2 7.2 5.4 5.4" />
-    </svg>
   );
 }
 

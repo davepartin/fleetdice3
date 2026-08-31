@@ -9,7 +9,15 @@
 
 import * as THREE from "three";
 import { buildDie, type BuiltDie } from "./polyhedron";
-import { buildAtlas, buildFacedownAtlas, faceSpec, flagFaceSpec, type Atlas } from "./faceArt";
+import {
+  buildAtlas,
+  buildFacedownAtlas,
+  faceSpec,
+  flagFaceSpec,
+  paintHullPlate,
+  type Atlas,
+} from "./faceArt";
+import type { DieSize } from "@/lib/engine";
 import { numeralFontFamily } from "./fonts";
 
 export type DieKind = 4 | 6 | 8 | 10 | "flag";
@@ -27,8 +35,14 @@ export type DieState = {
   flagRing?: boolean;
   /** Fleet Dice 1 semantic colour for the current flagship bonus. */
   flagRingColor?: number;
-  /** Chosen to absorb the incoming volley. */
+  /** Chosen to take the incoming volley. */
   damageSelected?: boolean;
+  /**
+   * Can be tapped to block right now. Breathes a slow gold pulse — the block
+   * screen asks for a choice the board gives no other sign of, and a ship that
+   * looks identical whether or not it can be tapped is not an invitation.
+   */
+  blockable?: boolean;
   /** Dimmed because it belongs to the other commander. */
   enemy?: boolean;
   /**
@@ -54,6 +68,8 @@ type Shared = {
   hidden: THREE.MeshPhysicalMaterial;
   /** The "D4"/"D6"/"D8"/"D10" label baked onto that blank hull. Hulls only — the flagship has no size to label. */
   hiddenMap: THREE.CanvasTexture | null;
+  idlePlate: THREE.CanvasTexture | null;
+  spentPlate: THREE.CanvasTexture | null;
   outline: THREE.Material;
   outlineGeometry: THREE.BufferGeometry;
 };
@@ -121,7 +137,22 @@ function sharedFor(kind: DieKind, font: string): Shared {
     envMapIntensity: 0.9,
   });
 
-  const shared: Shared = { built, atlas, material, hidden, hiddenMap, outline, outlineGeometry };
+  // Both plates are shared across every die of a size — they should all look
+  // exactly alike.
+  const plate = (variant: "idle" | "spent") => {
+    if (kind === "flag") return null;
+    const texture = new THREE.CanvasTexture(
+      paintHullPlate(sides as DieSize, 256, numeralFontFamily(), variant),
+    );
+    texture.colorSpace = THREE.SRGBColorSpace;
+    return texture;
+  };
+  const idlePlate = plate("idle");
+  const spentPlate = plate("spent");
+
+  const shared: Shared = {
+    built, atlas, material, hidden, hiddenMap, idlePlate, spentPlate, outline, outlineGeometry,
+  };
   CACHE.set(key, shared);
   return shared;
 }
@@ -134,6 +165,8 @@ export function clearDieCache() {
     shared.material.dispose();
     shared.hidden.dispose();
     shared.hiddenMap?.dispose();
+    shared.idlePlate?.dispose();
+    shared.spentPlate?.dispose();
     (shared.outline as THREE.Material).dispose();
   }
   CACHE.clear();
@@ -251,7 +284,12 @@ export function createDie(kind: DieKind, font: string, scale = 1, cellSize = 0, 
   mesh.receiveShadow = false;
   pivot.add(mesh);
 
-  const outline = new THREE.Mesh(shared.outlineGeometry, shared.outline);
+  // Cloned per die rather than shared: an unrolled hull needs a lighter rim
+  // than a rolled one, and the rim is the only thing that follows the hull's
+  // real silhouette — anything painted into the face texture gets clipped by
+  // the face shape, which is a triangle on a d4.
+  const outlineMaterial = (shared.outline as THREE.MeshBasicMaterial).clone();
+  const outline = new THREE.Mesh(shared.outlineGeometry, outlineMaterial);
   outline.scale.setScalar(1.012);
   pivot.add(outline);
 
@@ -414,6 +452,31 @@ export function createDie(kind: DieKind, font: string, scale = 1, cellSize = 0, 
     damageBars.push(bar);
   }
 
+  // The "out for a round" plate. Head-on and flat, so it reads the same on
+  // every screen and at every camera angle.
+  // One plate, two faces: the hull waiting to roll, and the hull sat out. Both
+  // are the shape rather than the die, so a d8 is a diamond at every angle.
+  const plateMaterial = shared.idlePlate
+    ? new THREE.MeshBasicMaterial({
+        map: shared.idlePlate,
+        transparent: true,
+        opacity: 0,
+        depthWrite: false,
+        depthTest: false,
+        side: THREE.DoubleSide,
+      })
+    : null;
+  const plateMesh = plateMaterial
+    ? new THREE.Mesh(new THREE.PlaneGeometry(markerSize * 0.98, markerSize * 0.98), plateMaterial)
+    : null;
+  if (plateMesh) {
+    plateMesh.rotation.x = -Math.PI / 2;
+    plateMesh.position.y = -shared.built.seatHeight + 0.42 / Math.max(0.001, scale);
+    plateMesh.renderOrder = 5;
+    plateMesh.visible = false;
+    object.add(plateMesh);
+  }
+
   object.scale.setScalar(scale);
 
   const home = new THREE.Vector3();
@@ -441,6 +504,8 @@ export function createDie(kind: DieKind, font: string, scale = 1, cellSize = 0, 
   let spinSpeed = 0;
   let onLand: (() => void) | undefined;
   let landPunch = 0;
+  // Set from state, applied per frame — the pulse has to survive re-syncs.
+  let blockPulse = false;
   let throwCount = 0;
   let frameCount = 0;
 
@@ -451,7 +516,51 @@ export function createDie(kind: DieKind, font: string, scale = 1, cellSize = 0, 
   }
 
   function applyStateColours() {
+    // Two states are shown by the plate rather than the die: a hull that has
+    // not rolled, and one spending a round out. Neither has a number to show,
+    // and the die's own silhouette is not the shape the rest of the game uses
+    // for it.
+    const spentNow =
+      kind !== "flag" && (Boolean(state.disabled) || Boolean(state.damageSelected));
+    const idleNow = kind !== "flag" && !spentNow && Boolean(state.facedown);
+    const onPlate = spentNow || idleNow;
+    if (plateMesh && plateMaterial) {
+      plateMesh.visible = onPlate;
+      plateMaterial.opacity = onPlate ? 1 : 0;
+      const wanted = spentNow ? shared.spentPlate : shared.idlePlate;
+      if (onPlate && wanted && plateMaterial.map !== wanted) {
+        plateMaterial.map = wanted;
+        plateMaterial.needsUpdate = true;
+      }
+    }
+    mesh.visible = !onPlate;
+    outline.visible = !onPlate;
+    if (onPlate) {
+      glowMaterial.opacity = 0;
+      selectionMaterial.opacity = 0;
+      selectionFillMaterial.opacity = 0;
+      damageMaterial.opacity = 0;
+      for (const damageBar of damageBars) {
+        (damageBar.material as THREE.MeshBasicMaterial).opacity = 0;
+      }
+      barMaterial.opacity = 0;
+      linkMaterial.opacity = 0;
+      blockPulse = false;
+      contactMaterial.opacity = spentNow ? 0.2 : 0.32;
+      return;
+    }
+
     mesh.material = state.facedown ? shared.hidden : material;
+    // A hull waiting to roll is nearly the colour of the deck under it. A grey
+    // rim, thicker than the usual near-black one, is what makes a fleet read as
+    // ships rather than as dark patches in the board.
+    if (state.facedown) {
+      outlineMaterial.color.setHex(state.enemy ? 0x5a6a92 : 0x8593b8); // --color-hull-400 / -300
+      outline.scale.setScalar(1.055);
+    } else {
+      outlineMaterial.color.setHex(0x020409);
+      outline.scale.setScalar(1.012);
+    }
     contactMaterial.opacity = state.disabled ? 0.28 : 0.5;
     if (state.facedown) {
       glowMaterial.opacity = 0;
@@ -486,6 +595,15 @@ export function createDie(kind: DieKind, font: string, scale = 1, cellSize = 0, 
       material.roughness = 0.9;
       material.metalness = 0.02;
       glowMaterial.opacity = 0;
+    } else if (state.damageSelected) {
+      // Committed to the volley: it is spent, and next round it is disabled
+      // outright. Draining it now — rather than only stamping a mark on it —
+      // makes "these are the ships I gave up" readable at a glance.
+      material.roughness = 0.8;
+      material.metalness = 0.02;
+      material.color.setHex(0x4a5164);
+      material.emissiveIntensity = 0.02;
+      glowMaterial.opacity = 0;
     } else {
       material.roughness = kind === "flag" ? 0.5 : 0.34;
       material.metalness = 0.04;
@@ -496,6 +614,21 @@ export function createDie(kind: DieKind, font: string, scale = 1, cellSize = 0, 
           : kind === "flag" ? 0.04 : 0.14;
       glowMaterial.opacity = state.selected ? 0.3 : 0;
     }
+
+    // Already picked reads through its own selection marker, so the invitation
+    // stops the moment it is accepted.
+    blockPulse = Boolean(state.blockable) && !state.disabled && !state.damageSelected;
+    // Borrow the reroll marker rather than invent a second one: a ring around
+    // the cell is already this game's word for "this die is live", and the pool
+    // of light alone was invisible from the board's camera angle.
+    if (blockPulse) {
+      glowMaterial.color.setHex(0xffd23d); // --color-energy
+      selectionMaterial.color.setHex(0xffd23d);
+      selectionFillMaterial.color.setHex(0xffd23d);
+    } else {
+      selectionMaterial.color.setHex(0x69e6ff);
+      selectionFillMaterial.color.setHex(0x37cfff);
+    }
     const rerollSelected = !state.disabled && state.selected && !state.damageSelected;
     selectionMaterial.opacity = rerollSelected ? 1 : 0;
     // The black flagship shell covers more of its cell than a triangular hull,
@@ -503,7 +636,10 @@ export function createDie(kind: DieKind, font: string, scale = 1, cellSize = 0, 
     selectionFillMaterial.opacity = rerollSelected ? kind === "flag" ? 0.4 : 0.08 : 0;
     // A ship that took the hit gets a plain red X next round. That is a real
     // state mark, not the ambiguous glow that made the enemy board look broken.
-    damageMaterial.opacity = !state.disabled && state.damageSelected ? 0.94 : state.disabled ? 0.62 : 0;
+    // Only the ships picked this round get the X. A hull already out carries
+    // its strike-through in the face itself, and stacking both marks on one
+    // die read as noise rather than as two different states.
+    damageMaterial.opacity = !state.disabled && state.damageSelected ? 0.94 : 0;
     for (const damageBar of damageBars) {
       (damageBar.material as THREE.MeshBasicMaterial).opacity = damageMaterial.opacity;
     }
@@ -615,8 +751,23 @@ export function createDie(kind: DieKind, font: string, scale = 1, cellSize = 0, 
         (damageBar.material as THREE.MeshBasicMaterial).opacity = 0;
       }
     },
-    update(dt, _time) {
+    update(dt, time) {
       frameCount += 1;
+
+      if (blockPulse) {
+        // ~1.7s round trip. Slow enough to read as breathing rather than an
+        // alarm — this is the calmest screen in the game and it should stay so.
+        // Eased rather than a plain sine: a linear fade spends most of its
+        // time near the middle, which is what made the old range read flat.
+        // Squaring pushes the wave to its ends so the dark is properly dark
+        // and the bright is properly bright.
+        const raw = 0.5 + 0.5 * Math.sin(time * 3.7);
+        const wave = raw * raw * (3 - 2 * raw);
+        glowMaterial.opacity = 0.02 + wave * 0.66;
+        selectionMaterial.opacity = 0.1 + wave * 0.9;
+        selectionFillMaterial.opacity = wave * 0.2;
+        material.emissiveIntensity = 0.06 + wave * 0.34;
+      }
 
       if (launched) {
         launchAge += dt;
@@ -710,10 +861,19 @@ export function createDie(kind: DieKind, font: string, scale = 1, cellSize = 0, 
       // are all steady squares — see the note where they are built.
     },
     stats() {
-      return { throwCount, frameCount, flightTime, flightDelay, flightDuration, rolling };
+      return {
+        throwCount, frameCount, flightTime, flightDelay, flightDuration, rolling,
+        // The block-screen pulse is invisible to the DOM, so the harness needs
+        // a way to prove it is actually breathing.
+        blockPulse,
+        glowOpacity: Number(glowMaterial.opacity.toFixed(3)),
+      };
     },
     dispose() {
       material.dispose();
+      outlineMaterial.dispose();
+      plateMaterial?.dispose();
+      plateMesh?.geometry.dispose();
       glow.geometry.dispose();
       glowMaterial.dispose();
       contact.geometry.dispose();

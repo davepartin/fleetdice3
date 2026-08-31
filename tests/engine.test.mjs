@@ -835,3 +835,41 @@ test("a read with no opponent, or none at all, changes nothing", () => {
   assert.equal(racePressure(0.42, null), 0.42);
   assert.equal(raceCaution(0.22, null), 0.22);
 });
+
+/* ------------------------------------------------------------------ */
+/* A volley you cannot survive ends the match                          */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Both fleets rolled to their biggest even face: the guest swings as hard as it
+ * can, and the host rolls no shields at all to stop it. At 1 health that beats
+ * even a full wall of blockers; at full health it does not, which is the pair
+ * this needs.
+ */
+function lethalVolley(hostHp) {
+  const state = freshMatch(11);
+  applyAction(state, "host", { type: "roll", dice: [] });
+  applyAction(state, "guest", { type: "roll", dice: [] });
+  state.players.host.hp = hostHp;
+  const allAttack = (die) => ({ ...die, value: die.sides % 2 === 0 ? die.sides : die.sides - 1 });
+  state.players.guest.dice = state.players.guest.dice.map(allAttack);
+  state.players.host.dice = state.players.host.dice.map(allAttack);
+  applyAction(state, "host", { type: "submit" });
+  applyAction(state, "guest", { type: "submit" });
+  return state;
+}
+
+test("a volley no amount of blocking survives ends the match rather than asking", () => {
+  const state = lethalVolley(1);
+  const you = state.players.host;
+  assert.notEqual(you.phase, "brace", "never ask for a choice that cannot change the outcome");
+  assert.equal(state.status, "finished", "the match is over the moment it is decided");
+  assert.equal(state.winner, "guest", "and the other commander has won");
+  assert.ok(you.hp <= 0, `flagship should be destroyed, was ${you.hp}`);
+});
+
+test("a volley you could survive still asks you to block", () => {
+  const state = lethalVolley(60);
+  assert.equal(state.players.host.phase, "brace", "a real choice is still offered");
+  assert.equal(state.status, "active");
+});
