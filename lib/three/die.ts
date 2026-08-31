@@ -58,8 +58,10 @@ type Shared = {
   material: THREE.MeshPhysicalMaterial;
   /** A blank hull, for a fleet that has not shown its roll yet. */
   hidden: THREE.MeshPhysicalMaterial;
+  spent: THREE.MeshPhysicalMaterial;
   /** The "D4"/"D6"/"D8"/"D10" label baked onto that blank hull. Hulls only — the flagship has no size to label. */
   hiddenMap: THREE.CanvasTexture | null;
+  spentMap: THREE.CanvasTexture | null;
   outline: THREE.Material;
   outlineGeometry: THREE.BufferGeometry;
 };
@@ -127,7 +129,19 @@ function sharedFor(kind: DieKind, font: string): Shared {
     envMapIntensity: 0.9,
   });
 
-  const shared: Shared = { built, atlas, material, hidden, hiddenMap, outline, outlineGeometry };
+  // A ship that is out for the round: same hull, same size label, struck
+  // through and warmed. Shared rather than cloned per die — every damaged
+  // ship should look exactly alike.
+  const spentMap =
+    kind === "flag" ? null : buildFacedownAtlas(sides, 384, numeralFontFamily(), "spent");
+  const spent = new THREE.MeshPhysicalMaterial({
+    map: spentMap ?? undefined,
+    color: new THREE.Color(spentMap ? 0xffffff : 0x4a2f36),
+    roughness: 0.88,
+    metalness: 0.02,
+  });
+
+  const shared: Shared = { built, atlas, material, hidden, hiddenMap, spent, spentMap, outline, outlineGeometry };
   CACHE.set(key, shared);
   return shared;
 }
@@ -140,6 +154,8 @@ export function clearDieCache() {
     shared.material.dispose();
     shared.hidden.dispose();
     shared.hiddenMap?.dispose();
+    shared.spent.dispose();
+    shared.spentMap?.dispose();
     (shared.outline as THREE.Material).dispose();
   }
   CACHE.clear();
@@ -464,13 +480,22 @@ export function createDie(kind: DieKind, font: string, scale = 1, cellSize = 0, 
   }
 
   function applyStateColours() {
-    mesh.material = state.facedown ? shared.hidden : material;
+    mesh.material = state.facedown
+      ? shared.hidden
+      : state.disabled && kind !== "flag"
+        ? shared.spent
+        : material;
     // A hull waiting to roll is nearly the colour of the deck under it. A grey
     // rim, thicker than the usual near-black one, is what makes a fleet read as
     // ships rather than as dark patches in the board.
     if (state.facedown) {
       outlineMaterial.color.setHex(state.enemy ? 0x5a6a92 : 0x8593b8); // --color-hull-400 / -300
       outline.scale.setScalar(1.055);
+    } else if (state.disabled && kind !== "flag") {
+      // The rim is what separates one damaged hull from the next when three
+      // of them sit in a row.
+      outlineMaterial.color.setHex(0xff4d4d); // --color-attack
+      outline.scale.setScalar(1.06);
     } else {
       outlineMaterial.color.setHex(0x020409);
       outline.scale.setScalar(1.012);
@@ -550,7 +575,10 @@ export function createDie(kind: DieKind, font: string, scale = 1, cellSize = 0, 
     selectionFillMaterial.opacity = rerollSelected ? kind === "flag" ? 0.4 : 0.08 : 0;
     // A ship that took the hit gets a plain red X next round. That is a real
     // state mark, not the ambiguous glow that made the enemy board look broken.
-    damageMaterial.opacity = !state.disabled && state.damageSelected ? 0.94 : state.disabled ? 0.62 : 0;
+    // Only the ships picked this round get the X. A hull already out carries
+    // its strike-through in the face itself, and stacking both marks on one
+    // die read as noise rather than as two different states.
+    damageMaterial.opacity = !state.disabled && state.damageSelected ? 0.94 : 0;
     for (const damageBar of damageBars) {
       (damageBar.material as THREE.MeshBasicMaterial).opacity = damageMaterial.opacity;
     }

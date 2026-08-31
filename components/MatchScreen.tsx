@@ -1117,18 +1117,22 @@ function BraceDock({
             * and climbs with every ship tapped, so the trade the screen is
             * asking about has a number on it while you are still deciding. */}
           <EquationTerm value={blocked} label="Blocked" boxed />
-          <span className="t-num c-dim text-lg">·</span>
-          <EquationTerm value={you.hp} label="Now" />
-          <span className="t-num c-dim text-lg">−</span>
-          <EquationTerm value={landing} label="Damage" tone="attack" />
-          {heal > 0 && (
-            <>
-              <span className="t-num c-dim text-lg">+</span>
-              <EquationTerm value={heal} label="Repair" tone="repair" />
-            </>
-          )}
-          <span className="t-num c-dim text-lg">=</span>
-          <EquationTerm value={Math.max(0, after)} label="After" tone={fatal ? "attack" : "repair"} />
+          {/* The arithmetic is one unit. On a narrow phone it drops to its own
+            * line whole, rather than wrapping mid-expression and stranding
+            * "= 50" under a dangling equals. */}
+          <span className="brace-equation">
+            <EquationTerm value={you.hp} label="Now" />
+            <span className="t-num c-dim text-lg">−</span>
+            <EquationTerm value={landing} label="Damage" tone="attack" />
+            {heal > 0 && (
+              <>
+                <span className="t-num c-dim text-lg">+</span>
+                <EquationTerm value={heal} label="Repair" tone="repair" />
+              </>
+            )}
+            <span className="t-num c-dim text-lg">=</span>
+            <EquationTerm value={Math.max(0, after)} label="After" tone={fatal ? "attack" : "repair"} />
+          </span>
         </div>
 
         {fatal && (

@@ -542,13 +542,22 @@ export function buildAtlas(
  * sit on the same near-black hull tint the game already used before this
  * carried any text.
  */
-export function buildFacedownAtlas(sides: number, cell: number, numeralFont: string): THREE.CanvasTexture {
+export function buildFacedownAtlas(
+  sides: number,
+  cell: number,
+  numeralFont: string,
+  variant: "idle" | "spent" = "idle",
+): THREE.CanvasTexture {
+  const spent = variant === "spent";
   const { columns, rows } = atlasLayout(sides);
   const canvas = document.createElement("canvas");
   canvas.width = columns * cell;
   canvas.height = rows * cell;
   const ctx = canvas.getContext("2d")!;
-  ctx.fillStyle = "#2b3450"; // the facedown-hull blue-grey; no matching token — 3D-only
+  // Spent hulls sit in the same blue-grey family, warmed and lifted. Lifted
+  // because a ship that is out still has to be countable — the old crushed
+  // near-black turned three damaged ships into three holes in the board.
+  ctx.fillStyle = spent ? "#5b3a44" : "#2b3450"; // facedown-hull greys; no matching token — 3D-only
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
   const label = `D${sides}`;
@@ -567,8 +576,22 @@ export function buildFacedownAtlas(sides: number, cell: number, numeralFont: str
     ctx.lineWidth = cell * 0.05;
     ctx.lineJoin = "round";
     ctx.strokeText(label, cx, cy);
-    ctx.fillStyle = "rgba(182,193,220,0.55)"; // --color-hull-200, dimmed for the idle hull
+    ctx.fillStyle = spent
+      ? "rgba(255,214,218,0.82)" // warm and readable: this is the size coming back
+      : "rgba(182,193,220,0.55)"; // --color-hull-200, dimmed for the idle hull
     ctx.fillText(label, cx, cy);
+    if (spent) {
+      // One bar straight through the size. A ship that is out for the round
+      // should read as struck through at a glance, without hiding the number
+      // that says what returns next round.
+      ctx.strokeStyle = "rgba(255,77,77,0.92)"; // --color-attack
+      ctx.lineWidth = cell * 0.055;
+      ctx.lineCap = "round";
+      ctx.beginPath();
+      ctx.moveTo(cx - cell * 0.26, cy);
+      ctx.lineTo(cx + cell * 0.26, cy);
+      ctx.stroke();
+    }
     ctx.restore();
   }
 

@@ -1047,9 +1047,31 @@ button {
   .match-hud-solo .brace-mobile-guide {
     display: block;
   }
+  /* Five terms plus four operators do not fit 390px, and the dock clips
+     horizontally — so the row silently ate "After" rather than wrapping.
+     Let it wrap and tighten it instead; the body scrolls vertically. */
+  /* One line, always. The dock is capped at 240px and clips, so a second
+     row does not appear below the equation — it disappears behind the
+     confirm button. Everything here is sized to keep five terms on one. */
   .match-hud-solo .brace-summary {
-    min-height: 44px;
-    padding-block: 0.45rem;
+    flex-wrap: nowrap;
+    gap: 0.3rem;
+    padding-inline: 0.35rem;
+    padding-block: 0.4rem;
+  }
+  .match-hud-solo .brace-summary .t-num {
+    font-size: var(--text-lg);
+  }
+  .match-hud-solo .brace-summary .t-eyebrow {
+    font-size: 0.5rem;
+    letter-spacing: 0.06em;
+  }
+  .match-hud-solo .brace-equation {
+    gap: 0.3rem;
+  }
+  .match-hud-solo .brace-blocked-box {
+    min-width: 1.7rem;
+    padding-inline: 0.2rem;
   }
   .match-hud-solo .brace-dock .btn-lg {
     min-height: 56px;
@@ -3153,4 +3175,16 @@ button {
   padding: 0.05rem 0.3rem;
   color: #fff;
   font-variant-numeric: tabular-nums;
+}
+
+/* The four terms of the health arithmetic travel together. Wrapping happens
+   between the Blocked box and this group, never inside it — a stranded "= 50"
+   on its own line reads as a bug, not as a sum. */
+.brace-equation {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  flex: 0 1 auto;
+  min-width: 0;
 }
