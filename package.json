@@ -13,7 +13,10 @@
     "serve": "npx --yes serve@14 out -l 4321",
     "test": "node --test tests/*.test.mjs",
     "sim": "node sim/simulate.mjs",
-    "lint": "eslint . --ignore-pattern out --ignore-pattern .next"
+    "lint": "eslint . --ignore-pattern out --ignore-pattern .next",
+    "emulators": "firebase emulators:start --only firestore,auth --project space-tribes",
+    "build:emulator": "BASE_PATH= NEXT_PUBLIC_FIREBASE_EMULATOR=127.0.0.1:8080:9099 next build",
+    "test:versus": "node sim/versus-emulator.mjs"
   },
   "dependencies": {
     "firebase": "12.16.0",

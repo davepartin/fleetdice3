@@ -26,6 +26,7 @@ import { applyDifficultyStart, newBrain, nextActions, type Brain, type Difficult
 import {
   cancelRoom,
   enterRoom,
+  isTransientRoomError,
   playAction,
   startRoomHeartbeat,
   watchRoom,
@@ -227,31 +228,35 @@ export function useRoomMatch(matchId: string | null): MatchController {
      * fixes nothing. Capped, because a match should never take longer than
      * fifteen seconds to rejoin once the network is actually back.
      */
+    // Whatever step is currently failing, so a retry resumes from there.
+    let next: () => Promise<void> = async () => {};
+
     const scheduleRetry = () => {
       if (cancelled) return;
       setReconnecting(true);
       clearRetry();
       const wait = reconnectDelay(attempt);
       attempt += 1;
-      retry = window.setTimeout(() => void subscribe(), wait);
+      retry = window.setTimeout(() => void next(), wait);
     };
 
     const subscribe = async () => {
       if (cancelled) return;
       clearRetry();
+      next = subscribe;
       try {
         stop?.();
         stop = null;
         stop = await watchRoom(
           matchId,
-          (next) => {
+          (room) => {
             if (cancelled) return;
             // A snapshot arrived, so the connection is genuinely back. This
             // deliberately does not clear `error`: that carries the engine's
             // own refusals ("You need 4 Energy for that"), which a routine
             // update from the other commander must not wipe off the screen.
             attempt = 0;
-            setRoom(next);
+            setRoom(room);
             setStatus("ready");
             setReconnecting(false);
           },
@@ -266,38 +271,62 @@ export function useRoomMatch(matchId: string | null): MatchController {
         );
       } catch (reason) {
         if (cancelled) return;
-        // Failing to attach is the same problem as losing an attached one.
-        scheduleRetry();
+        if (isTransientRoomError(reason)) scheduleRetry();
+        else {
+          setStatus("error");
+          setError(reason instanceof Error ? reason.message : String(reason));
+        }
+      }
+    };
+
+    /**
+     * Take the seat, then listen.
+     *
+     * Failing to take it is not the end of the road, and treating it as one is
+     * what stranded players. A tab that iOS killed and restored comes back on
+     * whatever network the phone has at that instant; when that is nothing,
+     * this used to print "your phone looks offline" and stay there for good —
+     * with a live match on the other end and no way back but a manual reload.
+     * Anything that might pass now keeps trying and says "Reconnecting"; only
+     * a real answer from the room — gone, full, not yours — stops here.
+     */
+    const start = async () => {
+      if (cancelled) return;
+      clearRetry();
+      next = start;
+      try {
+        const first = await enterRoom(matchId);
+        if (cancelled) return;
+        attempt = 0;
+        setRoom(first);
+        setStatus("ready");
+        setReconnecting(false);
+        await subscribe();
+        if (!cancelled && !stopBeat) stopBeat = startRoomHeartbeat(matchId);
+      } catch (reason) {
+        if (cancelled) return;
+        if (isTransientRoomError(reason)) {
+          scheduleRetry();
+          return;
+        }
+        setStatus("error");
+        setError(reason instanceof Error ? reason.message : String(reason));
       }
     };
 
     /**
      * iOS suspends a backgrounded tab and quietly kills its connection, and the
-     * page is often already visible again before the SDK notices. Coming back
-     * to the tab, or to the network, resubscribes at once rather than waiting
-     * out a backoff that started while the screen was off.
+     * page is often visible again before the SDK notices. Coming back to the
+     * tab, or to the network, tries again at once rather than waiting out a
+     * backoff that started while the screen was off.
      */
     const wakeUp = () => {
       if (cancelled || document.visibilityState !== "visible") return;
       attempt = 0;
-      void subscribe();
+      void next();
     };
 
-    (async () => {
-      try {
-        const first = await enterRoom(matchId);
-        if (cancelled) return;
-        setRoom(first);
-        setStatus("ready");
-      } catch (reason) {
-        if (cancelled) return;
-        setStatus("error");
-        setError(reason instanceof Error ? reason.message : String(reason));
-        return;
-      }
-      await subscribe();
-      if (!cancelled) stopBeat = startRoomHeartbeat(matchId);
-    })();
+    void start();
 
     document.addEventListener("visibilitychange", wakeUp);
     window.addEventListener("online", wakeUp);

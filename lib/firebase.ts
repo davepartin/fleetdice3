@@ -23,6 +23,7 @@
 import { getApp, getApps, initializeApp } from "firebase/app";
 import {
   browserLocalPersistence,
+  connectAuthEmulator,
   getAuth,
   inMemoryPersistence,
   onAuthStateChanged,
@@ -30,7 +31,7 @@ import {
   signInAnonymously,
   type User,
 } from "firebase/auth";
-import { getFirestore } from "firebase/firestore";
+import { connectFirestoreEmulator, getFirestore } from "firebase/firestore";
 
 /**
  * The web API key is public by design — it identifies the project, it does not
@@ -68,6 +69,26 @@ const app = firebaseConfigured
 
 export const firebaseAuth = app ? getAuth(app) : null;
 export const firestore = app ? getFirestore(app) : null;
+
+/**
+ * Point at a local emulator instead of the real project.
+ *
+ * Set NEXT_PUBLIC_FIREBASE_EMULATOR to "host:firestorePort:authPort" at build
+ * time — see sim/versus-emulator.mjs. It is read from the environment rather
+ * than inferred from the hostname, so a production build cannot arrive at it
+ * by accident: with the variable unset this whole block compiles to a constant
+ * false and nothing below it runs.
+ *
+ * This exists because a dropped connection is only testable when you are
+ * allowed to drop it, and doing that to the real project means real rooms for
+ * real players.
+ */
+const EMULATOR = process.env.NEXT_PUBLIC_FIREBASE_EMULATOR;
+if (EMULATOR && app && firestore && firebaseAuth) {
+  const [host = "127.0.0.1", storePort = "8080", authPort = "9099"] = EMULATOR.split(":");
+  connectFirestoreEmulator(firestore, host, Number(storePort));
+  connectAuthEmulator(firebaseAuth, `http://${host}:${authPort}`, { disableWarnings: true });
+}
 
 /** Shown whenever the app has no Firebase project to talk to at all. */
 export const NOT_CONFIGURED_MESSAGE =

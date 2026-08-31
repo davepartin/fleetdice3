@@ -978,6 +978,38 @@ function isPermissionDenied(error: unknown): boolean {
  * is not one of the two commanders asked for the private match document. Nine
  * times in ten it is the host in a second tab. So that is what we say.
  */
+/**
+ * Is this worth trying again, or is it the room's answer?
+ *
+ * A phone that cannot reach the database is the common case and it fixes
+ * itself; a room that is gone, full, or not yours never will. Getting this
+ * split wrong in either direction is bad: retrying a real answer spins
+ * forever, and giving up on a blip strands a player on a dead screen with a
+ * live match on the other end.
+ */
+export function isTransientRoomError(error: unknown): boolean {
+  if (error instanceof RoomGoneError || error instanceof RoomFullError) return false;
+  if (error instanceof NotSeatedError) return false;
+  if (isPermissionDenied(error)) return false;
+
+  const code = errorCode(error);
+  const message = error instanceof Error ? error.message : String(error);
+  if (code.includes("not-found")) return false;
+  // A lost player badge needs a reload, which is what its message already says.
+  if (code.includes("unauthenticated")) return false;
+
+  return (
+    code.includes("unavailable") ||
+    code.includes("deadline-exceeded") ||
+    code.includes("aborted") ||
+    code.includes("resource-exhausted") ||
+    code.includes("internal") ||
+    code.includes("cancelled") ||
+    /network|offline|timed out|did not answer/i.test(message) ||
+    message === OFFLINE_MESSAGE
+  );
+}
+
 export function friendlyRoomError(error: unknown): Error {
   if (error instanceof RoomGoneError || error instanceof RoomFullError) return error;
 

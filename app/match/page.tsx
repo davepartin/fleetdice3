@@ -62,7 +62,18 @@ function MatchInner() {
   if (controller.status === "loading" || !controller.state) {
     return (
       <div className="hud items-center justify-center">
-        <Spinner label="Joining the battle…" />
+        <div className="flex flex-col items-center gap-3 px-6 text-center">
+          <Spinner label={controller.reconnecting ? "Reconnecting…" : "Joining the battle…"} />
+          {controller.reconnecting && (
+            // Said plainly because the alternative is a spinner that looks
+            // stuck: the match is still there, this phone just cannot reach it
+            // yet, and it is still trying. Nobody should reload to find out.
+            <p className="text-sm leading-snug c-dim">
+              Your {NOUN.game} is still going. Waiting for the connection to come back — you do not
+              need to reload.
+            </p>
+          )}
+        </div>
       </div>
     );
   }
