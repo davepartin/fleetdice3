@@ -1057,6 +1057,7 @@ function BraceDock({
   const after = you.hp - landing + heal;
   const fatal = after <= 0;
   const war = you.round > TUNING.escalateAfterRound ? escalationFor(you.round) : 0;
+  const [lastStand, setLastStand] = useState(false);
 
   return (
     <div className="brace-dock panel panel-you flex flex-col gap-3 p-3.5">
@@ -1137,18 +1138,66 @@ function BraceDock({
 
         {fatal && (
           <Notice tone="warn">
-            This volley finishes your flagship even with every ship blocking.
+            {chosen.size === 0
+              ? "Taking this on the flagship destroys it. Send ships in to survive."
+              : "Still fatal. Send more ships in, or accept it."}
           </Notice>
         )}
       </div>
 
       <div className="brace-dock-action">
-        <Button tone="primary" size="lg" full onClick={onConfirm} disabled={busy}>
-          {chosen.size === 0
-            ? "Take it all on the flagship"
-            : `Block ${Math.min(blocked, you.incoming)} with ${chosen.size} ${chosen.size === 1 ? "ship" : "ships"}`}
+        <Button
+          tone="primary"
+          size="lg"
+          full
+          onClick={() => (fatal ? setLastStand(true) : onConfirm())}
+          disabled={busy}
+        >
+          {fatal
+            ? "Block or be destroyed"
+            : chosen.size === 0
+              ? "Take it all on the flagship"
+              : `Block ${Math.min(blocked, you.incoming)} with ${chosen.size} ${chosen.size === 1 ? "ship" : "ships"}`}
         </Button>
       </div>
+
+      {/* Losing the match to a mis-tap is a different feeling from choosing to
+        * go down. This is the difference between them: the last screen before
+        * the end says so plainly, and says it is still yours to take back. */}
+      <Sheet
+        open={lastStand}
+        onClose={() => setLastStand(false)}
+        title="Go down with the ship?"
+        footer={
+          <div className="flex flex-col gap-2">
+            <Button tone="ghost" full onClick={() => setLastStand(false)}>
+              Go back and block
+            </Button>
+            <Button
+              tone="primary"
+              full
+              disabled={busy}
+              onClick={() => {
+                setLastStand(false);
+                onConfirm();
+              }}
+            >
+              Accept defeat
+            </Button>
+          </div>
+        }
+      >
+        <p className="text-base leading-relaxed c-dim-bright">
+          This volley lands for <b className="c-attack">{landing}</b> and your flagship has{" "}
+          <b className="text-white">{you.hp}</b>. It will be <b className="c-attack">destroyed</b>,
+          and the {NOUN.game} ends here.
+        </p>
+        <p className="mt-3 text-base leading-relaxed c-dim-bright">
+          {available.length > chosen.size
+            ? "You still have ships that could step in front of it."
+            : "Every ship you have is already committed."}
+        </p>
+      </Sheet>
     </div>
   );
 }
