@@ -111,6 +111,11 @@ export function RoundReportCard({
   // Repair is the very last step, after all of that damage is applied.
   const shieldsStopped = Math.max(0, (enemy?.attack ?? 0) + report.escalation - report.incoming);
 
+  // Nothing was blockable this round, so the block screen never appeared. That
+  // is correct — ships can only step in front of attack, and there was none
+  // left — but silently skipping a turn reads as a bug unless it says why.
+  const nothingToBlock = report.incoming === 0 && (enemy?.attack ?? 0) > 0;
+
   return (
     <div className="round-report flex min-h-0 flex-1 flex-col gap-3">
       {/* Short now that Battle details is gone, but still its own scroll
@@ -166,6 +171,13 @@ export function RoundReportCard({
           <span className="c-dim">=</span>
           <HpBox value={report.hpAfter} big />
         </p>
+
+        {nothingToBlock && (
+          <p className="report-noblock">
+            No blocking — your <b className="c-shield">Shields {report.tally.defense}</b> stopped
+            their <b className="c-attack">Attack {enemy?.attack ?? 0}</b>.
+          </p>
+        )}
 
         <p className="t-eyebrow mb-1 mt-2.5">{enemyName} rolled</p>
         <TallyStrip tally={enemy} />
