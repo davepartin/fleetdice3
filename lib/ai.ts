@@ -18,9 +18,12 @@ import {
   type Tally,
   TUNING,
   activeShips,
+  attackOf,
   bestRun,
   boardCell,
   cellForSlot,
+  defenseOf,
+  directOf,
   emptyOpenSlots,
   energyOf,
   flagshipUpgradeCost,
@@ -97,6 +100,12 @@ export type DifficultyKnobs = {
   startHpBonus: number;
   /** Extra Energy in the Enemy bank at the start. 0 on every tier but Expert. */
   startEnergyBonus: number;
+  /**
+   * Whether this tier does the race arithmetic on the other fleet — see
+   * `readOpponent`. Public information only; it is what separates Expert from
+   * Hard now that the health bonus is gone.
+   */
+  readsOpponent: boolean;
   label: string;
   blurb: string;
 };
@@ -112,6 +121,7 @@ export const DIFFICULTY: Record<Difficulty, DifficultyKnobs> = {
     rerollReserve: 0,
     startHpBonus: 0,
     startEnergyBonus: 0,
+    readsOpponent: false,
     label: "Low",
     blurb: "Makes mistakes. A good first fight.",
   },
@@ -125,6 +135,7 @@ export const DIFFICULTY: Record<Difficulty, DifficultyKnobs> = {
     rerollReserve: 2,
     startHpBonus: 0,
     startEnergyBonus: 0,
+    readsOpponent: false,
     label: "Medium",
     blurb: "Plays the board. Chases a line when it sees one, and spends Energy when it is worth it.",
   },
@@ -138,6 +149,7 @@ export const DIFFICULTY: Record<Difficulty, DifficultyKnobs> = {
     rerollReserve: 4,
     startHpBonus: 0,
     startEnergyBonus: 0,
+    readsOpponent: false,
     label: "Hard",
     blurb: "Reads every line. Only throws a hull in front of a volley when it has to, and does not waste a roll.",
   },
@@ -149,10 +161,11 @@ export const DIFFICULTY: Record<Difficulty, DifficultyKnobs> = {
     tokenThreshold: 3,
     braceCaution: 0.22,
     rerollReserve: 5,
-    startHpBonus: 20,
-    startEnergyBonus: 3,
+    startHpBonus: 0,
+    startEnergyBonus: 0,
+    readsOpponent: true,
     label: "Expert",
-    blurb: "Hard, plus a tougher flagship. Same dice and the same rules — it just starts with more health and a little Energy in the bank.",
+    blurb: "Reads your fleet and works out who wins the race, then races or digs in to suit. Same dice, same rules, same health as you — it just plays better.",
   },
 };
 
@@ -668,6 +681,125 @@ export function pressureOf(state: MatchState, side: SideId): number {
   return Math.max(byHp, byRound * 0.8);
 }
 
+/* ------------------------------------------------------------------ */
+/* Reading the other fleet                                             */
+/* ------------------------------------------------------------------ */
+
+/**
+ * What one fleet is worth per round, on average.
+ *
+ * Averaged over the faces each hull actually has, using the engine's own face
+ * functions rather than a table typed in here — a change to what a 6 pays has
+ * to move this estimate with it, or the Enemy would be reading a game that no
+ * longer exists.
+ */
+function fleetAverages(player: PlayerState, round: number) {
+  let attack = 0;
+  let shield = 0;
+  let direct = 0;
+  const dice = [
+    ...activeShips(player, round).map((ship) => ship.sides),
+    // The flagship always rolls, and its bonus rides on top of the face.
+    6,
+  ];
+  for (const sides of dice) {
+    let a = 0;
+    let d = 0;
+    let x = 0;
+    for (let face = 1; face <= sides; face += 1) {
+      a += attackOf(face);
+      d += defenseOf(face);
+      x += directOf(face);
+    }
+    attack += a / sides;
+    shield += d / sides;
+    direct += x / sides;
+  }
+  return { attack: attack + player.flag.level, shield, direct };
+}
+
+/**
+ * The race, as the Enemy sees it.
+ *
+ * Nothing here is hidden information. A commander's hulls, open bays, flagship
+ * level and health are on the board for both sides to see all match; what this
+ * adds is the arithmetic a strong human does automatically — "at this rate they
+ * finish me in four rounds and I finish them in six, so I cannot keep playing
+ * for the long game."
+ *
+ * It deliberately does NOT look at the opponent's current dice. Those are
+ * unrevealed until both sides lock in, and reading them would make Expert a
+ * cheat rather than a better player.
+ */
+export type Read = {
+  /** Net damage each side is expected to land per round, after the other's shielding. */
+  incomingPerRound: number;
+  outgoingPerRound: number;
+  /** Rounds until someone dies at this pace. Infinity when nobody is scoring. */
+  roundsAgainstMe: number;
+  roundsAgainstThem: number;
+  /**
+   * Positive means I finish them first. This is the whole point: it turns two
+   * health bars into one number that says whether to race or to dig in.
+   */
+  edge: number;
+};
+
+export function readOpponent(state: MatchState, side: SideId): Read | null {
+  const you = state.players[side];
+  const them = state.players[side === "host" ? "guest" : "host"];
+  if (!you || !them) return null;
+
+  const mine = fleetAverages(you, you.round);
+  const theirs = fleetAverages(them, them.round);
+  const escalation =
+    you.round > TUNING.escalateAfterRound
+      ? (you.round - TUNING.escalateAfterRound) * TUNING.escalateStep
+      : 0;
+
+  const incoming = Math.max(0, theirs.attack - mine.shield) + theirs.direct + escalation;
+  const outgoing = Math.max(0, mine.attack - theirs.shield) + mine.direct + escalation;
+  const rounds = (hp: number, rate: number) => (rate <= 0.01 ? Infinity : hp / rate);
+  const roundsAgainstMe = rounds(you.hp, incoming);
+  const roundsAgainstThem = rounds(them.hp, outgoing);
+
+  // Both unreachable is a stalemate, not an edge for anyone.
+  const edge =
+    roundsAgainstMe === Infinity && roundsAgainstThem === Infinity
+      ? 0
+      : roundsAgainstMe - roundsAgainstThem;
+
+  return { incomingPerRound: incoming, outgoingPerRound: outgoing, roundsAgainstMe, roundsAgainstThem, edge };
+}
+
+/**
+ * How hard to play, given the race.
+ *
+ * Losing it is the signal to gamble — Energy hoarded through a fight you are
+ * on track to lose buys nothing. Winning it is the signal to stop taking risks
+ * and simply arrive first.
+ */
+export function racePressure(base: number, read: Read | null): number {
+  if (!read || !Number.isFinite(read.edge)) return base;
+  // One round of margin either way is noise; three is a decided race.
+  const swing = Math.max(-1, Math.min(1, -read.edge / 3));
+  return Math.max(0, Math.min(1, base + swing * 0.3));
+}
+
+/**
+ * How readily to feed hulls into a volley, given the race.
+ *
+ * A ship that blocks sits out the next round, so blocking is borrowed against
+ * your own output. When you are winning the race that trade is bad — you need
+ * the dice. When you are losing it, surviving to roll again is the only thing
+ * that matters, so pay the ships.
+ */
+export function raceCaution(base: number, read: Read | null): number {
+  if (!read || !Number.isFinite(read.edge)) return base;
+  const swing = Math.max(-1, Math.min(1, -read.edge / 3));
+  return Math.max(0.1, Math.min(0.85, base + swing * 0.22));
+}
+
 /**
  * Everything the opponent wants to do from wherever it currently stands.
  * Call it repeatedly until it returns an empty list.
@@ -691,7 +823,8 @@ export function nextActions(state: MatchState, side: SideId, brain: Brain): Matc
   }
 
   const knobs = DIFFICULTY[brain.difficulty];
-  const pressure = pressureOf(state, side);
+  const read = knobs.readsOpponent ? readOpponent(state, side) : null;
+  const pressure = racePressure(pressureOf(state, side), read);
 
   switch (player.phase) {
     case "shop": {
@@ -756,7 +889,7 @@ export function nextActions(state: MatchState, side: SideId, brain: Brain): Matc
       return actions;
     }
     case "brace":
-      return [{ type: "brace", ships: chooseBrace(player, knobs.braceCaution) }];
+      return [{ type: "brace", ships: chooseBrace(player, raceCaution(knobs.braceCaution, read)) }];
     case "report":
       return [{ type: "continue" }];
     default:

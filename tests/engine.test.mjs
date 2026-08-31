@@ -18,6 +18,10 @@ const {
   PLANS,
   TUNING,
   DIFFICULTY,
+  DIFFICULTIES,
+  readOpponent,
+  racePressure,
+  raceCaution,
   applyAction,
   applyDifficultyStart,
   attackOf,
@@ -751,4 +755,83 @@ test("a roll throw waits for the new faces, not the tap", () => {
 
   const again = pendingThrow(state.players.host, ["flag"]);
   assert.equal(pendingThrowReady(again, state.players.host), false, "the same faces must not throw twice");
+});
+
+/* ------------------------------------------------------------------ */
+/* Expert reading the other fleet                                      */
+/* ------------------------------------------------------------------ */
+
+function facing(mine = [], theirs = [], hp = { you: 60, them: 60 }) {
+  const state = newMatch("r", "0000", "A", "A", "versus");
+  state.players.guest = newPlayer("B", "B", "ready");
+  state.status = "active";
+  state.players.host.hp = hp.you;
+  state.players.guest.hp = hp.them;
+  mine.forEach((sides, i) =>
+    state.players.host.ships.push({ id: `m${i}`, sides, disabledRound: null, slot: i }));
+  theirs.forEach((sides, i) =>
+    state.players.guest.ships.push({ id: `t${i}`, sides, disabledRound: null, slot: i }));
+  return state;
+}
+
+test("only Expert reads the other fleet", () => {
+  for (const tier of DIFFICULTIES) {
+    assert.equal(
+      DIFFICULTY[tier].readsOpponent,
+      tier === "expert",
+      `${tier} should ${tier === "expert" ? "" : "not "}read the opponent`,
+    );
+  }
+});
+
+test("Expert's edge is zero in a mirror and never favours the weaker fleet", () => {
+  const mirror = readOpponent(facing([10, 10], [10, 10]), "host");
+  assert.equal(mirror.edge, 0, "identical fleets and health is a dead heat");
+
+  const ahead = readOpponent(facing([10, 10, 10], []), "host");
+  assert.ok(ahead.edge > 0, "the bigger fleet expects to finish first");
+
+  const behind = readOpponent(facing([], [10, 10, 10]), "host");
+  assert.ok(behind.edge < 0, "and the smaller one expects to lose the race");
+});
+
+test("the read never looks at the opponent's unrevealed dice", () => {
+  // This is the whole promise of the tier: Expert plays better, it does not
+  // peek. If a future change starts reading their roll, this fails.
+  const state = facing([6, 6], [6, 6]);
+  const before = readOpponent(state, "host");
+  state.players.guest.dice = [
+    { id: "d1", sides: 10, value: 10, slot: 0, flag: false },
+    { id: "d2", sides: 10, value: 10, slot: 1, flag: false },
+  ];
+  state.players.guest.tally = { attack: 99, defense: 99, direct: 99, energy: 9, heal: 9, lines: [] };
+  const after = readOpponent(state, "host");
+  assert.deepEqual(after, before, "their roll must not move the estimate");
+});
+
+test("losing the race gambles, winning it plays safe", () => {
+  const losing = readOpponent(facing([], [10, 10, 10]), "host");
+  const winning = readOpponent(facing([10, 10, 10], []), "host");
+
+  assert.ok(racePressure(0.3, losing) > 0.3, "behind: spend Energy you would otherwise hoard");
+  assert.ok(racePressure(0.3, winning) < 0.3, "ahead: stop taking risks");
+  assert.ok(raceCaution(0.22, losing) > 0.22, "behind: pay ships to survive the volley");
+  assert.ok(raceCaution(0.22, winning) < 0.22, "ahead: keep hulls rolling instead of blocking");
+});
+
+test("the race adjustments stay inside their bounds", () => {
+  for (const read of [
+    readOpponent(facing([], [10, 10, 10, 10], { you: 1, them: 200 }), "host"),
+    readOpponent(facing([10, 10, 10, 10], [], { you: 200, them: 1 }), "host"),
+  ]) {
+    const p = racePressure(0.5, read);
+    const c = raceCaution(0.22, read);
+    assert.ok(p >= 0 && p <= 1, `pressure ${p} out of range`);
+    assert.ok(c >= 0.1 && c <= 0.85, `caution ${c} out of range`);
+  }
+});
+
+test("a read with no opponent, or none at all, changes nothing", () => {
+  assert.equal(racePressure(0.42, null), 0.42);
+  assert.equal(raceCaution(0.22, null), 0.22);
 });
