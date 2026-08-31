@@ -100,7 +100,7 @@ function SoloSetup({
               {(Object.keys(DIFFICULTY) as Difficulty[]).map((key) => {
                 const entry = DIFFICULTY[key];
                 return (
-                  <button key={key} type="button" onClick={() => onStart(key)} className="text-left">
+                  <button key={key} type="button" onClick={() => onStart(key)} className="w-full text-left">
                     <Panel className="flex items-center gap-4 p-4 transition hover:border-white/25">
                       <span className="min-w-0 flex-1">
                         <span className="t-display block text-xl text-white">{entry.label}</span>

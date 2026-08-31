@@ -59,14 +59,16 @@ along with which step it happened on.
 
 ## Balance questions still open
 
-- **The Enemy still under-buys cells.** It opens about 1.2 a match. A person who
-  wants the corner lines will open more, so every simulated number describes a
-  slightly narrower game than the one you will play.
-- **The Enemy does not deliberately build lines.** It buys cells now, but it
-  does not pick the cell that would complete a row or a column, and it does not
-  place ships to line up. That means solo will rarely show the formation rule
-  off, even though a person can build for it easily. Worth fixing — it is the
-  difference between the computer looking clever and looking random.
+- **The Enemy still under-buys cells on most plans.** Capital still opens about
+  0.1 a match. Formation opens about 1.7. A person who wants the corner lines
+  will open more than Capital ever will.
+- **The Enemy now hunts live lines.** It spots a row or column that is one face
+  away, spends spare Energy sending the odd die back, and parks a new hull on
+  the bay that already has ships on its line. Formation and Wolfpack shop for
+  that; Capital still upgrades instead. Play Solo → Formation to see it.
+  Measured at Captain, Formation, 80 matches: a column paid in 11% of rounds,
+  and 72% of commanders saw at least one. The roll screen now also tells *you*
+  when you are one face away, using the same prize the engine pays.
 - **Difficulty has never been measured.** Cadet, Captain and Admiral differ in
   how many reroll options they weigh, but nobody has checked that Admiral
   actually beats Cadet.

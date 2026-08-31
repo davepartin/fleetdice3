@@ -19,14 +19,16 @@ import {
   TUNING,
   activeShips,
   bestRun,
+  boardCell,
+  cellForSlot,
   emptyOpenSlots,
-  escalationFor,
   flagshipUpgradeCost,
+  FLEET_LINES,
   nextSlotCost,
-  openSlotCount,
   priceOf,
   roll,
   shipInSlot,
+  slotForCell,
   tally,
   upgradeCost,
   upgradeTarget,
@@ -44,11 +46,11 @@ export const PLAN_LABEL: Record<Plan, string> = {
 };
 
 export const PLAN_BLURB: Record<Plan, string> = {
-  width: "Opens every cell and floods the board with cheap hulls.",
-  capital: "Few ships, but the biggest ones — d8s and d10s.",
+  width: "Opens every bay and floods the board with cheap hulls. Spends spare Energy chasing a line.",
+  capital: "Few ships, but the biggest ones — d8s and d10s. Almost never spends Energy on a paid reroll.",
   command: "Pours Energy into the flagship, then grows around it.",
   balanced: "Takes whatever is cheapest per point of value.",
-  formation: "Builds toward matching rows and columns on the board.",
+  formation: "Opens the bay that finishes a row or column, keeps small hulls, and banks Energy to chase matching numbers.",
 };
 
 export type Difficulty = "cadet" | "captain" | "admiral";
@@ -217,6 +219,50 @@ function runCandidates(dice: DieValue[]): Set<string> {
   return keep;
 }
 
+export type NearFormation = {
+  kind: "row" | "col";
+  cells: number[];
+  value: number;
+  keepIds: string[];
+  rerollIds: string[];
+};
+
+/**
+ * A line that is one face away from paying: two of its three dice already
+ * show the same number, and the third is showing something else. Completing
+ * that line is the formation the brain should hunt. Prefers a column (Attack)
+ * when two lines are equally close.
+ */
+export function nearFormation(dice: DieValue[]): NearFormation | null {
+  let best: NearFormation | null = null;
+  let bestPrize = -1;
+  for (const line of FLEET_LINES) {
+    const seated = line.idx
+      .map((cell) => boardCell(dice, cell))
+      .filter((die): die is DieValue => Boolean(die && die.value));
+    if (seated.length < 2) continue;
+    const groups = new Map<number, DieValue[]>();
+    for (const die of seated) {
+      const bucket = groups.get(die.value) ?? [];
+      bucket.push(die);
+      groups.set(die.value, bucket);
+    }
+    for (const [value, bucket] of groups) {
+      if (bucket.length !== 2) continue;
+      const keepIds = bucket.map((die) => die.id);
+      const rerollIds = seated.filter((die) => !keepIds.includes(die.id)).map((die) => die.id);
+      // Two matching with the third cell empty is a shop problem, not a reroll.
+      if (!rerollIds.length) continue;
+      const prize = line.kind === "col" ? TUNING.lineDownAttack : TUNING.lineAcrossEnergy * WEIGHTS.energy;
+      if (prize > bestPrize) {
+        bestPrize = prize;
+        best = { kind: line.kind, cells: line.idx.slice(), value, keepIds, rerollIds };
+      }
+    }
+  }
+  return best;
+}
+
 export type RerollChoice = { reroll: string[]; gain: number };
 
 /**
@@ -242,6 +288,7 @@ export function chooseRerollDetailed(
 
   const runKeep = runCandidates(dice);
   const lineKeep = lineCandidates(dice);
+  const near = nearFormation(dice);
   const run = bestRun(dice);
   const inRun = new Set<string>();
   if (run) {
@@ -258,6 +305,13 @@ export function chooseRerollDetailed(
   };
 
   add(() => true); // keep everything — the "do nothing" baseline
+  if (near) {
+    // Protect the two matching faces and send the odd one back. This has to
+    // sit above the generic "any pair anywhere" shape so a truncated candidate
+    // list still sees a real line, not just two 4s on opposite corners.
+    add((die) => near.keepIds.includes(die.id));
+    add((die) => near.keepIds.includes(die.id) || die.value >= die.sides - 1);
+  }
   add((die) => lineKeep.has(die.id)); // build a formation
   add((die) => runKeep.has(die.id)); // build a straight
   add((die) => inRun.has(die.id) || runKeep.has(die.id)); // protect the run we have
@@ -400,9 +454,12 @@ function affordableBuys(player: PlayerState): Buy[] {
   }
   const empties = emptyOpenSlots(player);
   if (empties.length) {
+    const slotIndex = [...empties].sort(
+      (a, b) => lineAffinity(player, b) - lineAffinity(player, a) || a - b,
+    )[0]!;
     for (const sides of [4, 6, 8, 10] as DieSize[]) {
       if (priceOf(sides) <= player.energy) {
-        out.push({ kind: "ship", sides, slotIndex: empties[0]!, cost: priceOf(sides) });
+        out.push({ kind: "ship", sides, slotIndex, cost: priceOf(sides) });
       }
     }
   }
@@ -417,20 +474,20 @@ function affordableBuys(player: PlayerState): Buy[] {
   return out;
 }
 
-/** How many lines through this cell already hold ships. */
+/** How many ships already sit on the rows and columns through this bay. */
 function lineAffinity(player: PlayerState, slot: number): number {
-  const cell = slot < 4 ? slot : slot + 1;
-  const row = Math.floor(cell / 3);
-  const col = cell % 3;
+  const cell = cellForSlot(slot);
   let score = 0;
-  for (let other = 0; other < 9; other += 1) {
-    if (other === cell) continue;
-    const sameLine = Math.floor(other / 3) === row || other % 3 === col;
-    if (!sameLine) continue;
-    if (other === 4) score += 1; // the flagship always shows up
-    else {
-      const otherSlot = other < 4 ? other : other - 1;
-      if (shipInSlot(player, otherSlot)) score += 1;
+  for (const line of FLEET_LINES) {
+    if (!line.idx.includes(cell)) continue;
+    for (const other of line.idx) {
+      if (other === cell) continue;
+      if (other === 4) {
+        score += 1;
+        continue;
+      }
+      const otherSlot = slotForCell(other);
+      if (otherSlot !== null && shipInSlot(player, otherSlot)) score += 1;
     }
   }
   return score;
@@ -461,6 +518,9 @@ function buyScore(player: PlayerState, buy: Buy, plan: Plan, round: number): num
     // cheapest hull that would fill it, because that is what you actually buy.
     worth = SHIP_WORTH[4];
     cost = buy.cost + priceOf(4);
+    // A bay that already sits on a live line is why Formation spends Energy
+    // on cells. Width wants the same thing; Capital still shrugs.
+    worth += lineAffinity(player, buy.slotIndex) * 0.85;
     if (plan === "width") bias = 1.5;
     if (plan === "formation") bias = 1.45;
     if (plan === "capital") bias = 0.7;
@@ -607,17 +667,37 @@ export function nextActions(state: MatchState, side: SideId, brain: Brain): Matc
       } else if (choice.reroll.length) {
         // A paid reroll costs one Energy per die. Asking for more dice than the
         // bank covers makes the engine refuse the move, and with nothing else
-        // queued the match simply stops — so check the real price, not a guess.
-        const cost = choice.reroll.length;
-        const affordable = cost <= player.energy;
+        // queued the match simply stops — so trim to what the bank can pay,
+        // preferring the odd die on a one-away line when that's the hunt.
+        let ids = choice.reroll;
+        if (ids.length > player.energy) {
+          const near = nearFormation(player.dice);
+          if (near) {
+            const chase = near.rerollIds.filter((id) => ids.includes(id));
+            const rest = ids.filter((id) => !chase.includes(id));
+            ids = [...chase, ...rest].slice(0, Math.max(0, player.energy));
+          } else {
+            ids = ids.slice(0, player.energy);
+          }
+        }
+        const cost = ids.length;
+        const affordable = cost > 0 && cost <= player.energy;
         // Worth it when the expected value gained per Energy spent clears the
         // bar for this difficulty — not a flat "got 6 Energy?" gate, so a real
         // shot at a formation gets taken even on a tight bank, and a marginal
         // one still gets passed up even on a full one. Getting desperate (low
         // HP, late round) lowers the bar: a losing fleet should gamble Energy
-        // it would otherwise hoard.
+        // it would otherwise hoard. A one-away line is the reason we banked.
         const bar = knobs.rerollThreshold * (1 - pressure * 0.35);
-        if (affordable && choice.gain / cost >= bar) return [{ type: "roll", dice: choice.reroll }];
+        // Measure the trimmed set on its own. Scaling the full-shape gain by
+        // "dice we can afford" undersells sending the one odd die back.
+        const ctx = { hpRatio: player.hp / player.maxHp, pressure };
+        const gain =
+          ids.length === choice.reroll.length
+            ? choice.gain
+            : expectedValue(player.dice, new Set(ids), player.flag.level, ctx, knobs.samples) -
+              expectedValue(player.dice, new Set(), player.flag.level, ctx, knobs.samples);
+        if (affordable && gain / cost >= bar) return [{ type: "roll", dice: ids }];
       }
       const token = chooseFlagToken(player, pressure, knobs.tokenThreshold);
       if (token) actions.push({ type: "flag-token", direction: token });
@@ -653,10 +733,29 @@ export function rollHint(state: MatchState, side: SideId): Hint | null {
     return { text: `${run.length} in a row — worth ${run.reward.label}.`, tone: "good" };
   }
   if (t.lines.some((line) => line.kind === "col")) {
-    return { text: "Three matching down a column — that is +10 Attack.", tone: "good" };
+    return {
+      text: `Three matching down a column — that is +${TUNING.lineDownAttack} Attack.`,
+      tone: "good",
+    };
   }
   if (t.lines.some((line) => line.kind === "row")) {
-    return { text: "Three matching across a row — that is +5 Energy.", tone: "good" };
+    return {
+      text: `Three matching across a row — that is +${TUNING.lineAcrossEnergy} Energy.`,
+      tone: "good",
+    };
+  }
+  const near = nearFormation(you.dice);
+  if (near && rollsLeft > 0) {
+    if (near.kind === "col") {
+      return {
+        text: `Two ${near.value}s down a column. Send the odd die back to chase +${TUNING.lineDownAttack} Attack.`,
+        tone: "info",
+      };
+    }
+    return {
+      text: `Two ${near.value}s across a row. Send the odd die back to chase +${TUNING.lineAcrossEnergy} Energy.`,
+      tone: "info",
+    };
   }
   const them = state.players[side === "host" ? "guest" : "host"];
   if (them && you.hp <= them.hp * 0.5 && t.heal < 3) {
