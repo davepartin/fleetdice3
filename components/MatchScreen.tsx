@@ -1013,14 +1013,23 @@ function EquationTerm({
   value,
   label,
   tone,
+  boxed,
 }: {
   value: number;
   label: string;
   tone?: "attack" | "repair";
+  /** Draw the number in a white box — a running tally, not a fixed term. */
+  boxed?: boolean;
 }) {
   return (
     <div className="flex flex-col items-center leading-none">
-      <span className={`t-num text-xl ${tone ? `c-${tone}` : "text-white"}`}>{value}</span>
+      <span
+        className={`t-num text-xl ${boxed ? "brace-blocked-box" : ""} ${
+          tone ? `c-${tone}` : "text-white"
+        }`}
+      >
+        {value}
+      </span>
       <span className="t-eyebrow mt-0.5 text-[0.6rem] c-dim">{label}</span>
     </div>
   );
@@ -1078,7 +1087,7 @@ function BraceDock({
             the next round. Nothing blocks Direct.
           </p>
           <p className="brace-mobile-guide mt-1 text-sm font-semibold c-attack">
-            Tap a ship to block — it takes the hit, then sits out the next round.
+            Tap ships to block, out for one round.
           </p>
         </div>
 
@@ -1104,6 +1113,11 @@ function BraceDock({
         </div>
 
         <div className="brace-summary flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-black/30 px-2 py-2.5">
+          {/* What the fleet is taking instead of the flagship. Starts at zero
+            * and climbs with every ship tapped, so the trade the screen is
+            * asking about has a number on it while you are still deciding. */}
+          <EquationTerm value={blocked} label="Blocked" boxed />
+          <span className="t-num c-dim text-lg">·</span>
           <EquationTerm value={you.hp} label="Now" />
           <span className="t-num c-dim text-lg">−</span>
           <EquationTerm value={landing} label="Damage" tone="attack" />

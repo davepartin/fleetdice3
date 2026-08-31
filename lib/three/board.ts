@@ -118,12 +118,15 @@ export function createBoard(side: BoardSide, font: string): Board {
   // a dark square that could be mistaken for an empty or unlit cell.
   const lockTexture = new THREE.CanvasTexture(paintLockCap());
   lockTexture.colorSpace = THREE.SRGBColorSpace;
+  // Half-lit on purpose. A locked bay is the least important thing on the
+  // board — it is where nothing is happening — and at full strength the
+  // hazard stripes pulled the eye away from the dice on every screen.
   const capMaterial = new THREE.MeshPhysicalMaterial({
     map: lockTexture,
     roughness: 0.85,
     metalness: 0.2,
     transparent: true,
-    opacity: 0.94,
+    opacity: 0.45,
   });
   const caps: THREE.Mesh[] = [];
   for (let cell = 0; cell < 9; cell += 1) {

@@ -257,7 +257,12 @@ export function createDie(kind: DieKind, font: string, scale = 1, cellSize = 0, 
   mesh.receiveShadow = false;
   pivot.add(mesh);
 
-  const outline = new THREE.Mesh(shared.outlineGeometry, shared.outline);
+  // Cloned per die rather than shared: an unrolled hull needs a lighter rim
+  // than a rolled one, and the rim is the only thing that follows the hull's
+  // real silhouette — anything painted into the face texture gets clipped by
+  // the face shape, which is a triangle on a d4.
+  const outlineMaterial = (shared.outline as THREE.MeshBasicMaterial).clone();
+  const outline = new THREE.Mesh(shared.outlineGeometry, outlineMaterial);
   outline.scale.setScalar(1.012);
   pivot.add(outline);
 
@@ -460,6 +465,16 @@ export function createDie(kind: DieKind, font: string, scale = 1, cellSize = 0, 
 
   function applyStateColours() {
     mesh.material = state.facedown ? shared.hidden : material;
+    // A hull waiting to roll is nearly the colour of the deck under it. A grey
+    // rim, thicker than the usual near-black one, is what makes a fleet read as
+    // ships rather than as dark patches in the board.
+    if (state.facedown) {
+      outlineMaterial.color.setHex(state.enemy ? 0x5a6a92 : 0x8593b8); // --color-hull-400 / -300
+      outline.scale.setScalar(1.055);
+    } else {
+      outlineMaterial.color.setHex(0x020409);
+      outline.scale.setScalar(1.012);
+    }
     contactMaterial.opacity = state.disabled ? 0.28 : 0.5;
     if (state.facedown) {
       glowMaterial.opacity = 0;
@@ -493,6 +508,15 @@ export function createDie(kind: DieKind, font: string, scale = 1, cellSize = 0, 
       material.color.setHex(0x14161c);
       material.roughness = 0.9;
       material.metalness = 0.02;
+      glowMaterial.opacity = 0;
+    } else if (state.damageSelected) {
+      // Committed to the volley: it is spent, and next round it is disabled
+      // outright. Draining it now — rather than only stamping a mark on it —
+      // makes "these are the ships I gave up" readable at a glance.
+      material.roughness = 0.8;
+      material.metalness = 0.02;
+      material.color.setHex(0x4a5164);
+      material.emissiveIntensity = 0.02;
       glowMaterial.opacity = 0;
     } else {
       material.roughness = kind === "flag" ? 0.5 : 0.34;
@@ -644,11 +668,16 @@ export function createDie(kind: DieKind, font: string, scale = 1, cellSize = 0, 
       if (blockPulse) {
         // ~1.7s round trip. Slow enough to read as breathing rather than an
         // alarm — this is the calmest screen in the game and it should stay so.
-        const wave = 0.5 + 0.5 * Math.sin(time * 3.7);
-        glowMaterial.opacity = 0.16 + wave * 0.34;
-        selectionMaterial.opacity = 0.5 + wave * 0.5;
-        selectionFillMaterial.opacity = 0.04 + wave * 0.11;
-        material.emissiveIntensity = 0.14 + wave * 0.13;
+        // Eased rather than a plain sine: a linear fade spends most of its
+        // time near the middle, which is what made the old range read flat.
+        // Squaring pushes the wave to its ends so the dark is properly dark
+        // and the bright is properly bright.
+        const raw = 0.5 + 0.5 * Math.sin(time * 3.7);
+        const wave = raw * raw * (3 - 2 * raw);
+        glowMaterial.opacity = 0.02 + wave * 0.66;
+        selectionMaterial.opacity = 0.1 + wave * 0.9;
+        selectionFillMaterial.opacity = wave * 0.2;
+        material.emissiveIntensity = 0.06 + wave * 0.34;
       }
 
       if (launched) {
@@ -753,6 +782,7 @@ export function createDie(kind: DieKind, font: string, scale = 1, cellSize = 0, 
     },
     dispose() {
       material.dispose();
+      outlineMaterial.dispose();
       glow.geometry.dispose();
       glowMaterial.dispose();
       contact.geometry.dispose();

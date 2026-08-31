@@ -3139,3 +3139,18 @@ button {
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
+
+/* The running total of damage the fleet is taking for the flagship. Boxed and
+   white because it is the one number on this screen that answers to what you
+   are doing right now, rather than to what the enemy rolled. */
+.brace-blocked-box {
+  display: inline-flex;
+  min-width: 2.1rem;
+  align-items: center;
+  justify-content: center;
+  border: 1.5px solid rgb(255 255 255 / 0.85);
+  border-radius: 0.45rem;
+  padding: 0.05rem 0.3rem;
+  color: #fff;
+  font-variant-numeric: tabular-nums;
+}
