@@ -14,7 +14,7 @@ import { MatchScreen } from "@/components/MatchScreen";
 import { Button, Panel } from "@/components/ui";
 import { HowToPlaySheet } from "@/components/HowToPlay";
 import { useSoloMatch } from "@/lib/useMatch";
-import { DIFFICULTY, PLAN_BLURB, PLAN_LABEL, PLANS, type Difficulty, type Plan } from "@/lib/ai";
+import { DIFFICULTIES, DIFFICULTY, PLAN_BLURB, PLAN_LABEL, PLANS, type Difficulty, type Plan } from "@/lib/ai";
 import { NOUN } from "@/lib/reference";
 
 export default function SoloPage() {
@@ -93,11 +93,11 @@ function SoloSetup({
 
             <header>
               <p className="t-eyebrow">Solo</p>
-              <h1 className="t-display text-3xl">How hard should it play?</h1>
+              <h1 className="t-display text-3xl">How hard?</h1>
             </header>
 
             <div className="flex flex-col gap-2.5">
-              {(Object.keys(DIFFICULTY) as Difficulty[]).map((key) => {
+              {DIFFICULTIES.map((key) => {
                 const entry = DIFFICULTY[key];
                 return (
                   <button key={key} type="button" onClick={() => onStart(key)} className="w-full text-left">
@@ -118,7 +118,7 @@ function SoloSetup({
             </div>
 
             <header className="pt-2">
-              <p className="t-eyebrow">Choose enemy plan</p>
+              <p className="t-eyebrow">How it fights — optional</p>
             </header>
 
             <div className="flex flex-col gap-2.5">

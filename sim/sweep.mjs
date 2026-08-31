@@ -19,7 +19,7 @@ import { bundlePath } from "./bundle.mjs";
 const G = await import(bundlePath);
 
 const {
-  PLANS, PLAN_LABEL, TUNING, applyAction, makeRng, newBrain, newMatch, newPlayer,
+  PLANS, PLAN_LABEL, TUNING, applyAction, applyDifficultyStart, makeRng, newBrain, newMatch, newPlayer,
   nextActions, setRng, tally, priceOf, valueOfTally,
 } = G;
 
@@ -55,7 +55,7 @@ function fullMatch(planA, planB, seed, setupA = () => {}, setupB = () => {}, twe
   state.players.host.phase = "ready";
   setupA(state.players.host);
   setupB(state.players.guest);
-  const brains = { host: newBrain(planA, "captain"), guest: newBrain(planB, "captain") };
+  const brains = { host: newBrain(planA, "medium"), guest: newBrain(planB, "medium") };
   let guard = 0;
   while (state.status !== "finished" && guard < 4000) {
     guard += 1;
@@ -600,8 +600,8 @@ function modeLive(n) {
         state.status = "active";
         state.players.host.phase = "ready";
         const brains = {
-          host: newBrain(PLANS[i % PLANS.length], "captain"),
-          guest: newBrain(PLANS[(i + 2) % PLANS.length], "captain"),
+          host: newBrain(PLANS[i % PLANS.length], "medium"),
+          guest: newBrain(PLANS[(i + 2) % PLANS.length], "medium"),
         };
         let guard = 0;
         while (state.status !== "finished" && guard < 4000) {
@@ -837,7 +837,7 @@ function modeDifficulty(n) {
     `Each pairing plays ${n} matches, plans drawn evenly on both sides, so the only\n` +
     `difference between the two commanders is how hard they think.\n`,
   );
-  const tiers = ["cadet", "captain", "admiral"];
+  const tiers = ["low", "medium", "hard", "expert"];
   const rows = [];
   for (const a of tiers) {
     const row = [DIFFICULTY_LABEL(a)];
@@ -862,8 +862,8 @@ function modeDifficulty(n) {
   }
   table(["A \\ vs B", ...tiers.map(DIFFICULTY_LABEL)], rows);
   console.log(
-    `\nRead a row left to right: how often that tier beats each other tier. Admiral\n` +
-    `should beat Captain, and Captain should beat Cadet, by a clear margin.`,
+    `\nRead a row left to right: how often that tier beats each other tier. Hard\n` +
+    `should beat Medium, Medium should beat Low, and Expert should beat Hard.`,
   );
 }
 const DIFFICULTY_LABEL = (t) => t[0].toUpperCase() + t.slice(1);
@@ -873,6 +873,8 @@ function fullMatchD(planA, diffA, planB, diffB, seed) {
   setRng(makeRng(seed));
   const state = newMatch("sw", "0000", "A", "A", "versus");
   state.players.guest = newPlayer("B", "B", "ready");
+  applyDifficultyStart(state.players.host, diffA);
+  applyDifficultyStart(state.players.guest, diffB);
   state.status = "active";
   state.players.host.phase = "ready";
   const brains = { host: newBrain(planA, diffA), guest: newBrain(planB, diffB) };

@@ -39,7 +39,7 @@ const {
 /* ------------------------------------------------------------------ */
 
 /** Play one match to the end with both sides driven by the brain. */
-export function playMatch(planA, planB, difficulty = "captain", seed = 0) {
+export function playMatch(planA, planB, difficulty = "medium", seed = 0) {
   if (seed) setRng(makeRng(seed));
   const state = newMatch("sim", "0000", "A", "A", "versus");
   state.players.guest = G.newPlayer("B", "B", "ready");
@@ -115,7 +115,7 @@ function ci(p, n) {
 /* Head to head                                                        */
 /* ------------------------------------------------------------------ */
 
-function matchups(perPair = 200, difficulty = "captain") {
+function matchups(perPair = 200, difficulty = "medium") {
   console.log(`\n=== HEAD TO HEAD — ${perPair} matches per pairing, ${difficulty} ===\n`);
   const wins = Object.fromEntries(PLANS.map((plan) => [plan, { w: 0, n: 0 }]));
   const roundLengths = [];
@@ -188,7 +188,7 @@ function fleetOutput(rounds = 6000) {
       }));
       const state = { status: "active", round: 1, players: { host: player, guest: null } };
       applyAction(state, "host", { type: "roll", dice: [] });
-      const brain = newBrain("balanced", "captain");
+      const brain = newBrain("balanced", "medium");
       for (let r = 0; r < 2; r += 1) {
         const reroll = G.chooseReroll(player, { samples: 24, candidates: 8, greed: 1, pressure: 0.3 });
         if (reroll.length) applyAction(state, "host", { type: "roll", dice: reroll });
@@ -251,7 +251,7 @@ function arenaMatch(fleetA, fleetB, seed) {
   state.status = "active";
   state.players.host.phase = "ready";
   state.players.guest.phase = "ready";
-  const brains = { host: newBrain("balanced", "captain"), guest: newBrain("balanced", "captain") };
+  const brains = { host: newBrain("balanced", "medium"), guest: newBrain("balanced", "medium") };
   let guard = 0;
   while (state.status !== "finished" && guard < 4000) {
     guard += 1;
@@ -375,7 +375,7 @@ function rounds(count = 300) {
     seed += 1;
     const plan = PLANS[i % PLANS.length];
     const other = PLANS[(i + 2) % PLANS.length];
-    const result = playMatch(plan, other, "captain", seed);
+    const result = playMatch(plan, other, "medium", seed);
     lengths.push(result.rounds);
     fleets.push(result.hostFleet.length, result.guestFleet.length);
     flagLevels.push(result.hostFlag, result.guestFlag);

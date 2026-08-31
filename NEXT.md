@@ -66,12 +66,19 @@ along with which step it happened on.
   away, spends spare Energy sending the odd die back, and parks a new hull on
   the bay that already has ships on its line. Formation and Wolfpack shop for
   that; Capital still upgrades instead. Play Solo → Formation to see it.
-  Measured at Captain, Formation, 80 matches: a column paid in 11% of rounds,
+  Measured at Medium, Formation, 80 matches: a column paid in 11% of rounds,
   and 72% of commanders saw at least one. The roll screen now also tells *you*
   when you are one face away, using the same prize the engine pays.
-- **Difficulty has never been measured.** Cadet, Captain and Admiral differ in
-  how many reroll options they weigh, but nobody has checked that Admiral
-  actually beats Cadet.
+- **Difficulty is now Low / Medium / Hard / Expert.** Most people only need
+  those four words. Expert is not a cheater: same dice, same prizes, no peeking.
+  It thinks as well as Hard, then starts with a tougher flagship (more health
+  and a little Energy) that you can see on the bar. Extra health without a
+  brain still dies in a long fight, so the two are stacked. Blocking looks at
+  the volley that already arrived; a wounded flagship stops buying levels.
+  A small measurement (24 matches a pairing, noisy): Expert beat Hard about
+  seven times in ten. Hard beat Low about three times in four. Medium and
+  Hard are close when they start with the same flagship — that is why Expert
+  gets the extra health.
 - **Straights are now a mid-game reward.** At four cells they fire in about 10%
   of rounds, rising as you buy cells, because a straight needs five different
   numbers and four ships plus a flagship is exactly five dice. That feels right

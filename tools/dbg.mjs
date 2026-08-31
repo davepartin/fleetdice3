@@ -5,7 +5,7 @@ const browser = await chromium.launch({args:["--use-gl=angle","--use-angle=swift
 const page = await browser.newPage({viewport:{width:402,height:874}});
 page.on("pageerror", e => console.log("[pageerror]", e.message.slice(0,300)));
 await page.goto("http://localhost:4322/solo/", {waitUntil:"networkidle"});
-await page.locator('button:has-text("Captain")').first().click();
+await page.locator('button:has-text("Medium")').first().click();
 await settle(page, 2500);
 await page.locator('button:has-text("Roll your fleet")').first().click();
 

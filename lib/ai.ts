@@ -53,7 +53,8 @@ export const PLAN_BLURB: Record<Plan, string> = {
   formation: "Opens the bay that finishes a row or column, keeps small hulls, and banks Energy to chase matching numbers.",
 };
 
-export type Difficulty = "cadet" | "captain" | "admiral";
+export type Difficulty = "low" | "medium" | "hard" | "expert";
+export const DIFFICULTIES: Difficulty[] = ["low", "medium", "hard", "expert"];
 
 /**
  * How hard the Enemy plays.
@@ -76,33 +77,43 @@ export type Difficulty = "cadet" | "captain" | "admiral";
  * while shopping once its fleet is established (`rerollReserve`) — a tier
  * that spends paid rerolls precisely should keep some Energy in the bank
  * for them rather than dumping it all on the shipyard.
+ *
+ * Expert is not a cheater. Same dice, same prizes, no peeking at your roll.
+ * It thinks as well as Hard, then starts with a tougher flagship you can
+ * see on the health bar. Extra health without a brain still dies in a long
+ * fight — that is why the two are stacked, not swapped.
  */
-export const DIFFICULTY: Record<
-  Difficulty,
-  {
-    samples: number;
-    candidates: number;
-    greed: number;
-    rerollThreshold: number;
-    tokenThreshold: number;
-    braceCaution: number;
-    rerollReserve: number;
-    label: string;
-    blurb: string;
-  }
-> = {
-  cadet: {
-    samples: 12,
+export type DifficultyKnobs = {
+  samples: number;
+  candidates: number;
+  greed: number;
+  rerollThreshold: number;
+  tokenThreshold: number;
+  braceCaution: number;
+  rerollReserve: number;
+  /** Extra starting health on the Enemy flagship. 0 on every tier but Expert. */
+  startHpBonus: number;
+  /** Extra Energy in the Enemy bank at the start. 0 on every tier but Expert. */
+  startEnergyBonus: number;
+  label: string;
+  blurb: string;
+};
+
+export const DIFFICULTY: Record<Difficulty, DifficultyKnobs> = {
+  low: {
+    samples: 10,
     candidates: 4,
-    greed: 0.55,
-    rerollThreshold: 2.4,
-    tokenThreshold: 9,
-    braceCaution: 0.65,
+    greed: 0.5,
+    rerollThreshold: 2.6,
+    tokenThreshold: 10,
+    braceCaution: 0.7,
     rerollReserve: 0,
-    label: "Cadet",
-    blurb: "Learning the ropes. Spots a formation but reads it poorly, and rarely spends Energy to chase one.",
+    startHpBonus: 0,
+    startEnergyBonus: 0,
+    label: "Low",
+    blurb: "Makes mistakes. A good first fight.",
   },
-  captain: {
+  medium: {
     samples: 40,
     candidates: 7,
     greed: 0.85,
@@ -110,21 +121,49 @@ export const DIFFICULTY: Record<
     tokenThreshold: 6,
     braceCaution: 0.45,
     rerollReserve: 2,
-    label: "Captain",
-    blurb: "Plays the board properly — chases formations and straights, spends Energy when it's worth it.",
+    startHpBonus: 0,
+    startEnergyBonus: 0,
+    label: "Medium",
+    blurb: "Plays the board. Chases a line when it sees one, and spends Energy when it is worth it.",
   },
-  admiral: {
+  hard: {
     samples: 120,
     candidates: 10,
     greed: 1,
     rerollThreshold: 1.15,
     tokenThreshold: 4,
-    braceCaution: 0.3,
+    braceCaution: 0.28,
     rerollReserve: 4,
-    label: "Admiral",
-    blurb: "Reads every line, never wastes a roll or a hull, and knows exactly when a paid reroll pays for itself.",
+    startHpBonus: 0,
+    startEnergyBonus: 0,
+    label: "Hard",
+    blurb: "Reads every line. Only throws a hull in front of a volley when it has to, and does not waste a roll.",
+  },
+  expert: {
+    samples: 120,
+    candidates: 10,
+    greed: 1,
+    rerollThreshold: 1.05,
+    tokenThreshold: 3,
+    braceCaution: 0.22,
+    rerollReserve: 5,
+    startHpBonus: 20,
+    startEnergyBonus: 3,
+    label: "Expert",
+    blurb: "Hard, plus a tougher flagship. Same dice and the same rules — it just starts with more health and a little Energy in the bank.",
   },
 };
+
+/** Give the Enemy whatever starting edge this tier is allowed. Honest and visible. */
+export function applyDifficultyStart(player: PlayerState, difficulty: Difficulty): PlayerState {
+  const knobs = DIFFICULTY[difficulty];
+  if (knobs.startHpBonus) {
+    player.hp += knobs.startHpBonus;
+    player.maxHp += knobs.startHpBonus;
+  }
+  if (knobs.startEnergyBonus) player.energy += knobs.startEnergyBonus;
+  return player;
+}
 
 /* ------------------------------------------------------------------ */
 /* Valuing a round                                                     */
@@ -415,18 +454,21 @@ export function chooseBrace(player: PlayerState, caution = 0.45): string[] {
   const incoming = player.incoming;
   const direct = player.directIncoming;
   const survivable = player.hp + repair - direct;
+  // Left this low after a volley, a typical next round finishes you. A person
+  // does not sit at 8 health and hope. This is that instinct — it uses the
+  // damage that already arrived, not a peek at the next roll.
+  const killRange = player.maxHp * 0.22;
 
-  // How much blockable damage can land and still leave us alive with room?
   const chosen: string[] = [];
   let blocked = 0;
   for (const ship of available) {
     const landing = Math.max(0, incoming - blocked);
     if (landing === 0) break;
     const hpAfter = survivable - landing;
-    // Always survive. Beyond that, feed a hull only when it stops more than it costs.
     const mustBlock = hpAfter <= 0;
     const worthIt = landing >= ship.sides && hpAfter < player.maxHp * caution;
-    if (!mustBlock && !worthIt) break;
+    const keepAlive = hpAfter > 0 && hpAfter < killRange && landing >= Math.ceil(ship.sides * 0.5);
+    if (!mustBlock && !worthIt && !keepAlive) break;
     chosen.push(ship.id);
     blocked += ship.sides;
   }
@@ -541,6 +583,11 @@ function buyScore(player: PlayerState, buy: Buy, plan: Plan, round: number): num
     // early and close to nothing once a match is nearly over.
     worth = 2.3 * Math.max(0.35, 1 - round / 16);
     if (plan === "command") bias = 1.8;
+    // A flagship level pays on later rounds. A wounded flagship does not buy a
+    // future — it holds Energy or buys a hull that can still take a hit.
+    const hpRatio = player.hp / Math.max(1, player.maxHp);
+    if (hpRatio < 0.4) bias *= 0.4;
+    else if (hpRatio > 0.75 && round <= 6) bias *= 1.2;
   }
 
   return (worth / Math.max(1, cost)) * bias;
@@ -602,7 +649,7 @@ export type Brain = {
   difficulty: Difficulty;
 };
 
-export function newBrain(plan?: Plan, difficulty: Difficulty = "captain"): Brain {
+export function newBrain(plan?: Plan, difficulty: Difficulty = "medium"): Brain {
   return {
     plan: plan ?? PLANS[Math.floor(Math.random() * PLANS.length)]!,
     difficulty,

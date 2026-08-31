@@ -17,7 +17,9 @@ const G = await import(bundlePath);
 const {
   PLANS,
   TUNING,
+  DIFFICULTY,
   applyAction,
+  applyDifficultyStart,
   attackOf,
   bestRun,
   cellForSlot,
@@ -378,12 +380,45 @@ test("a paid reroll spends the last Energy on the odd die of a one-away column",
   guest.rolls = TUNING.rollsPerRound;
   guest.dice = board({ 1: 6, 3: 2, 4: 6, 5: 8, 7: 1 });
   guest.flag.face = 6;
-  const brain = newBrain("formation", "admiral");
+  const brain = newBrain("formation", "hard");
   const actions = nextActions(state, "guest", brain);
   const rollAct = actions.find((a) => a.type === "roll");
-  assert.ok(rollAct, "Admiral spends 1 Energy chasing the column");
+  assert.ok(rollAct, "Hard spends 1 Energy chasing the column");
   assert.ok(rollAct.dice.length <= guest.energy, "must not ask for more dice than the bank");
   assert.ok(rollAct.dice.includes("s6"), "the odd die on the middle column is the one to send back");
+});
+
+test("Expert starts with a tougher flagship; Low does not", () => {
+  const expert = newPlayer("e", "E", "shop");
+  applyDifficultyStart(expert, "expert");
+  assert.equal(expert.hp, TUNING.hp + DIFFICULTY.expert.startHpBonus);
+  assert.equal(expert.maxHp, expert.hp, "the bar maximum matches the starting health");
+  assert.equal(expert.energy, TUNING.startEnergy + DIFFICULTY.expert.startEnergyBonus);
+
+  const low = newPlayer("l", "L", "shop");
+  applyDifficultyStart(low, "low");
+  assert.equal(low.hp, TUNING.hp);
+  assert.equal(low.maxHp, TUNING.hp);
+  assert.equal(low.energy, TUNING.startEnergy);
+});
+
+test("a wounded flagship does not buy a level; a healthy Command one does", () => {
+  const wounded = newPlayer("w", "W", "shop");
+  wounded.energy = 8;
+  wounded.hp = 12;
+  const woundedActs = planShopping(wounded, "command", 10, 1, 0);
+  assert.ok(
+    woundedActs.every((a) => !(a.type === "shop" && a.operation === "flagship")),
+    "12 health left is not the time to buy a future bonus",
+  );
+
+  const healthy = newPlayer("h", "H", "shop");
+  healthy.energy = 8;
+  const healthyActs = planShopping(healthy, "command", 3, 1, 0);
+  assert.ok(
+    healthyActs.some((a) => a.type === "shop" && a.operation === "flagship"),
+    "Command with a healthy flagship early should take the cheap first level",
+  );
 });
 
 test("rollHint teaches a one-away column using the engine prize", () => {
@@ -417,7 +452,7 @@ test("the Solo Enemy waits for To the Shipyard before starting its next round", 
   state.players.guest = newPlayer("enemy", "Enemy", "report");
   state.players.host.phase = "report";
   state.status = "active";
-  const brain = newBrain("balanced", "captain");
+  const brain = newBrain("balanced", "medium");
 
   assert.deepEqual(
     nextActions(state, "guest", brain),
@@ -435,7 +470,7 @@ test("the Solo Enemy waits for To the Shipyard before starting its next round", 
 
 test("the round report adds up, every round, in a real match", () => {
   const state = freshMatch(11);
-  const brains = { host: newBrain("balanced", "captain"), guest: newBrain("width", "captain") };
+  const brains = { host: newBrain("balanced", "medium"), guest: newBrain("width", "medium") };
   let guard = 0;
 
   while (state.status !== "finished" && guard < 3000) {
@@ -472,7 +507,7 @@ test("the round report adds up, every round, in a real match", () => {
 test("a match always ends, and never on the backstop", () => {
   for (let seed = 1; seed <= 25; seed += 1) {
     const state = freshMatch(seed * 31);
-    const brains = { host: newBrain(undefined, "captain"), guest: newBrain(undefined, "captain") };
+    const brains = { host: newBrain(undefined, "medium"), guest: newBrain(undefined, "medium") };
     let guard = 0;
     while (state.status !== "finished" && guard < 4000) {
       guard += 1;
@@ -626,8 +661,8 @@ test("health never displays negative, and the maximum never disagrees with itsel
   for (let seed = 1; seed <= 12; seed += 1) {
     const state = freshMatch(seed * 17);
     const brains = {
-      host: newBrain(PLANS[seed % PLANS.length], "captain"),
-      guest: newBrain(PLANS[(seed + 1) % PLANS.length], "captain"),
+      host: newBrain(PLANS[seed % PLANS.length], "medium"),
+      guest: newBrain(PLANS[(seed + 1) % PLANS.length], "medium"),
     };
     const lastMaxHp = { host: TUNING.hp, guest: TUNING.hp };
     let guard = 0;

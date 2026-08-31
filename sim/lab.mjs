@@ -97,7 +97,7 @@ function fixedPlayer(uid, fleet, flagLevel = 1) {
  * thing being measured is what the ships themselves do in combat.
  */
 export function arenaMatch(fleetA, fleetB, opts = {}) {
-  const { flagA = 1, flagB = 1, difficulty = "captain", seed = 0, income = 0 } = opts;
+  const { flagA = 1, flagB = 1, difficulty = "medium", seed = 0, income = 0 } = opts;
   if (seed) setRng(makeRng(seed));
   const state = newMatch("lab", "0000", "A", "A", "versus");
   state.players.host = fixedPlayer("A", fleetA, flagA);
@@ -343,7 +343,7 @@ function modePurchases(n) {
     state.players.guest = newPlayer("B", "B", "ready");
     state.status = "active";
     state.players.host.phase = "ready";
-    const brains = { host: newBrain(plan, "captain"), guest: newBrain(other, "captain") };
+    const brains = { host: newBrain(plan, "medium"), guest: newBrain(other, "medium") };
     let guard = 0;
     while (state.status !== "finished" && guard < 4000) {
       guard += 1;
@@ -543,7 +543,7 @@ function modeReactor(n) {
     state.players.guest = newPlayer("B", "B", "ready");
     state.status = "active";
     state.players.host.phase = "ready";
-    const brains = { host: newBrain(plan, "captain"), guest: newBrain(PLANS[(i + 2) % PLANS.length], "captain") };
+    const brains = { host: newBrain(plan, "medium"), guest: newBrain(PLANS[(i + 2) % PLANS.length], "medium") };
     const seen = { host: 0, guest: 0 };
     let guard = 0;
     while (state.status !== "finished" && guard < 4000) {
@@ -599,7 +599,7 @@ function modeLength(n) {
     state.players.guest = newPlayer("B", "B", "ready");
     state.status = "active";
     state.players.host.phase = "ready";
-    const brains = { host: newBrain(plan, "captain"), guest: newBrain(other, "captain") };
+    const brains = { host: newBrain(plan, "medium"), guest: newBrain(other, "medium") };
     let guard = 0;
     while (state.status !== "finished" && guard < 4000) {
       guard += 1;
@@ -647,7 +647,7 @@ function fullMatch(planA, planB, seed, setupA = () => {}, setupB = () => {}) {
   state.players.host.phase = "ready";
   setupA(state.players.host);
   setupB(state.players.guest);
-  const brains = { host: newBrain(planA, "captain"), guest: newBrain(planB, "captain") };
+  const brains = { host: newBrain(planA, "medium"), guest: newBrain(planB, "medium") };
   let guard = 0;
   while (state.status !== "finished" && guard < 4000) {
     guard += 1;

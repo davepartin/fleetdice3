@@ -44,10 +44,10 @@ function run(startSlots) {
     state.players.host.phase = "ready";
     const plan = process.env.FD3_PLAN;
     const brains = plan
-      ? { host: newBrain(plan, "captain"), guest: newBrain(plan, "captain") }
+      ? { host: newBrain(plan, "medium"), guest: newBrain(plan, "medium") }
       : {
-          host: newBrain(PLANS[match % PLANS.length], "captain"),
-          guest: newBrain(PLANS[(match + 2) % PLANS.length], "captain"),
+          host: newBrain(PLANS[match % PLANS.length], "medium"),
+          guest: newBrain(PLANS[(match + 2) % PLANS.length], "medium"),
         };
 
     const seenColumn = { host: 0, guest: 0 };
