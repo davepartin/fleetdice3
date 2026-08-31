@@ -3053,20 +3053,27 @@ button {
   position: relative;
 }
 
-/* Reads as a control, not a label — it has to invite a tap, because it is now
-   the only way to reach Home, sound and the rules. */
+/* Sized to the bar, not the other way round: the health numbers set the rail's
+   height, and this sits inside whatever they leave. The visible chip is small;
+   the tap target is not — ::after widens it past the border without taking any
+   layout, so a small control on a phone is still comfortably hittable. */
 .match-menu-btn {
+  position: relative;
   display: flex;
-  min-height: 34px;
   align-items: center;
-  gap: 0.35rem;
   border: 1px solid var(--color-hull-600);
-  border-radius: 0.55rem;
+  border-radius: 0.4rem;
   background: color-mix(in srgb, var(--color-hull-800) 80%, transparent);
-  padding: 0.25rem 0.5rem;
-  color: var(--color-hull-200);
+  padding: 0.12rem 0.42rem;
+  color: var(--color-hull-300);
   cursor: pointer;
   transition: border-color 120ms ease, color 120ms ease;
+}
+
+.match-menu-btn::after {
+  content: "";
+  position: absolute;
+  inset: -11px -8px;
 }
 
 .match-menu-btn:hover,
@@ -3077,8 +3084,8 @@ button {
 
 .match-menu-btn {
   font-family: var(--font-display);
-  font-size: 0.74rem;
-  letter-spacing: 0.08em;
+  font-size: 0.58rem;
+  letter-spacing: 0.09em;
   text-transform: uppercase;
   white-space: nowrap;
 }
@@ -3117,20 +3124,12 @@ button {
 
 @media (min-width: 641px) and (min-height: 641px) {
   .match-menu-btn {
-    min-height: 38px;
-    padding-inline: 0.85rem;
-    font-size: 0.8rem;
+    padding-inline: 0.55rem;
+    font-size: 0.64rem;
   }
 }
 
-/* A phone needs the whole 44px target even though the bar is tighter there. */
-@media (max-width: 640px), (max-height: 640px) {
-  .match-menu-btn {
-    min-height: 40px;
-    padding-inline: 0.8rem;
-    justify-content: center;
-  }
-}
+
 
 /* The round rides beside "Flagship" now that the top bar is one line: it is
    context, not a headline, so it sits in the quieter type of the rail. */

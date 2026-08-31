@@ -1271,10 +1271,10 @@ function MatchMenu({
         className="match-menu-btn"
         aria-haspopup="menu"
         aria-expanded={open}
-        aria-label="Options"
+        aria-label="Settings"
         onClick={() => setOpen((was) => !was)}
       >
-        Options
+        Settings
       </button>
 
       {open && (
