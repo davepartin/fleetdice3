@@ -3199,3 +3199,21 @@ button {
   line-height: 1.35;
   color: var(--color-hull-200);
 }
+
+/* ---------------------------------------------------------------- */
+/* Sheets                                                            */
+/* ---------------------------------------------------------------- */
+
+/* `inset-0` on a fixed element measures the LAYOUT viewport, which on iOS
+   Safari runs on underneath the browser's own toolbar. A bottom-pinned sheet
+   therefore parked its footer in that hidden strip — the buttons existed and
+   could not be reached, which on the last-stand sheet meant no way to accept
+   defeat. dvh tracks the visible viewport instead, and the safe-area inset
+   keeps the footer clear of the home indicator. */
+.sheet-overlay {
+  height: 100dvh;
+}
+
+.sheet-panel {
+  margin-bottom: max(0.5rem, var(--hud-safe-bottom));
+}
