@@ -22,10 +22,12 @@ import {
   boardCell,
   cellForSlot,
   emptyOpenSlots,
+  energyOf,
   flagshipUpgradeCost,
   FLEET_LINES,
   nextSlotCost,
   priceOf,
+  repairOf,
   roll,
   shipInSlot,
   slotForCell,
@@ -806,13 +808,16 @@ export function rollHint(state: MatchState, side: SideId): Hint | null {
   }
   const them = state.players[side === "host" ? "guest" : "host"];
   if (them && you.hp <= them.hp * 0.5 && t.heal < 3) {
-    return { text: "You are behind on health. A 3 repairs 3.", tone: "warn" };
+    return { text: `You are behind on health. A 3 repairs ${repairOf(3)}.`, tone: "warn" };
   }
   if (run && run.length === 4 && rollsLeft > 0) {
     return { text: "One number short of a straight. You need five in a row.", tone: "info" };
   }
   if (you.energy < 4 && t.energy < 3 && rollsLeft > 0) {
-    return { text: "Low on Energy — a 1 pays 2, a 4 pays 1.", tone: "info" };
+    return {
+      text: `Low on Energy — a 1 pays ${energyOf(1)}, a 4 pays ${energyOf(4)}.`,
+      tone: "info",
+    };
   }
   return null;
 }
