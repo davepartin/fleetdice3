@@ -645,10 +645,8 @@ button {
   border-radius: 1rem;
 }
 
-.match-mobile-menu,
 .flagship-compact,
-.commander-name-mobile,
-.leave-label-short {
+.commander-name-mobile {
   display: none;
 }
 
@@ -823,75 +821,20 @@ button {
 }
 
 @media (max-width: 640px), (max-height: 640px) {
-  /* "‹ Home" and the "…" menu share a top row; the HP rail gets a full
-     row of its own underneath. Cramming "You 60+16 · Round 4 · Enemy
-     60+16" between two buttons on one line only ever ends in truncation —
-     real phones proved it, not just a narrow test viewport — so this
-     gives the numbers a row wide enough that they never need to. */
+  /* One bar, at the very top. The menu lives inside the rail's middle slot,
+     so the numbers no longer have to share a line with two buttons — which is
+     what forced this header onto two rows before. */
   .match-hud-solo .match-header {
-    flex-wrap: wrap;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 0.4rem;
     padding: max(0.45rem, var(--hud-safe-top)) 0.45rem 0;
   }
 
-  .match-hud-solo .match-header > .btn {
-    min-width: 44px;
-    min-height: 44px;
-    padding-inline: 0.65rem;
-  }
-  .match-hud-solo .leave-label-full { display: none; }
-  .match-hud-solo .leave-label-short { display: inline; }
-
-  .match-hud-solo .match-header .match-leave { order: 1; }
-  .match-hud-solo .match-header .match-mobile-menu { order: 2; }
   .match-hud-solo .match-header .hp-rail {
-    order: 3;
-    flex-basis: 100%;
     min-height: 44px;
-    padding: 0.5rem 0.7rem;
+    padding: 0.45rem 0.6rem;
   }
 
-  .match-hud-solo .match-desktop-utilities {
-    display: none;
-  }
-
-  .match-hud-solo .match-mobile-menu {
-    position: relative;
-    display: block;
-    flex: 0 0 auto;
-  }
-
-  .match-mobile-menu > summary {
-    min-width: 44px;
-    min-height: 44px;
-    list-style: none;
-    cursor: pointer;
-  }
-  .match-mobile-menu > summary::-webkit-details-marker { display: none; }
-
-  .match-mobile-menu-popover {
-    position: absolute;
-    top: calc(100% + 0.4rem);
-    right: 0;
-    z-index: 40;
-    width: 148px;
-    overflow: hidden;
-    padding: 0.3rem;
-  }
-  .match-mobile-menu-popover button {
-    display: flex;
-    width: 100%;
-    min-height: 44px;
-    align-items: center;
-    gap: 0.55rem;
-    border-radius: 10px;
-    padding: 0.55rem 0.7rem;
-    color: var(--color-hull-100);
-    font-size: var(--text-sm);
-    font-weight: 700;
-    text-align: left;
+  .match-menu-popover {
+    width: 168px;
   }
 
   .match-hud-solo .match-bottom {
@@ -3094,4 +3037,97 @@ button {
 .solo-nudge strong {
   color: var(--color-energy);
   font-weight: 700;
+}
+
+/* ---------------------------------------------------------------- */
+/* The match menu, in the middle of the health rail                  */
+/* ---------------------------------------------------------------- */
+
+.hp-rail-center {
+  display: flex;
+  align-items: center;
+  align-self: center;
+}
+
+.match-menu {
+  position: relative;
+}
+
+/* Reads as a control, not a label — it has to invite a tap, because it is now
+   the only way to reach Home, sound and the rules. */
+.match-menu-btn {
+  display: flex;
+  min-height: 34px;
+  align-items: center;
+  gap: 0.35rem;
+  border: 1px solid var(--color-hull-600);
+  border-radius: 0.55rem;
+  background: color-mix(in srgb, var(--color-hull-800) 80%, transparent);
+  padding: 0.25rem 0.5rem;
+  color: var(--color-hull-200);
+  cursor: pointer;
+  transition: border-color 120ms ease, color 120ms ease;
+}
+
+.match-menu-btn:hover,
+.match-menu-btn[aria-expanded="true"] {
+  border-color: var(--color-hull-400);
+  color: var(--color-hull-100);
+}
+
+.match-menu-round {
+  font-family: var(--font-display);
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* Centred under the button rather than pinned to an edge: the trigger sits in
+   the middle of the bar, and a menu that flew off to one side would read as
+   belonging to whichever health number it landed nearest. */
+.match-menu-popover {
+  position: absolute;
+  top: calc(100% + 0.45rem);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 40;
+  width: 176px;
+  overflow: hidden;
+  padding: 0.3rem;
+}
+
+.match-menu-popover button {
+  display: flex;
+  width: 100%;
+  min-height: 44px;
+  align-items: center;
+  gap: 0.55rem;
+  border-radius: 10px;
+  padding: 0.55rem 0.7rem;
+  color: var(--color-hull-100);
+  font-size: var(--text-sm);
+  font-weight: 700;
+  text-align: left;
+}
+
+.match-menu-popover button:hover {
+  background: var(--color-hull-700);
+}
+
+@media (min-width: 641px) and (min-height: 641px) {
+  .match-menu-btn {
+    min-height: 38px;
+    padding-inline: 0.6rem;
+  }
+  .match-menu-round { font-size: 0.78rem; }
+}
+
+/* A phone needs the whole 44px target even though the bar is tighter there. */
+@media (max-width: 640px), (max-height: 640px) {
+  .match-menu-btn {
+    min-height: 40px;
+    min-width: 44px;
+    justify-content: center;
+  }
 }

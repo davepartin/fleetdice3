@@ -521,67 +521,33 @@ export function MatchScreen({ controller, onExit, title, subtitle }: Props) {
       >
         {/* ---------------- top ---------------- */}
         <div ref={headerRef} className="match-top">
-          <header className="match-header flex items-start gap-2 px-3 pt-3">
-          <Button
-            tone="ghost"
-            size="sm"
-            className="match-leave"
-            ariaLabel={`Back to ${NOUN.home}`}
-            onClick={() => {
-              if (cancel && state.status !== "finished") {
-                setLeaveOpen(true);
-                return;
-              }
-              onExit();
-            }}
-          >
-            <span className="leave-label-full">‹ Back to {NOUN.home}</span>
-            <span className="leave-label-short">‹ {NOUN.home}</span>
-          </Button>
-
+          <header className="match-header px-3 pt-3">
           <HpRail
             yourHp={you.hp}
             enemyName={enemyName}
             enemyHp={them?.hp ?? 0}
-            round={you.round}
             yourFleet={fleetBlock(you)}
             enemyFleet={them ? fleetBlock(them) : undefined}
             className="min-w-0 flex-1"
-          />
-
-          <div className="match-desktop-utilities flex flex-col gap-1.5">
-            <Button tone="ghost" size="sm" onClick={() => setHelpOpen(true)} ariaLabel="How to play">
-              ?
-            </Button>
-            <Button
-              tone="ghost"
-              size="sm"
-              ariaLabel={muted ? "Turn sound on" : "Turn sound off"}
-              onClick={() => {
-                audio.unlock();
-                setMuted(audio.toggleMuted());
-              }}
-            >
-              <SoundIcon muted={muted} />
-            </Button>
-          </div>
-
-          <details className="match-mobile-menu">
-            <summary className="btn btn-ghost btn-sm" aria-label="Game menu">•••</summary>
-            <div className="match-mobile-menu-popover panel">
-              <button type="button" onClick={() => setHelpOpen(true)}>How to play</button>
-              <button
-                type="button"
-                onClick={() => {
+            center={
+              <MatchMenu
+                round={you.round}
+                muted={muted}
+                onHome={() => {
+                  if (cancel && state.status !== "finished") {
+                    setLeaveOpen(true);
+                    return;
+                  }
+                  onExit();
+                }}
+                onSound={() => {
                   audio.unlock();
                   setMuted(audio.toggleMuted());
                 }}
-              >
-                <SoundIcon muted={muted} />
-                {muted ? "Sound off" : "Sound on"}
-              </button>
-            </div>
-          </details>
+                onHelp={() => setHelpOpen(true)}
+              />
+            }
+          />
           </header>
 
           {(you.round > TUNING.escalateAfterRound || controller.mode === "versus") && (
@@ -1240,6 +1206,118 @@ function FlagshipLine({ you }: { you: PlayerState }) {
         <span className="flagship-compact"> · {compact}</span>
       </span>
     </div>
+  );
+}
+
+/**
+ * Everything that is not the battle, behind one control.
+ *
+ * This lives in the middle of the health rail rather than in a row of its own
+ * above it. On a phone that row cost about 56px of board — the single biggest
+ * slice of screen that was not the game — and the round number it replaced was
+ * the least urgent thing on the bar, so it rides along on the button instead.
+ */
+function MatchMenu({
+  round,
+  muted,
+  onHome,
+  onSound,
+  onHelp,
+}: {
+  round: number;
+  muted: boolean;
+  onHome(): void;
+  onSound(): void;
+  onHelp(): void;
+}) {
+  const [open, setOpen] = useState(false);
+  const wrap = useRef<HTMLDivElement>(null);
+
+  // A menu that only closes by pressing its own button is a trap on a phone,
+  // where the natural gesture is to tap the board and expect it to go away.
+  useEffect(() => {
+    if (!open) return;
+    const away = (event: PointerEvent) => {
+      if (!wrap.current?.contains(event.target as Node)) setOpen(false);
+    };
+    const escape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("pointerdown", away);
+    document.addEventListener("keydown", escape);
+    return () => {
+      document.removeEventListener("pointerdown", away);
+      document.removeEventListener("keydown", escape);
+    };
+  }, [open]);
+
+  const pick = (run: () => void) => () => {
+    setOpen(false);
+    run();
+  };
+
+  return (
+    <div className="match-menu" ref={wrap}>
+      <button
+        type="button"
+        className="match-menu-btn"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        aria-label={`Round ${round} — game menu`}
+        onClick={() => setOpen((was) => !was)}
+      >
+        <GearIcon />
+        <span className="match-menu-round">Rd {round}</span>
+      </button>
+
+      {open && (
+        <div className="match-menu-popover panel" role="menu">
+          <button type="button" role="menuitem" onClick={pick(onHome)}>
+            <HomeIcon />
+            {NOUN.home[0].toUpperCase() + NOUN.home.slice(1)}
+          </button>
+          <button type="button" role="menuitem" onClick={pick(onSound)}>
+            <SoundIcon muted={muted} />
+            {muted ? "Sound off" : "Sound on"}
+          </button>
+          <button type="button" role="menuitem" onClick={pick(onHelp)}>
+            <HelpIcon />
+            How to play
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function GearIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor"
+      strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <circle cx="12" cy="12" r="3.1" />
+      <path d="M12 2.6v2.6M12 18.8v2.6M21.4 12h-2.6M5.2 12H2.6M18.6 5.4l-1.8 1.8M7.2 16.8l-1.8 1.8M18.6 18.6l-1.8-1.8M7.2 7.2 5.4 5.4" />
+    </svg>
+  );
+}
+
+function HomeIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor"
+      strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M3.5 10.6 12 3.8l8.5 6.8" />
+      <path d="M5.8 9.4v9.4h12.4V9.4" />
+    </svg>
+  );
+}
+
+function HelpIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor"
+      strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <circle cx="12" cy="12" r="8.6" />
+      <path d="M9.7 9.4a2.4 2.4 0 1 1 2.9 2.4v1.5" />
+      <path d="M12.5 16.6h.01" />
+    </svg>
   );
 }
 

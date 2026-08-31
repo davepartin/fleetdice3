@@ -325,6 +325,7 @@ export function HpRail({
   enemyName,
   enemyHp,
   round,
+  center,
   yourFleet,
   enemyFleet,
   className = "",
@@ -334,6 +335,12 @@ export function HpRail({
   enemyHp: number;
   /** Omit on a screen that already states the round elsewhere. */
   round?: number;
+  /**
+   * What sits between the two health readouts. The match screen puts its
+   * whole menu here — one bar at the top of the screen instead of a row of
+   * buttons above it — and the round rides along inside that control.
+   */
+  center?: ReactNode;
   /**
    * How much your fleet could block right now, next to the flagship's own
    * health — a ship that blocked last round doesn't count until it's back.
@@ -356,9 +363,11 @@ export function HpRail({
             </>
           )}
         </span>
-        {round !== undefined && (
+        {center !== undefined ? (
+          <span className="hp-rail-center shrink-0">{center}</span>
+        ) : round !== undefined ? (
           <span className="t-eyebrow hp-rail-round shrink-0 text-xs">Round {round}</span>
-        )}
+        ) : null}
         <span className="hp-rail-side hp-rail-side-enemy min-w-0 text-right text-sm font-semibold text-white">
           {enemyName} <Ticker value={Math.max(0, enemyHp)} className="hp-rail-number c-hp-glow" />
           {enemyFleet !== undefined && (
