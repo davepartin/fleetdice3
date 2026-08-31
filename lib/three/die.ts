@@ -27,8 +27,14 @@ export type DieState = {
   flagRing?: boolean;
   /** Fleet Dice 1 semantic colour for the current flagship bonus. */
   flagRingColor?: number;
-  /** Chosen to absorb the incoming volley. */
+  /** Chosen to take the incoming volley. */
   damageSelected?: boolean;
+  /**
+   * Can be tapped to block right now. Breathes a slow gold pulse — the block
+   * screen asks for a choice the board gives no other sign of, and a ship that
+   * looks identical whether or not it can be tapped is not an invitation.
+   */
+  blockable?: boolean;
   /** Dimmed because it belongs to the other commander. */
   enemy?: boolean;
   /**
@@ -441,6 +447,8 @@ export function createDie(kind: DieKind, font: string, scale = 1, cellSize = 0, 
   let spinSpeed = 0;
   let onLand: (() => void) | undefined;
   let landPunch = 0;
+  // Set from state, applied per frame — the pulse has to survive re-syncs.
+  let blockPulse = false;
   let throwCount = 0;
   let frameCount = 0;
 
@@ -495,6 +503,21 @@ export function createDie(kind: DieKind, font: string, scale = 1, cellSize = 0, 
           ? 0.1
           : kind === "flag" ? 0.04 : 0.14;
       glowMaterial.opacity = state.selected ? 0.3 : 0;
+    }
+
+    // Already picked reads through its own selection marker, so the invitation
+    // stops the moment it is accepted.
+    blockPulse = Boolean(state.blockable) && !state.disabled && !state.damageSelected;
+    // Borrow the reroll marker rather than invent a second one: a ring around
+    // the cell is already this game's word for "this die is live", and the pool
+    // of light alone was invisible from the board's camera angle.
+    if (blockPulse) {
+      glowMaterial.color.setHex(0xffd23d); // --color-energy
+      selectionMaterial.color.setHex(0xffd23d);
+      selectionFillMaterial.color.setHex(0xffd23d);
+    } else {
+      selectionMaterial.color.setHex(0x69e6ff);
+      selectionFillMaterial.color.setHex(0x37cfff);
     }
     const rerollSelected = !state.disabled && state.selected && !state.damageSelected;
     selectionMaterial.opacity = rerollSelected ? 1 : 0;
@@ -615,8 +638,18 @@ export function createDie(kind: DieKind, font: string, scale = 1, cellSize = 0, 
         (damageBar.material as THREE.MeshBasicMaterial).opacity = 0;
       }
     },
-    update(dt, _time) {
+    update(dt, time) {
       frameCount += 1;
+
+      if (blockPulse) {
+        // ~1.7s round trip. Slow enough to read as breathing rather than an
+        // alarm — this is the calmest screen in the game and it should stay so.
+        const wave = 0.5 + 0.5 * Math.sin(time * 3.7);
+        glowMaterial.opacity = 0.16 + wave * 0.34;
+        selectionMaterial.opacity = 0.5 + wave * 0.5;
+        selectionFillMaterial.opacity = 0.04 + wave * 0.11;
+        material.emissiveIntensity = 0.14 + wave * 0.13;
+      }
 
       if (launched) {
         launchAge += dt;
@@ -710,7 +743,13 @@ export function createDie(kind: DieKind, font: string, scale = 1, cellSize = 0, 
       // are all steady squares — see the note where they are built.
     },
     stats() {
-      return { throwCount, frameCount, flightTime, flightDelay, flightDuration, rolling };
+      return {
+        throwCount, frameCount, flightTime, flightDelay, flightDuration, rolling,
+        // The block-screen pulse is invisible to the DOM, so the harness needs
+        // a way to prove it is actually breathing.
+        blockPulse,
+        glowOpacity: Number(glowMaterial.opacity.toFixed(3)),
+      };
     },
     dispose() {
       material.dispose();

@@ -34,7 +34,7 @@ import { FLAGSHIP_FACES, NOUN, STAT_LABEL } from "@/lib/reference";
 import { isPhoneLayout } from "@/lib/viewport";
 import type { MatchController } from "@/lib/useMatch";
 import { pendingThrow, pendingThrowReady, type PendingThrow } from "@/lib/throwSync";
-import { createArena, type Arena, type Focus } from "@/lib/three/arena";
+import { createArena, type Arena, type Focus, braceCandidates } from "@/lib/three/arena";
 import { waitForFonts } from "@/lib/three/fonts";
 import { audio } from "@/lib/audio";
 import { Button, Chip, HpRail, Notice, Sheet, TallyStrip } from "./ui";
@@ -194,6 +194,16 @@ export function MatchScreen({ controller, onExit, title, subtitle }: Props) {
       instant: firstSyncRef.current,
       selected,
       damageSelected: phase === "brace" ? braceShips : undefined,
+      // Only the ships still available to send in — one already committed
+      // shows through its own selection marker instead.
+      blockable:
+        phase === "brace" && you
+          ? new Set(
+              braceCandidates(you)
+                .map((ship) => ship.id)
+                .filter((id) => !braceShips.has(id)),
+            )
+          : undefined,
       previewTally: tally,
       revealEnemy: phase === "brace" || phase === "report" || phase === "over",
       thrown: throwReady ? pending?.ids : undefined,
@@ -531,7 +541,6 @@ export function MatchScreen({ controller, onExit, title, subtitle }: Props) {
             className="min-w-0 flex-1"
             center={
               <MatchMenu
-                round={you.round}
                 muted={muted}
                 onHome={() => {
                   if (cancel && state.status !== "finished") {
@@ -796,6 +805,7 @@ function YourHealth({ you }: { you: PlayerState }) {
       <span className="commander-name t-eyebrow shrink-0">
         <span className="commander-name-full">{you.name}</span>
         <span className="commander-name-mobile">{NOUN.flagship}</span>
+        <span className="commander-round">Round {you.round}</span>
       </span>
       <span className="commander-energy-cluster flex shrink-0 items-stretch gap-1">
         <span className="commander-bank t-num c-energy" aria-label={`${you.energy} Energy in bank`}>
@@ -1218,13 +1228,11 @@ function FlagshipLine({ you }: { you: PlayerState }) {
  * the least urgent thing on the bar, so it rides along on the button instead.
  */
 function MatchMenu({
-  round,
   muted,
   onHome,
   onSound,
   onHelp,
 }: {
-  round: number;
   muted: boolean;
   onHome(): void;
   onSound(): void;
@@ -1263,11 +1271,10 @@ function MatchMenu({
         className="match-menu-btn"
         aria-haspopup="menu"
         aria-expanded={open}
-        aria-label={`Round ${round} — game menu`}
+        aria-label="Options"
         onClick={() => setOpen((was) => !was)}
       >
-        <GearIcon />
-        <span className="match-menu-round">Rd {round}</span>
+        Options
       </button>
 
       {open && (
@@ -1287,16 +1294,6 @@ function MatchMenu({
         </div>
       )}
     </div>
-  );
-}
-
-function GearIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor"
-      strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <circle cx="12" cy="12" r="3.1" />
-      <path d="M12 2.6v2.6M12 18.8v2.6M21.4 12h-2.6M5.2 12H2.6M18.6 5.4l-1.8 1.8M7.2 16.8l-1.8 1.8M18.6 18.6l-1.8-1.8M7.2 7.2 5.4 5.4" />
-    </svg>
   );
 }
 

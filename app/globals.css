@@ -3075,11 +3075,11 @@ button {
   color: var(--color-hull-100);
 }
 
-.match-menu-round {
+.match-menu-btn {
   font-family: var(--font-display);
-  font-size: 0.72rem;
-  letter-spacing: 0.06em;
-  font-variant-numeric: tabular-nums;
+  font-size: 0.74rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
   white-space: nowrap;
 }
 
@@ -3118,16 +3118,25 @@ button {
 @media (min-width: 641px) and (min-height: 641px) {
   .match-menu-btn {
     min-height: 38px;
-    padding-inline: 0.6rem;
+    padding-inline: 0.85rem;
+    font-size: 0.8rem;
   }
-  .match-menu-round { font-size: 0.78rem; }
 }
 
 /* A phone needs the whole 44px target even though the bar is tighter there. */
 @media (max-width: 640px), (max-height: 640px) {
   .match-menu-btn {
     min-height: 40px;
-    min-width: 44px;
+    padding-inline: 0.8rem;
     justify-content: center;
   }
+}
+
+/* The round rides beside "Flagship" now that the top bar is one line: it is
+   context, not a headline, so it sits in the quieter type of the rail. */
+.commander-round {
+  margin-left: 0.5rem;
+  color: var(--color-hull-400);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
