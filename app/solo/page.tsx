@@ -8,7 +8,7 @@
  * gets closed after one match.
  */
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { MatchScreen } from "@/components/MatchScreen";
 import { Button, Panel } from "@/components/ui";
@@ -16,6 +16,15 @@ import { HowToPlaySheet } from "@/components/HowToPlay";
 import { useSoloMatch } from "@/lib/useMatch";
 import { DIFFICULTIES, DIFFICULTY, PLAN_BLURB, PLAN_LABEL, PLANS, type Difficulty, type Plan } from "@/lib/ai";
 import { NOUN } from "@/lib/reference";
+import {
+  emptyRecord,
+  loadRecord,
+  played,
+  recordSoloResult,
+  suggestStepUp,
+  winRate,
+  type SoloRecord,
+} from "@/lib/record";
 
 export default function SoloPage() {
   const router = useRouter();
@@ -56,6 +65,26 @@ function SoloMatch({
   onExit(): void;
 }) {
   const controller = useSoloMatch({ difficulty, plan });
+  const state = controller.state;
+  // Restart reuses this component with a new match id, so the guard is keyed by
+  // id rather than a bare "already done" flag.
+  const recorded = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!state || state.status !== "finished" || !state.winner) return;
+    if (recorded.current === state.id) return;
+    recorded.current = state.id;
+    const you = state.players[controller.side];
+    recordSoloResult({
+      matchId: state.id,
+      difficulty,
+      outcome:
+        state.winner === "draw" ? "draw" : state.winner === controller.side ? "win" : "loss",
+      rounds: state.round,
+      hpLeft: Math.max(0, you?.hp ?? 0),
+    });
+  }, [state, controller.side, difficulty]);
+
   return <MatchScreen controller={controller} onExit={onExit} />;
 }
 
@@ -76,6 +105,22 @@ function SoloSetup({
   helpOpen: boolean;
   onCloseHelp(): void;
 }) {
+  // Read after mount, never during render: this page is prerendered to static
+  // HTML, and localStorage does not exist when that HTML is built.
+  const [record, setRecord] = useState<SoloRecord>(emptyRecord);
+  useEffect(() => setRecord(loadRecord()), []);
+
+  // Nudge from the highest tier you are clearly winning, so a good player is
+  // pointed at Expert rather than back at Medium.
+  const nudge = (() => {
+    for (let i = DIFFICULTIES.length - 1; i >= 0; i -= 1) {
+      const from = DIFFICULTIES[i];
+      const to = suggestStepUp(record, from);
+      if (to) return { from, to };
+    }
+    return null;
+  })();
+
   return (
     <>
       <div className="hud">
@@ -96,6 +141,13 @@ function SoloSetup({
               <h1 className="t-display text-3xl">How hard?</h1>
             </header>
 
+            {nudge ? (
+              <p className="solo-nudge">
+                You are winning on {DIFFICULTY[nudge.from].label}. Try{" "}
+                <strong>{DIFFICULTY[nudge.to].label}</strong>?
+              </p>
+            ) : null}
+
             <div className="flex flex-col gap-2.5">
               {DIFFICULTIES.map((key) => {
                 const entry = DIFFICULTY[key];
@@ -108,6 +160,7 @@ function SoloSetup({
                           {entry.blurb}
                         </span>
                       </span>
+                      <TierRecord tier={record.tiers[key]} />
                       <span className="c-dim" aria-hidden>
                         ›
                       </span>
@@ -143,6 +196,25 @@ function SoloSetup({
       </div>
       <HowToPlaySheet open={helpOpen} onClose={onCloseHelp} />
     </>
+  );
+}
+
+/** Your win-loss on one tier. Silent until you have actually played it. */
+function TierRecord({ tier }: { tier?: import("@/lib/record").TierRecord }) {
+  if (played(tier) === 0 || !tier) return null;
+  const rate = winRate(tier);
+  return (
+    <span
+      className="solo-record"
+      aria-label={`Your record: ${tier.wins} won, ${tier.losses} lost`}
+    >
+      <span className="solo-record-wl">
+        {tier.wins}–{tier.losses}
+      </span>
+      {rate === null ? null : (
+        <span className="solo-record-rate">{Math.round(rate * 100)}%</span>
+      )}
+    </span>
   );
 }
 
