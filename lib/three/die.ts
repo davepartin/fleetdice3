@@ -14,7 +14,7 @@ import {
   buildFacedownAtlas,
   faceSpec,
   flagFaceSpec,
-  paintSpentPlate,
+  paintHullPlate,
   type Atlas,
 } from "./faceArt";
 import type { DieSize } from "@/lib/engine";
@@ -68,6 +68,7 @@ type Shared = {
   hidden: THREE.MeshPhysicalMaterial;
   /** The "D4"/"D6"/"D8"/"D10" label baked onto that blank hull. Hulls only — the flagship has no size to label. */
   hiddenMap: THREE.CanvasTexture | null;
+  idlePlate: THREE.CanvasTexture | null;
   spentPlate: THREE.CanvasTexture | null;
   outline: THREE.Material;
   outlineGeometry: THREE.BufferGeometry;
@@ -136,16 +137,21 @@ function sharedFor(kind: DieKind, font: string): Shared {
     envMapIntensity: 0.9,
   });
 
-  // The one mark for a ship spending a round out. Shared across every die of
-  // a size — they should all look exactly alike.
-  const spentPlate =
-    kind === "flag"
-      ? null
-      : new THREE.CanvasTexture(paintSpentPlate(sides as DieSize, 256, numeralFontFamily()));
-  if (spentPlate) spentPlate.colorSpace = THREE.SRGBColorSpace;
+  // Both plates are shared across every die of a size — they should all look
+  // exactly alike.
+  const plate = (variant: "idle" | "spent") => {
+    if (kind === "flag") return null;
+    const texture = new THREE.CanvasTexture(
+      paintHullPlate(sides as DieSize, 256, numeralFontFamily(), variant),
+    );
+    texture.colorSpace = THREE.SRGBColorSpace;
+    return texture;
+  };
+  const idlePlate = plate("idle");
+  const spentPlate = plate("spent");
 
   const shared: Shared = {
-    built, atlas, material, hidden, hiddenMap, spentPlate, outline, outlineGeometry,
+    built, atlas, material, hidden, hiddenMap, idlePlate, spentPlate, outline, outlineGeometry,
   };
   CACHE.set(key, shared);
   return shared;
@@ -159,6 +165,7 @@ export function clearDieCache() {
     shared.material.dispose();
     shared.hidden.dispose();
     shared.hiddenMap?.dispose();
+    shared.idlePlate?.dispose();
     shared.spentPlate?.dispose();
     (shared.outline as THREE.Material).dispose();
   }
@@ -447,9 +454,11 @@ export function createDie(kind: DieKind, font: string, scale = 1, cellSize = 0, 
 
   // The "out for a round" plate. Head-on and flat, so it reads the same on
   // every screen and at every camera angle.
-  const spentPlateMaterial = shared.spentPlate
+  // One plate, two faces: the hull waiting to roll, and the hull sat out. Both
+  // are the shape rather than the die, so a d8 is a diamond at every angle.
+  const plateMaterial = shared.idlePlate
     ? new THREE.MeshBasicMaterial({
-        map: shared.spentPlate,
+        map: shared.idlePlate,
         transparent: true,
         opacity: 0,
         depthWrite: false,
@@ -457,15 +466,15 @@ export function createDie(kind: DieKind, font: string, scale = 1, cellSize = 0, 
         side: THREE.DoubleSide,
       })
     : null;
-  const spentPlateMesh = spentPlateMaterial
-    ? new THREE.Mesh(new THREE.PlaneGeometry(markerSize * 0.98, markerSize * 0.98), spentPlateMaterial)
+  const plateMesh = plateMaterial
+    ? new THREE.Mesh(new THREE.PlaneGeometry(markerSize * 0.98, markerSize * 0.98), plateMaterial)
     : null;
-  if (spentPlateMesh) {
-    spentPlateMesh.rotation.x = -Math.PI / 2;
-    spentPlateMesh.position.y = -shared.built.seatHeight + 0.42 / Math.max(0.001, scale);
-    spentPlateMesh.renderOrder = 5;
-    spentPlateMesh.visible = false;
-    object.add(spentPlateMesh);
+  if (plateMesh) {
+    plateMesh.rotation.x = -Math.PI / 2;
+    plateMesh.position.y = -shared.built.seatHeight + 0.42 / Math.max(0.001, scale);
+    plateMesh.renderOrder = 5;
+    plateMesh.visible = false;
+    object.add(plateMesh);
   }
 
   object.scale.setScalar(scale);
@@ -507,18 +516,26 @@ export function createDie(kind: DieKind, font: string, scale = 1, cellSize = 0, 
   }
 
   function applyStateColours() {
-    // A ship that is spending this round out — whether you just tapped it or
-    // it is already sitting one out — is shown by the plate, not by the die.
-    // One mark, one meaning, and tapping it again takes the mark away.
+    // Two states are shown by the plate rather than the die: a hull that has
+    // not rolled, and one spending a round out. Neither has a number to show,
+    // and the die's own silhouette is not the shape the rest of the game uses
+    // for it.
     const spentNow =
       kind !== "flag" && (Boolean(state.disabled) || Boolean(state.damageSelected));
-    if (spentPlateMesh && spentPlateMaterial) {
-      spentPlateMesh.visible = spentNow;
-      spentPlateMaterial.opacity = spentNow ? 1 : 0;
+    const idleNow = kind !== "flag" && !spentNow && Boolean(state.facedown);
+    const onPlate = spentNow || idleNow;
+    if (plateMesh && plateMaterial) {
+      plateMesh.visible = onPlate;
+      plateMaterial.opacity = onPlate ? 1 : 0;
+      const wanted = spentNow ? shared.spentPlate : shared.idlePlate;
+      if (onPlate && wanted && plateMaterial.map !== wanted) {
+        plateMaterial.map = wanted;
+        plateMaterial.needsUpdate = true;
+      }
     }
-    mesh.visible = !spentNow;
-    outline.visible = !spentNow;
-    if (spentNow) {
+    mesh.visible = !onPlate;
+    outline.visible = !onPlate;
+    if (onPlate) {
       glowMaterial.opacity = 0;
       selectionMaterial.opacity = 0;
       selectionFillMaterial.opacity = 0;
@@ -529,7 +546,7 @@ export function createDie(kind: DieKind, font: string, scale = 1, cellSize = 0, 
       barMaterial.opacity = 0;
       linkMaterial.opacity = 0;
       blockPulse = false;
-      contactMaterial.opacity = 0.2;
+      contactMaterial.opacity = spentNow ? 0.2 : 0.32;
       return;
     }
 
@@ -855,8 +872,8 @@ export function createDie(kind: DieKind, font: string, scale = 1, cellSize = 0, 
     dispose() {
       material.dispose();
       outlineMaterial.dispose();
-      spentPlateMaterial?.dispose();
-      spentPlateMesh?.geometry.dispose();
+      plateMaterial?.dispose();
+      plateMesh?.geometry.dispose();
       glow.geometry.dispose();
       glowMaterial.dispose();
       contact.geometry.dispose();

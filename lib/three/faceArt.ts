@@ -621,18 +621,26 @@ export function flagFaceSpec(value: number): FaceSpec {
 
 
 /**
- * The one mark for "this ship is out".
+ * A hull drawn as its shape, flat and head-on.
  *
- * A flat plate, not a face on the die. A tetrahedron squashed down shows its
- * other faces at an angle and the label lands on a fold, which is why the
- * struck-through hull kept rendering as a smear. Drawn head-on it cannot.
+ * A die that has not rolled has no number to show, and its real 3D silhouette
+ * is no help: a d8 seen from the board's angle is a facetted lump, not the
+ * diamond the rest of the game uses for it. So an unrolled hull — and one out
+ * for the round — is drawn as the set shape instead: a d4 triangle, a d6
+ * square, a d8 diamond, a d10 pentagon, the same silhouettes the fleet icons
+ * and the help screen use.
  *
- * It uses the same silhouette the fleet icons and the help screen use, so a
- * blocked d4 is the same triangle everywhere in the game, and it carries its
- * own size because that is the thing a player needs and cannot recall: which
- * hull comes back next round.
+ * `spent` adds the red tint and the bar through it. Either way the size is
+ * written on the hull, because that is the thing a player needs and cannot
+ * recall: which ship this is, and when it comes back.
  */
-export function paintSpentPlate(sides: DieSize, size: number, numeralFont: string): HTMLCanvasElement {
+export function paintHullPlate(
+  sides: DieSize,
+  size: number,
+  numeralFont: string,
+  variant: "idle" | "spent" = "spent",
+): HTMLCanvasElement {
+  const spent = variant === "spent";
   const canvas = document.createElement("canvas");
   canvas.width = size;
   canvas.height = size;
@@ -640,9 +648,11 @@ export function paintSpentPlate(sides: DieSize, size: number, numeralFont: strin
 
   ctx.save();
   addHullPath(ctx, sides, size);
-  ctx.fillStyle = "rgba(74,26,34,0.86)";
+  ctx.fillStyle = spent ? "rgba(74,26,34,0.86)" : "rgba(43,52,80,0.92)";
   ctx.fill();
-  ctx.strokeStyle = "rgba(255,77,77,0.95)"; // --color-attack
+  ctx.strokeStyle = spent
+    ? "rgba(255,77,77,0.95)" // --color-attack
+    : "rgba(182,193,220,0.75)"; // --color-hull-200
   ctx.lineWidth = size * 0.038;
   ctx.lineJoin = "round";
   ctx.stroke();
@@ -658,9 +668,11 @@ export function paintSpentPlate(sides: DieSize, size: number, numeralFont: strin
   ctx.lineWidth = size * 0.05;
   ctx.lineJoin = "round";
   ctx.strokeText(`D${sides}`, size / 2, cy);
-  ctx.fillStyle = "rgba(255,226,229,0.94)";
+  ctx.fillStyle = spent ? "rgba(255,226,229,0.94)" : "rgba(214,223,244,0.9)";
   ctx.fillText(`D${sides}`, size / 2, cy);
   ctx.restore();
+
+  if (!spent) return canvas;
 
   // Struck through, clipped to the hull so the bar never floats outside it.
   ctx.save();
