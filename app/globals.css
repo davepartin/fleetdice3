@@ -3217,3 +3217,37 @@ button {
 .sheet-panel {
   margin-bottom: max(0.5rem, var(--hud-safe-bottom));
 }
+
+/* A dropped connection is now temporary, so it reads as a status rather than
+   an error: the board stays put and the last state stays on screen while the
+   listener comes back. */
+.match-reconnect {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  border: 1px solid color-mix(in srgb, var(--color-energy) 35%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-energy) 10%, transparent);
+  padding: 0.2rem 0.6rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--color-energy);
+}
+
+.match-reconnect-dot {
+  width: 0.42rem;
+  height: 0.42rem;
+  border-radius: 999px;
+  background: currentColor;
+  animation: reconnect-pulse 1.1s ease-in-out infinite;
+}
+
+@keyframes reconnect-pulse {
+  0%, 100% { opacity: 0.25; }
+  50% { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .match-reconnect-dot { animation: none; opacity: 0.8; }
+}

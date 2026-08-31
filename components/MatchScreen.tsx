@@ -559,6 +559,15 @@ export function MatchScreen({ controller, onExit, title, subtitle }: Props) {
           />
           </header>
 
+          {controller.reconnecting && (
+            <div className="flex items-center justify-center pt-2">
+              <span className="match-reconnect">
+                <span className="match-reconnect-dot" />
+                Reconnecting…
+              </span>
+            </div>
+          )}
+
           {(you.round > TUNING.escalateAfterRound || controller.mode === "versus") && (
             <div className="flex items-center justify-center gap-2 pt-2">
               {you.round > TUNING.escalateAfterRound && (

@@ -32,6 +32,7 @@ import {
   type LiveRoom,
 } from "./rooms";
 import { commanderName } from "./firebase";
+import { reconnectDelay } from "./backoff";
 
 export type MatchStatus = "loading" | "ready" | "error";
 
@@ -52,6 +53,11 @@ export type MatchController = {
   restart?(): void;
   /** Versus only: end the room for both commanders. */
   cancel?(): void;
+  /**
+   * The live connection dropped and is being re-established. Versus only —
+   * solo has nothing to reconnect to.
+   */
+  reconnecting?: boolean;
   mode: "solo" | "versus";
 };
 
@@ -190,6 +196,7 @@ export function useRoomMatch(matchId: string | null): MatchController {
   const [status, setStatus] = useState<MatchStatus>("loading");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [reconnecting, setReconnecting] = useState(false);
   const queueRef = useRef<Promise<unknown>>(Promise.resolve());
   const busyRef = useRef(false);
 
@@ -202,6 +209,79 @@ export function useRoomMatch(matchId: string | null): MatchController {
     let stop: (() => void) | null = null;
     let stopBeat: (() => void) | null = null;
     let cancelled = false;
+    let retry: number | null = null;
+    let attempt = 0;
+
+    const clearRetry = () => {
+      if (retry !== null) {
+        window.clearTimeout(retry);
+        retry = null;
+      }
+    };
+
+    /**
+     * Come back after a dropped listener.
+     *
+     * Backing off matters because the common cause is a phone with no signal:
+     * hammering Firestore from a dead network wakes the radio over and over and
+     * fixes nothing. Capped, because a match should never take longer than
+     * fifteen seconds to rejoin once the network is actually back.
+     */
+    const scheduleRetry = () => {
+      if (cancelled) return;
+      setReconnecting(true);
+      clearRetry();
+      const wait = reconnectDelay(attempt);
+      attempt += 1;
+      retry = window.setTimeout(() => void subscribe(), wait);
+    };
+
+    const subscribe = async () => {
+      if (cancelled) return;
+      clearRetry();
+      try {
+        stop?.();
+        stop = null;
+        stop = await watchRoom(
+          matchId,
+          (next) => {
+            if (cancelled) return;
+            // A snapshot arrived, so the connection is genuinely back. This
+            // deliberately does not clear `error`: that carries the engine's
+            // own refusals ("You need 4 Energy for that"), which a routine
+            // update from the other commander must not wipe off the screen.
+            attempt = 0;
+            setRoom(next);
+            setStatus("ready");
+            setReconnecting(false);
+          },
+          (reason) => {
+            if (cancelled) return;
+            setError(reason.message);
+          },
+          () => {
+            if (cancelled) return;
+            scheduleRetry();
+          },
+        );
+      } catch (reason) {
+        if (cancelled) return;
+        // Failing to attach is the same problem as losing an attached one.
+        scheduleRetry();
+      }
+    };
+
+    /**
+     * iOS suspends a backgrounded tab and quietly kills its connection, and the
+     * page is often already visible again before the SDK notices. Coming back
+     * to the tab, or to the network, resubscribes at once rather than waiting
+     * out a backoff that started while the screen was off.
+     */
+    const wakeUp = () => {
+      if (cancelled || document.visibilityState !== "visible") return;
+      attempt = 0;
+      void subscribe();
+    };
 
     (async () => {
       try {
@@ -215,29 +295,18 @@ export function useRoomMatch(matchId: string | null): MatchController {
         setError(reason instanceof Error ? reason.message : String(reason));
         return;
       }
-
-      try {
-        stop = await watchRoom(
-          matchId,
-          (next) => {
-            if (cancelled) return;
-            setRoom(next);
-            setStatus("ready");
-          },
-          (reason) => {
-            if (cancelled) return;
-            setError(reason.message);
-          },
-        );
-        stopBeat = startRoomHeartbeat(matchId);
-      } catch (reason) {
-        if (cancelled) return;
-        setError(reason instanceof Error ? reason.message : String(reason));
-      }
+      await subscribe();
+      if (!cancelled) stopBeat = startRoomHeartbeat(matchId);
     })();
+
+    document.addEventListener("visibilitychange", wakeUp);
+    window.addEventListener("online", wakeUp);
 
     return () => {
       cancelled = true;
+      clearRetry();
+      document.removeEventListener("visibilitychange", wakeUp);
+      window.removeEventListener("online", wakeUp);
       stop?.();
       stopBeat?.();
     };
@@ -305,6 +374,7 @@ export function useRoomMatch(matchId: string | null): MatchController {
     clearError: () => setError(null),
     act,
     cancel,
+    reconnecting,
     mode: "versus",
   };
 }

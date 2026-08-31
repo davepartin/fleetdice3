@@ -669,6 +669,14 @@ export async function watchRoom(
   matchId: string,
   onMatch: (room: LiveRoom) => void,
   onError: (error: Error) => void,
+  /**
+   * The listener itself died. Firestore ENDS a subscription when its error
+   * callback fires and never restarts it, so anything arriving here leaves the
+   * client permanently deaf unless the caller resubscribes. It is kept apart
+   * from onError because the two need opposite handling: this one is a dropped
+   * connection to retry, that one is a decision about the room to show.
+   */
+  onDisconnect?: (error: Error) => void,
 ): Promise<Unsubscribe> {
   const db = requireDb();
   if (!matchId) throw new Error("That link is missing its room. Ask your friend to send it again.");
@@ -714,8 +722,13 @@ export async function watchRoom(
       }
     },
     // A listener that is refused is almost always the third-tab problem: the
-    // rules will not let a stranger read an active match.
-    (error) => onError(friendlyRoomError(error)),
+    // rules will not let a stranger read an active match. Everything else here
+    // is a phone that slept, changed network, or lost signal.
+    (error) => {
+      const friendly = friendlyRoomError(error);
+      if (onDisconnect) onDisconnect(friendly);
+      else onError(friendly);
+    },
   );
 }
 
