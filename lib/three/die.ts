@@ -9,7 +9,15 @@
 
 import * as THREE from "three";
 import { buildDie, type BuiltDie } from "./polyhedron";
-import { buildAtlas, buildFacedownAtlas, faceSpec, flagFaceSpec, type Atlas } from "./faceArt";
+import {
+  buildAtlas,
+  buildFacedownAtlas,
+  faceSpec,
+  flagFaceSpec,
+  paintSpentPlate,
+  type Atlas,
+} from "./faceArt";
+import type { DieSize } from "@/lib/engine";
 import { numeralFontFamily } from "./fonts";
 
 export type DieKind = 4 | 6 | 8 | 10 | "flag";
@@ -58,10 +66,9 @@ type Shared = {
   material: THREE.MeshPhysicalMaterial;
   /** A blank hull, for a fleet that has not shown its roll yet. */
   hidden: THREE.MeshPhysicalMaterial;
-  spent: THREE.MeshPhysicalMaterial;
   /** The "D4"/"D6"/"D8"/"D10" label baked onto that blank hull. Hulls only — the flagship has no size to label. */
   hiddenMap: THREE.CanvasTexture | null;
-  spentMap: THREE.CanvasTexture | null;
+  spentPlate: THREE.CanvasTexture | null;
   outline: THREE.Material;
   outlineGeometry: THREE.BufferGeometry;
 };
@@ -129,26 +136,17 @@ function sharedFor(kind: DieKind, font: string): Shared {
     envMapIntensity: 0.9,
   });
 
-  // A ship that is out for the round: same hull, same size label, struck
-  // through and warmed. Shared rather than cloned per die — every damaged
-  // ship should look exactly alike.
-  const spentMap =
-    kind === "flag" ? null : buildFacedownAtlas(sides, 384, numeralFontFamily(), "spent");
-  // Lit exactly like the facedown hull above. There is almost nothing to
-  // reflect in this scene, so a rough, non-metal, clearcoat-less surface
-  // renders as a black hole — which is precisely what a damaged ship looked
-  // like before. The clearcoat and env intensity are what make it a hull.
-  const spent = new THREE.MeshPhysicalMaterial({
-    map: spentMap ?? undefined,
-    color: new THREE.Color(spentMap ? 0xffffff : 0x4a2f36),
-    metalness: 0.35,
-    roughness: 0.52,
-    clearcoat: 0.7,
-    clearcoatRoughness: 0.3,
-    envMapIntensity: 0.9,
-  });
+  // The one mark for a ship spending a round out. Shared across every die of
+  // a size — they should all look exactly alike.
+  const spentPlate =
+    kind === "flag"
+      ? null
+      : new THREE.CanvasTexture(paintSpentPlate(sides as DieSize, 256, numeralFontFamily()));
+  if (spentPlate) spentPlate.colorSpace = THREE.SRGBColorSpace;
 
-  const shared: Shared = { built, atlas, material, hidden, hiddenMap, spent, spentMap, outline, outlineGeometry };
+  const shared: Shared = {
+    built, atlas, material, hidden, hiddenMap, spentPlate, outline, outlineGeometry,
+  };
   CACHE.set(key, shared);
   return shared;
 }
@@ -161,8 +159,7 @@ export function clearDieCache() {
     shared.material.dispose();
     shared.hidden.dispose();
     shared.hiddenMap?.dispose();
-    shared.spent.dispose();
-    shared.spentMap?.dispose();
+    shared.spentPlate?.dispose();
     (shared.outline as THREE.Material).dispose();
   }
   CACHE.clear();
@@ -448,6 +445,29 @@ export function createDie(kind: DieKind, font: string, scale = 1, cellSize = 0, 
     damageBars.push(bar);
   }
 
+  // The "out for a round" plate. Head-on and flat, so it reads the same on
+  // every screen and at every camera angle.
+  const spentPlateMaterial = shared.spentPlate
+    ? new THREE.MeshBasicMaterial({
+        map: shared.spentPlate,
+        transparent: true,
+        opacity: 0,
+        depthWrite: false,
+        depthTest: false,
+        side: THREE.DoubleSide,
+      })
+    : null;
+  const spentPlateMesh = spentPlateMaterial
+    ? new THREE.Mesh(new THREE.PlaneGeometry(markerSize * 0.98, markerSize * 0.98), spentPlateMaterial)
+    : null;
+  if (spentPlateMesh) {
+    spentPlateMesh.rotation.x = -Math.PI / 2;
+    spentPlateMesh.position.y = -shared.built.seatHeight + 0.42 / Math.max(0.001, scale);
+    spentPlateMesh.renderOrder = 5;
+    spentPlateMesh.visible = false;
+    object.add(spentPlateMesh);
+  }
+
   object.scale.setScalar(scale);
 
   const home = new THREE.Vector3();
@@ -487,22 +507,39 @@ export function createDie(kind: DieKind, font: string, scale = 1, cellSize = 0, 
   }
 
   function applyStateColours() {
-    mesh.material = state.facedown
-      ? shared.hidden
-      : state.disabled && kind !== "flag"
-        ? shared.spent
-        : material;
+    // A ship that is spending this round out — whether you just tapped it or
+    // it is already sitting one out — is shown by the plate, not by the die.
+    // One mark, one meaning, and tapping it again takes the mark away.
+    const spentNow =
+      kind !== "flag" && (Boolean(state.disabled) || Boolean(state.damageSelected));
+    if (spentPlateMesh && spentPlateMaterial) {
+      spentPlateMesh.visible = spentNow;
+      spentPlateMaterial.opacity = spentNow ? 1 : 0;
+    }
+    mesh.visible = !spentNow;
+    outline.visible = !spentNow;
+    if (spentNow) {
+      glowMaterial.opacity = 0;
+      selectionMaterial.opacity = 0;
+      selectionFillMaterial.opacity = 0;
+      damageMaterial.opacity = 0;
+      for (const damageBar of damageBars) {
+        (damageBar.material as THREE.MeshBasicMaterial).opacity = 0;
+      }
+      barMaterial.opacity = 0;
+      linkMaterial.opacity = 0;
+      blockPulse = false;
+      contactMaterial.opacity = 0.2;
+      return;
+    }
+
+    mesh.material = state.facedown ? shared.hidden : material;
     // A hull waiting to roll is nearly the colour of the deck under it. A grey
     // rim, thicker than the usual near-black one, is what makes a fleet read as
     // ships rather than as dark patches in the board.
     if (state.facedown) {
       outlineMaterial.color.setHex(state.enemy ? 0x5a6a92 : 0x8593b8); // --color-hull-400 / -300
       outline.scale.setScalar(1.055);
-    } else if (state.disabled && kind !== "flag") {
-      // The rim is what separates one damaged hull from the next when three
-      // of them sit in a row.
-      outlineMaterial.color.setHex(0xff4d4d); // --color-attack
-      outline.scale.setScalar(1.06);
     } else {
       outlineMaterial.color.setHex(0x020409);
       outline.scale.setScalar(1.012);
@@ -790,11 +827,8 @@ export function createDie(kind: DieKind, font: string, scale = 1, cellSize = 0, 
         const squash = 1 + (1 - punch) * 0.26;
         pivot.scale.set(squash, 2 - squash, squash);
       } else {
-        // Settled, not squashed. At 0.32 the hull collapsed into a puddle and
-        // took its size with it — the one thing you need from a ship that is
-        // out is which ship it was.
-        const restY = state.disabled ? 0.66 : 1;
-        const restXZ = state.disabled ? 1.06 : 1;
+        const restY = state.disabled ? 0.32 : 1;
+        const restXZ = state.disabled ? 1.18 : 1;
         if (
           Math.abs(pivot.scale.x - restXZ) > 0.001 ||
           Math.abs(pivot.scale.y - restY) > 0.001
@@ -821,6 +855,8 @@ export function createDie(kind: DieKind, font: string, scale = 1, cellSize = 0, 
     dispose() {
       material.dispose();
       outlineMaterial.dispose();
+      spentPlateMaterial?.dispose();
+      spentPlateMesh?.geometry.dispose();
       glow.geometry.dispose();
       glowMaterial.dispose();
       contact.geometry.dispose();

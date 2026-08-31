@@ -8,6 +8,8 @@
  */
 
 import * as THREE from "three";
+import { addHullPath } from "@/components/HullShape";
+import type { DieSize } from "@/lib/engine";
 
 export type MarkKind = "energy" | "repair" | "direct";
 
@@ -542,22 +544,13 @@ export function buildAtlas(
  * sit on the same near-black hull tint the game already used before this
  * carried any text.
  */
-export function buildFacedownAtlas(
-  sides: number,
-  cell: number,
-  numeralFont: string,
-  variant: "idle" | "spent" = "idle",
-): THREE.CanvasTexture {
-  const spent = variant === "spent";
+export function buildFacedownAtlas(sides: number, cell: number, numeralFont: string): THREE.CanvasTexture {
   const { columns, rows } = atlasLayout(sides);
   const canvas = document.createElement("canvas");
   canvas.width = columns * cell;
   canvas.height = rows * cell;
   const ctx = canvas.getContext("2d")!;
-  // Spent hulls sit in the same blue-grey family, warmed and lifted. Lifted
-  // because a ship that is out still has to be countable — the old crushed
-  // near-black turned three damaged ships into three holes in the board.
-  ctx.fillStyle = spent ? "#5b3a44" : "#2b3450"; // facedown-hull greys; no matching token — 3D-only
+  ctx.fillStyle = "#2b3450"; // the facedown-hull blue-grey; no matching token — 3D-only
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
   const label = `D${sides}`;
@@ -576,22 +569,8 @@ export function buildFacedownAtlas(
     ctx.lineWidth = cell * 0.05;
     ctx.lineJoin = "round";
     ctx.strokeText(label, cx, cy);
-    ctx.fillStyle = spent
-      ? "rgba(255,214,218,0.82)" // warm and readable: this is the size coming back
-      : "rgba(182,193,220,0.55)"; // --color-hull-200, dimmed for the idle hull
+    ctx.fillStyle = "rgba(182,193,220,0.55)"; // --color-hull-200, dimmed for the idle hull
     ctx.fillText(label, cx, cy);
-    if (spent) {
-      // A diagonal bar, the way a sign says "not this". Drawn across rather
-      // than through the middle of the glyph so the size stays readable
-      // underneath — that number is the whole point of the mark.
-      ctx.strokeStyle = "rgba(255,77,77,0.95)"; // --color-attack
-      ctx.lineWidth = cell * 0.06;
-      ctx.lineCap = "round";
-      ctx.beginPath();
-      ctx.moveTo(cx - cell * 0.24, cy + cell * 0.2);
-      ctx.lineTo(cx + cell * 0.24, cy - cell * 0.2);
-      ctx.stroke();
-    }
     ctx.restore();
   }
 
@@ -638,4 +617,63 @@ export function flagFaceSpec(value: number): FaceSpec {
     role: "flag",
     caption: FLAG_CAPTION[value] ?? "",
   };
+}
+
+
+/**
+ * The one mark for "this ship is out".
+ *
+ * A flat plate, not a face on the die. A tetrahedron squashed down shows its
+ * other faces at an angle and the label lands on a fold, which is why the
+ * struck-through hull kept rendering as a smear. Drawn head-on it cannot.
+ *
+ * It uses the same silhouette the fleet icons and the help screen use, so a
+ * blocked d4 is the same triangle everywhere in the game, and it carries its
+ * own size because that is the thing a player needs and cannot recall: which
+ * hull comes back next round.
+ */
+export function paintSpentPlate(sides: DieSize, size: number, numeralFont: string): HTMLCanvasElement {
+  const canvas = document.createElement("canvas");
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext("2d")!;
+
+  ctx.save();
+  addHullPath(ctx, sides, size);
+  ctx.fillStyle = "rgba(74,26,34,0.86)";
+  ctx.fill();
+  ctx.strokeStyle = "rgba(255,77,77,0.95)"; // --color-attack
+  ctx.lineWidth = size * 0.038;
+  ctx.lineJoin = "round";
+  ctx.stroke();
+  ctx.restore();
+
+  // The size, sitting inside the hull rather than on the deck beside it.
+  const cy = sides === 4 ? size * 0.6 : size * 0.5;
+  ctx.save();
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.font = `700 ${size * 0.24}px ${numeralFont}`;
+  ctx.strokeStyle = "rgba(10,4,8,0.8)";
+  ctx.lineWidth = size * 0.05;
+  ctx.lineJoin = "round";
+  ctx.strokeText(`D${sides}`, size / 2, cy);
+  ctx.fillStyle = "rgba(255,226,229,0.94)";
+  ctx.fillText(`D${sides}`, size / 2, cy);
+  ctx.restore();
+
+  // Struck through, clipped to the hull so the bar never floats outside it.
+  ctx.save();
+  addHullPath(ctx, sides, size);
+  ctx.clip();
+  ctx.strokeStyle = "rgba(255,77,77,0.98)";
+  ctx.lineWidth = size * 0.062;
+  ctx.lineCap = "round";
+  ctx.beginPath();
+  ctx.moveTo(size * 0.12, size * 0.82);
+  ctx.lineTo(size * 0.88, size * 0.2);
+  ctx.stroke();
+  ctx.restore();
+
+  return canvas;
 }
