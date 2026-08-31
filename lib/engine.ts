@@ -336,7 +336,7 @@ export function cellLabel(cell: number): number {
   return cell + 1;
 }
 
-const FLEET_LINES: { kind: "row" | "col"; idx: number[] }[] = [
+export const FLEET_LINES: { kind: "row" | "col"; idx: number[] }[] = [
   { kind: "row", idx: [0, 1, 2] },
   { kind: "row", idx: [3, 4, 5] },
   { kind: "row", idx: [6, 7, 8] },
@@ -524,7 +524,7 @@ export function fleetValue(player: PlayerState): number {
 /* Scoring                                                             */
 /* ------------------------------------------------------------------ */
 
-function boardCell(dice: DieValue[], cell: number): DieValue | undefined {
+export function boardCell(dice: DieValue[], cell: number): DieValue | undefined {
   if (cell === 4) return dice.find((die) => die.flag);
   const slot = slotForCell(cell);
   return dice.find((die) => !die.flag && die.slot === slot);

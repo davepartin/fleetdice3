@@ -22,7 +22,7 @@ import {
   type PlayerState,
   type SideId,
 } from "./engine";
-import { newBrain, nextActions, type Brain, type Difficulty, type Plan } from "./ai";
+import { applyDifficultyStart, newBrain, nextActions, type Brain, type Difficulty, type Plan } from "./ai";
 import {
   cancelRoom,
   enterRoom,
@@ -90,6 +90,7 @@ export function useSoloMatch(settings: SoloSettings): MatchController {
   const start = useCallback(() => {
     const match = newMatch(`solo-${randomId(8)}`, "0000", "you", settings.name ?? commanderName(), "solo");
     match.players.guest = newPlayer("enemy", "Enemy", "ready");
+    applyDifficultyStart(match.players.guest, settings.difficulty);
     match.players.host.phase = "ready";
     match.status = "active";
     brainRef.current = newBrain(settings.plan, settings.difficulty);

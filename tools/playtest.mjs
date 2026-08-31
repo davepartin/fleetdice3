@@ -110,7 +110,7 @@ async function run(browser, viewport, label, errors) {
   await settle(page, 1200);
   await shot(page, "03-solo-setup", label);
 
-  await tap(page, "Captain");
+  await tap(page, "Medium");
   await settle(page, 2800);
   await shot(page, "04-round-start", label);
 

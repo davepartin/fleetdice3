@@ -17,7 +17,9 @@ const G = await import(bundlePath);
 const {
   PLANS,
   TUNING,
+  DIFFICULTY,
   applyAction,
+  applyDifficultyStart,
   attackOf,
   bestRun,
   cellForSlot,
@@ -33,10 +35,14 @@ const {
   newMatch,
   newPlayer,
   nextActions,
+  nearFormation,
   pendingThrow,
   pendingThrowReady,
+  planShopping,
   publicMatchView,
   repairOf,
+  rollHint,
+  chooseRerollDetailed,
   runMemberIds,
   setRng,
   slotForCell,
@@ -297,6 +303,137 @@ test("formations and straights stack into the totals rather than replacing them"
   assert.equal(t.energy, 3 + TUNING.lineAcrossEnergy, "plus the row prize");
 });
 
+test("nearFormation detects a line that is one face away", () => {
+  // Middle row: two 4s and a 7. The odd die is the one to send back.
+  const dice = board({ 3: 4, 4: 4, 5: 7 });
+  const near = nearFormation(dice);
+  assert.ok(near, "two matching faces on a live line is a hunt");
+  assert.equal(near.kind, "row");
+  assert.equal(near.value, 4);
+  assert.equal(near.keepIds.sort().join(), ["flag", "s3"].sort().join());
+  assert.deepEqual(near.rerollIds, ["s4"]);
+});
+
+test("nearFormation prefers a column over a row when both are one away", () => {
+  const dice = board({ 1: 6, 4: 6, 7: 2, 3: 6, 5: 1 });
+  const near = nearFormation(dice);
+  assert.ok(near);
+  assert.equal(near.kind, "col", "the column prize is the one worth hunting");
+  assert.equal(near.value, 6);
+});
+
+test("chooseRerollDetailed sends back the odd die on a one-away column", () => {
+  setRng(makeRng(11));
+  const player = newPlayer("x", "X", "rolling");
+  player.dice = board({ 1: 6, 3: 2, 4: 6, 5: 8, 7: 1 });
+  player.flag.face = 6;
+  const choice = chooseRerollDetailed(player, { samples: 80, candidates: 10, greed: 1, pressure: 0 });
+  assert.ok(choice.reroll.includes("s6"), "the 1 sitting on two 6s should go back");
+});
+
+test("Formation opens bays and keeps small hulls; Capital upgrades instead", () => {
+  const formation = newPlayer("f", "F", "shop");
+  formation.energy = 20;
+  const formActs = planShopping(formation, "formation", 3, 1, 0);
+  const formSlots = formActs.filter((a) => a.type === "shop" && a.operation === "slot");
+  const formBuys = formActs.filter((a) => a.type === "shop" && a.operation === "buy");
+  assert.ok(formSlots.length >= 1, "Formation should open a bay");
+  assert.ok(
+    formBuys.every((a) => a.sides <= 6),
+    "Formation prefers d4/d6 — big dice poison three-of-a-kind",
+  );
+
+  const capital = newPlayer("c", "C", "shop");
+  capital.energy = 20;
+  const capActs = planShopping(capital, "capital", 3, 1, 0);
+  const capSlots = capActs.filter((a) => a.type === "shop" && a.operation === "slot");
+  const capUpgrades = capActs.filter((a) => a.type === "shop" && a.operation === "upgrade");
+  assert.equal(capSlots.length, 0, "Capital almost never opens a bay on this budget");
+  assert.ok(capUpgrades.length >= 1, "Capital spends the same money growing hulls");
+});
+
+test("Formation parks a new hull on the bay that finishes a live line", () => {
+  const player = newPlayer("f", "F", "shop");
+  player.energy = 6;
+  player.open[0] = true;
+  player.open[2] = true;
+  player.ships = player.ships.filter((ship) => ship.slot !== 1);
+  player.ships.push({ id: "corner2", sides: 4, disabledRound: null, slot: 2 });
+  const acts = planShopping(player, "formation", 3, 1, 0);
+  const buy = acts.find((a) => a.type === "shop" && a.operation === "buy");
+  assert.ok(buy, "Formation should buy a hull with 6 Energy");
+  assert.equal(
+    buy.slotIndex,
+    1,
+    "the empty that sits on two live lines, not the first empty bay",
+  );
+});
+
+test("a paid reroll spends the last Energy on the odd die of a one-away column", () => {
+  setRng(makeRng(3));
+  const state = newMatch("t", "0000", "A", "A", "solo");
+  state.players.guest = newPlayer("B", "B", "rolling");
+  state.players.host.phase = "shop";
+  state.status = "active";
+  const guest = state.players.guest;
+  guest.energy = 1;
+  guest.rolls = TUNING.rollsPerRound;
+  guest.dice = board({ 1: 6, 3: 2, 4: 6, 5: 8, 7: 1 });
+  guest.flag.face = 6;
+  const brain = newBrain("formation", "hard");
+  const actions = nextActions(state, "guest", brain);
+  const rollAct = actions.find((a) => a.type === "roll");
+  assert.ok(rollAct, "Hard spends 1 Energy chasing the column");
+  assert.ok(rollAct.dice.length <= guest.energy, "must not ask for more dice than the bank");
+  assert.ok(rollAct.dice.includes("s6"), "the odd die on the middle column is the one to send back");
+});
+
+test("Expert starts with a tougher flagship; Low does not", () => {
+  const expert = newPlayer("e", "E", "shop");
+  applyDifficultyStart(expert, "expert");
+  assert.equal(expert.hp, TUNING.hp + DIFFICULTY.expert.startHpBonus);
+  assert.equal(expert.maxHp, expert.hp, "the bar maximum matches the starting health");
+  assert.equal(expert.energy, TUNING.startEnergy + DIFFICULTY.expert.startEnergyBonus);
+
+  const low = newPlayer("l", "L", "shop");
+  applyDifficultyStart(low, "low");
+  assert.equal(low.hp, TUNING.hp);
+  assert.equal(low.maxHp, TUNING.hp);
+  assert.equal(low.energy, TUNING.startEnergy);
+});
+
+test("a wounded flagship does not buy a level; a healthy Command one does", () => {
+  const wounded = newPlayer("w", "W", "shop");
+  wounded.energy = 8;
+  wounded.hp = 12;
+  const woundedActs = planShopping(wounded, "command", 10, 1, 0);
+  assert.ok(
+    woundedActs.every((a) => !(a.type === "shop" && a.operation === "flagship")),
+    "12 health left is not the time to buy a future bonus",
+  );
+
+  const healthy = newPlayer("h", "H", "shop");
+  healthy.energy = 8;
+  const healthyActs = planShopping(healthy, "command", 3, 1, 0);
+  assert.ok(
+    healthyActs.some((a) => a.type === "shop" && a.operation === "flagship"),
+    "Command with a healthy flagship early should take the cheap first level",
+  );
+});
+
+test("rollHint teaches a one-away column using the engine prize", () => {
+  const state = newMatch("t", "0000", "A", "A", "solo");
+  state.players.host.phase = "rolling";
+  state.players.host.rolls = 1;
+  state.players.host.dice = board({ 1: 6, 3: 2, 4: 6, 5: 8, 7: 1 });
+  state.players.host.flag.face = 6;
+  const hint = rollHint(state, "host");
+  assert.ok(hint, "a one-away column should get a line of advice");
+  assert.match(hint.text, new RegExp(String(TUNING.lineDownAttack)));
+  assert.match(hint.text, /column/i);
+  assert.doesNotMatch(hint.text, /\b(brace|soak|absorb|hits|blocks)\b/i);
+});
+
 /* ------------------------------------------------------------------ */
 /* A whole round                                                       */
 /* ------------------------------------------------------------------ */
@@ -315,7 +452,7 @@ test("the Solo Enemy waits for To the Shipyard before starting its next round", 
   state.players.guest = newPlayer("enemy", "Enemy", "report");
   state.players.host.phase = "report";
   state.status = "active";
-  const brain = newBrain("balanced", "captain");
+  const brain = newBrain("balanced", "medium");
 
   assert.deepEqual(
     nextActions(state, "guest", brain),
@@ -333,7 +470,7 @@ test("the Solo Enemy waits for To the Shipyard before starting its next round", 
 
 test("the round report adds up, every round, in a real match", () => {
   const state = freshMatch(11);
-  const brains = { host: newBrain("balanced", "captain"), guest: newBrain("width", "captain") };
+  const brains = { host: newBrain("balanced", "medium"), guest: newBrain("width", "medium") };
   let guard = 0;
 
   while (state.status !== "finished" && guard < 3000) {
@@ -370,7 +507,7 @@ test("the round report adds up, every round, in a real match", () => {
 test("a match always ends, and never on the backstop", () => {
   for (let seed = 1; seed <= 25; seed += 1) {
     const state = freshMatch(seed * 31);
-    const brains = { host: newBrain(undefined, "captain"), guest: newBrain(undefined, "captain") };
+    const brains = { host: newBrain(undefined, "medium"), guest: newBrain(undefined, "medium") };
     let guard = 0;
     while (state.status !== "finished" && guard < 4000) {
       guard += 1;
@@ -524,8 +661,8 @@ test("health never displays negative, and the maximum never disagrees with itsel
   for (let seed = 1; seed <= 12; seed += 1) {
     const state = freshMatch(seed * 17);
     const brains = {
-      host: newBrain(PLANS[seed % PLANS.length], "captain"),
-      guest: newBrain(PLANS[(seed + 1) % PLANS.length], "captain"),
+      host: newBrain(PLANS[seed % PLANS.length], "medium"),
+      guest: newBrain(PLANS[(seed + 1) % PLANS.length], "medium"),
     };
     const lastMaxHp = { host: TUNING.hp, guest: TUNING.hp };
     let guard = 0;

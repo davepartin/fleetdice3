@@ -24,7 +24,7 @@ function playMatch(planA, planB, seed) {
   state.players.guest = newPlayer("B", "B", "ready");
   state.status = "active";
   state.players.host.phase = "ready";
-  const brains = { host: newBrain(planA, "captain"), guest: newBrain(planB, "captain") };
+  const brains = { host: newBrain(planA, "medium"), guest: newBrain(planB, "medium") };
 
   let guard = 0;
   while (state.status !== "finished" && guard < 4000) {

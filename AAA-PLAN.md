@@ -929,7 +929,7 @@ corners, in place of a full-width margin on every side — confirmed via the
 `?view=sheet` lab bench, cropped and zoomed on the flagship tile.
 Verified: `tsc --noEmit`, `pnpm lint`, and `pnpm test` (29/29) all pass;
 `BASE_PATH= pnpm build` succeeds; a real Playwright run through solo mode
-(home → Play Solo → Captain → Roll Fleet → select two adjacent dice)
+(home → Play Solo → Medium → Roll Fleet → select two adjacent dice)
 confirmed both fixes on the actual game screen, not just the bench.
 
 ---
