@@ -210,17 +210,6 @@ export const TUNING = {
    * without touching a price players already know. See BALANCE.md.
    */
   paidRollsPerRound: 3,
-  /**
-   * Whether a blocking ship can also stand in front of Direct.
-   *
-   * Shipped as `false`: Direct is the one damage nothing stops, which is what
-   * stops a commander with a wall of Shields and a row of blockers becoming
-   * unkillable. Turn it on and blocking answers everything, which is a much
-   * larger change than it sounds — it is stated as a rule in the tutorial, the
-   * face legend, the help screen and the block screen, all of which have to
-   * change with it. See BALANCE.md before moving it.
-   */
-  blockStopsDirect: false,
   /** Ship prices, by measured value rather than by size. */
   prices: { 4: 4, 6: 6, 8: 9, 10: 13 } as Record<DieSize, number>,
   /**
@@ -1012,11 +1001,21 @@ function handleBrace(state: MatchState, player: PlayerState, selected: string[])
 /**
  * What actually lands, once blocking ships have stood in front of what they can.
  *
- * Shields have already been taken off `incoming` by `resolveSubmissions`. The
- * only question left is whether a blocking hull can also take Direct.
+ * Shields have already come off `incoming` in `resolveSubmissions`. Blocking
+ * hulls come off what is left. **Direct is added afterwards and is deliberately
+ * outside all of it** — no Shield reduces it and no ship blocks it.
+ *
+ * That is the whole point of Direct, and it is what gives Repair a job nothing
+ * else can do: Shields answer Attack, ships answer what gets past them, and
+ * Repair is the only answer to Direct there is. It was measured both ways —
+ * letting hulls block Direct is *safe* (a commander who blocks with everything
+ * every round still loses, 5.0% against 6.8%, because a blocked hull stops
+ * dealing damage) but it leaves Repair with nothing of its own. See BALANCE.md.
+ *
+ * One function so the settle and `inescapableDeath` can never disagree about
+ * what a round costs.
  */
 export function damageAfterBlocking(incoming: number, direct: number, blocked: number): number {
-  if (TUNING.blockStopsDirect) return Math.max(0, incoming + direct - blocked);
   return Math.max(0, incoming - blocked) + direct;
 }
 

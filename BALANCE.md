@@ -972,3 +972,74 @@ still in the bank so the cap was doing the stopping:
 Zero console errors. Both help strings now interpolate `TUNING.rollsPerRound`
 and `TUNING.paidRollsPerRound`, and `tests/rng.test.mjs` fails if either goes
 back to hardcoding the sentence.
+
+---
+
+## Direct stays unblockable, and Repair is why
+
+*Asked and settled 1 September 2026. Nothing changed; the reasoning is written
+down so it is not re-argued from scratch.*
+
+The owner asked whether a blocking hull ought to be able to stand in front of
+Direct as well as Attack. It measured **safe** and was still declined, which is
+worth separating carefully.
+
+### What the numbers said
+
+`TUNING.blockStopsDirect` was added, measured, and removed again. Identical
+seeds, Hard against Hard, 150 matches:
+
+| rule | rounds | blocks/cmdr | hulls used | ships |
+| --- | ---: | ---: | ---: | ---: |
+| Direct unblockable (shipped) | 11.2 | 2.82 | 6.03 | 5.20 |
+| blocking stops Direct | 11.3 | 2.92 | 6.24 | 5.20 |
+
+Nearly invisible. The obvious worry — that blocking would answer everything and
+a commander could turtle behind a wall of hulls — does not happen. A commander
+who blocks with **everything, every round**, against Hard, 400 matches:
+
+| rule | the turtle wins |
+| --- | ---: |
+| Direct unblockable | 5.0% ±2.1 |
+| blocking stops Direct | 6.8% ±2.5 |
+
+Turtling loses badly either way, and for a reason that has nothing to do with
+Direct: **a blocked hull sits out the next round and stops dealing damage.**
+Blocking already punishes itself. So the change was safe to make.
+
+### Why it was not made
+
+Because the owner asked a second question — can Repair save a flagship the
+damage would otherwise destroy? — and answering it showed what Direct is for.
+
+`settlePlayer` computes `before - damage + repair` in one step, so it can, and
+`inescapableDeath` counts repair too. That means the game has a clean triangle:
+
+- **Shields** answer Attack.
+- **Ships** answer what gets past Shields.
+- **Repair** answers Direct — and nothing else does.
+
+Let hulls block Direct and that third line disappears: Direct becomes ordinary
+damage with an extra step, and Repair is left with no job of its own. The
+purple chevron currently means *the damage you cannot defend against, only
+out-heal*, and that is worth more than the change was.
+
+**This is a design decision, not a measurement.** The measurement says either
+rule works. If anyone wants to revisit it, the knob is five lines
+(`damageAfterBlocking` is already the single place both the settle and the
+doomed-round check agree through) — but note that Direct being unstoppable is
+stated as a rule in the tutorial, the face legend, the help screen, the block
+screen and `lib/reference.ts` in seven places, all of which would have to change
+with it.
+
+### Now tested
+
+`tests/repair.test.mjs` pins both halves, and four of its cases fail if repair
+is moved after a death check:
+
+- repair carries a flagship the damage alone would kill (5 − 8 + 5 = 2)
+- repair answers Direct specifically (4 − 9 direct + 8 = 3)
+- exactly zero is dead; one more point of repair is one more point of life
+- healing past the starting maximum raises the maximum
+- the whole fleet blocking stops **none** of an incoming Direct
+- blocking still stops Attack, so that case cannot pass by accident

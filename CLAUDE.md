@@ -128,6 +128,15 @@ visible where independent runs would bury it in ±3.5 points of noise.
 
 ## Settled with numbers — do not re-litigate without new measurements
 
+- **Direct is unblockable, and that is what gives Repair a job.** Shields answer
+  Attack, ships answer what gets past them, Repair answers Direct — nothing else
+  does. Letting hulls block Direct measured *safe* (a commander blocking with
+  everything every round still loses, 5.0% vs 6.8%, because a blocked hull stops
+  dealing damage) and was declined anyway, because it leaves Repair with nothing
+  of its own. `settlePlayer` is `before - damage + repair` in one step, so repair
+  can save a flagship the damage alone would destroy; `inescapableDeath` counts
+  it too. `tests/repair.test.mjs` fails if either moves.
+
 - **Versus never holds a commander up except at the volley.** Freezing one side
   and racing the other reaches `block -> report -> shop -> roll -> locked in`
   in 796 of 796 situations, a full round ahead — the theoretical maximum, since
