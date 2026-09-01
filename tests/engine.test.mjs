@@ -873,3 +873,61 @@ test("a volley you could survive still asks you to block", () => {
   assert.equal(state.players.host.phase, "brace", "a real choice is still offered");
   assert.equal(state.status, "active");
 });
+
+/* ------------------------------------------------------------------ */
+/* Neither commander waits on the other to shop or roll                */
+/* ------------------------------------------------------------------ */
+
+/** Resolve one volley, with the guest left holding a block decision. */
+function volleyLeavingGuestBlocking() {
+  const state = freshMatch(23);
+  applyAction(state, "host", { type: "roll", dice: [] });
+  applyAction(state, "guest", { type: "roll", dice: [] });
+  // The host swings with everything. The guest rolls only odd faces, and
+  // alternates them so no three line up — a matching row or column would hand
+  // it attack it did not roll, which is exactly how the first version of this
+  // test accidentally gave the guest a +10 column and broke itself.
+  state.players.host.dice = state.players.host.dice.map((die) => ({
+    ...die,
+    value: die.sides % 2 === 0 ? die.sides : die.sides - 1,
+  }));
+  state.players.guest.dice = state.players.guest.dice.map((die, index) => ({
+    ...die,
+    value: index % 2 === 0 ? 1 : 3,
+  }));
+  applyAction(state, "host", { type: "submit" });
+  applyAction(state, "guest", { type: "submit" });
+  return state;
+}
+
+test("a commander with nothing to block does not wait on one who is blocking", () => {
+  const state = volleyLeavingGuestBlocking();
+  assert.equal(state.players.guest.tally.attack, 0, "the guest rolled no attack at all");
+  assert.equal(state.players.guest.phase, "brace", "the guest has a volley to answer");
+  assert.equal(state.players.host.phase, "report", "the host has nothing to answer");
+
+  // The whole point: this must not throw while the guest is still deciding.
+  applyAction(state, "host", { type: "continue" });
+  assert.equal(state.players.host.phase, "shop", "the host opens its shipyard right away");
+  assert.equal(state.players.host.round, 2, "and moves on to the next round");
+  assert.equal(state.players.guest.phase, "brace", "the guest is left to decide in its own time");
+});
+
+test("the volley still waits for both, however far ahead one commander gets", () => {
+  const state = volleyLeavingGuestBlocking();
+  applyAction(state, "host", { type: "continue" });
+  applyAction(state, "host", { type: "ready" });
+  applyAction(state, "host", { type: "roll", dice: [] });
+  applyAction(state, "host", { type: "submit" });
+  assert.equal(state.players.host.phase, "submitted", "the host is locked in for round 2");
+  assert.equal(state.players.guest.round, 1, "while the guest is still finishing round 1");
+  assert.equal(state.status, "active", "and nothing has resolved without them");
+
+  // The guest catches up; only now does the next volley land.
+  applyAction(state, "guest", { type: "brace", ships: [] });
+  applyAction(state, "guest", { type: "continue" });
+  applyAction(state, "guest", { type: "ready" });
+  applyAction(state, "guest", { type: "roll", dice: [] });
+  applyAction(state, "guest", { type: "submit" });
+  assert.notEqual(state.players.host.phase, "submitted", "round 2 resolves once both are in");
+});

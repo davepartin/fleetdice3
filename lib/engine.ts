@@ -1033,11 +1033,14 @@ function handleContinue(state: MatchState, player: PlayerState) {
   }
   if (player.phase !== "report") throw new Error("Finish the current round first.");
 
-  const opponent = state.players[player === state.players.host ? "guest" : "host"];
-  if (opponent?.phase === "brace") {
-    throw new Error("Wait for the enemy to finish taking damage. The match may end here.");
-  }
-
+  // Deliberately NOT gated on the other commander still choosing blockers.
+  // That gate held one player on the report screen for roughly half of all
+  // rounds — the half where their own volley left nothing to block — unable to
+  // shop or roll while the other side decided. Both fleets roll at once in this
+  // game; the only thing that has to happen together is the volley, and
+  // settleVolley already refuses to resolve until both sides are on the same
+  // round and both have locked in. If the other commander dies while blocking,
+  // finishIfNeeded ends the match wherever this one has got to.
   player.round += 1;
   player.phase = "shop";
   player.rolls = 0;

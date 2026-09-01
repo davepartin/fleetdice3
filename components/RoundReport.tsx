@@ -188,14 +188,16 @@ export function RoundReportCard({
       )}
 
       {waitingForOpponent && survived && (
+        // Information, not a barrier: their choice does not hold up yours.
         <p className="round-report-wait" role="status">
-          {enemyName} is choosing which ships block. Your shipyard will open when they finish.
+          {enemyName} is still choosing which ships block. Carry on — the next volley waits for
+          you both.
         </p>
       )}
       </div>
 
-      <Button tone="primary" size="lg" full onClick={onContinue} disabled={busy || waitingForOpponent}>
-        {!survived ? "See the result" : waitingForOpponent ? `Waiting for ${enemyName}` : "To the shipyard"}
+      <Button tone="primary" size="lg" full onClick={onContinue} disabled={busy}>
+        {!survived ? "See the result" : "To the shipyard"}
       </Button>
     </div>
   );
