@@ -121,6 +121,19 @@ export type PlayerState = {
   tally: Tally | null;
   incoming: number;
   directIncoming: number;
+  /**
+   * What the other fleet actually rolled at this volley, copied the moment the
+   * volley resolved.
+   *
+   * The round report used to read the opponent's live `tally` when it was
+   * built. That is only safe when both commanders settle together, and they
+   * deliberately do not: a commander with nothing to block settles first and
+   * may walk on to the shipyard, and `prepareRound` clears their tally on the
+   * way. The slower commander's report then described a volley of zeroes —
+   * right hit points, no explanation. Both sides have submitted by the time
+   * `resolveSubmissions` runs, so that is where the copy is taken.
+   */
+  incomingVolley: { tally: Tally; dice: DieValue[] } | null;
   braceShips: string[];
   report: RoundReport | null;
   /** Running totals for the end-of-match battle recap. */
@@ -457,6 +470,7 @@ export function newPlayer(uid: string, name: string, phase: PlayerPhase): Player
     tally: null,
     incoming: 0,
     directIncoming: 0,
+    incomingVolley: null,
     braceShips: [],
     report: null,
     stats: {
@@ -846,6 +860,7 @@ function prepareRound(player: PlayerState) {
   player.dice = [];
   player.straightTake = null;
   player.tally = null;
+  player.incomingVolley = null;
   player.report = null;
 }
 
@@ -951,6 +966,15 @@ function resolveSubmissions(state: MatchState) {
     }
   }
 
+  for (const [player, enemy] of [
+    [host, guest],
+    [guest, host],
+  ] as const) {
+    // Copy the other fleet's roll now, while both are still on the table.
+    player.incomingVolley = enemy.tally
+      ? { tally: structuredClone(enemy.tally), dice: enemy.dice.map((die) => ({ ...die })) }
+      : null;
+  }
   for (const player of [host, guest]) {
     player.braceShips = [];
     if (player.incoming > 0 && activeShips(player, player.round).length > 0) {
@@ -1006,7 +1030,10 @@ function settlePlayer(state: MatchState, player: PlayerState) {
     }
   }
 
+  // Deliberately the copy taken at `resolveSubmissions`, never the opponent's
+  // live tally: by now they may have moved on and cleared it.
   const enemy = state.players[player === state.players.host ? "guest" : "host"];
+  const volley = player.incomingVolley ?? (enemy?.tally ? { tally: enemy.tally, dice: enemy.dice } : null);
 
   player.report = {
     round: player.round,
@@ -1022,8 +1049,8 @@ function settlePlayer(state: MatchState, player: PlayerState) {
     escalation: escalationFor(player.round),
     tally: player.tally!,
     dice: player.dice.map((die) => ({ ...die })),
-    enemyTally: enemy?.tally ? structuredClone(enemy.tally) : null,
-    enemyDice: enemy?.dice ? enemy.dice.map((die) => ({ ...die })) : [],
+    enemyTally: volley ? structuredClone(volley.tally) : null,
+    enemyDice: volley ? volley.dice.map((die) => ({ ...die })) : [],
   };
   player.phase = "report";
 }
