@@ -210,6 +210,17 @@ export const TUNING = {
    * without touching a price players already know. See BALANCE.md.
    */
   paidRollsPerRound: 3,
+  /**
+   * Whether a blocking ship can also stand in front of Direct.
+   *
+   * Shipped as `false`: Direct is the one damage nothing stops, which is what
+   * stops a commander with a wall of Shields and a row of blockers becoming
+   * unkillable. Turn it on and blocking answers everything, which is a much
+   * larger change than it sounds — it is stated as a rule in the tutorial, the
+   * face legend, the help screen and the block screen, all of which have to
+   * change with it. See BALANCE.md before moving it.
+   */
+  blockStopsDirect: false,
   /** Ship prices, by measured value rather than by size. */
   prices: { 4: 4, 6: 6, 8: 9, 10: 13 } as Record<DieSize, number>,
   /**
@@ -998,6 +1009,17 @@ function handleBrace(state: MatchState, player: PlayerState, selected: string[])
   finishIfNeeded(state);
 }
 
+/**
+ * What actually lands, once blocking ships have stood in front of what they can.
+ *
+ * Shields have already been taken off `incoming` by `resolveSubmissions`. The
+ * only question left is whether a blocking hull can also take Direct.
+ */
+export function damageAfterBlocking(incoming: number, direct: number, blocked: number): number {
+  if (TUNING.blockStopsDirect) return Math.max(0, incoming + direct - blocked);
+  return Math.max(0, incoming - blocked) + direct;
+}
+
 function settlePlayer(state: MatchState, player: PlayerState) {
   const before = player.hp;
   let blocked = 0;
@@ -1008,7 +1030,7 @@ function settlePlayer(state: MatchState, player: PlayerState) {
     ship.disabledRound = player.round + 1;
     braced.push({ id: ship.id, sides: ship.sides });
   }
-  const damage = Math.max(0, player.incoming - blocked) + player.directIncoming;
+  const damage = damageAfterBlocking(player.incoming, player.directIncoming, blocked);
   const repair = player.tally?.heal ?? 0;
   const after = before - damage + repair;
   if (after > player.maxHp) player.maxHp = after;
@@ -1059,7 +1081,7 @@ function settlePlayer(state: MatchState, player: PlayerState) {
 function inescapableDeath(player: PlayerState): boolean {
   if (player.phase !== "brace") return false;
   const maxBlock = activeShips(player, player.round).reduce((sum, ship) => sum + ship.sides, 0);
-  const damage = Math.max(0, player.incoming - maxBlock) + player.directIncoming;
+  const damage = damageAfterBlocking(player.incoming, player.directIncoming, maxBlock);
   const repair = player.tally?.heal ?? 0;
   return player.hp - damage + repair <= 0;
 }

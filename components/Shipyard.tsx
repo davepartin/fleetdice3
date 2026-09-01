@@ -34,6 +34,7 @@ import {
 } from "@/lib/engine";
 import { NOUN } from "@/lib/reference";
 import { HullShape } from "./HullShape";
+import { HelpHullPlate } from "./HelpArt";
 import { Button, Chip, HpRail, Notice } from "./ui";
 
 const HULLS: DieSize[] = [4, 6, 8, 10];
@@ -85,7 +86,7 @@ function LockIcon() {
 
 type CellOffer =
   | { kind: "flagship"; cell: 4; level: number; cost: number | null }
-  | { kind: "ship"; cell: number; slot: number; ship: Ship; next: DieSize | null; cost: number | null }
+  | { kind: "ship"; cell: number; slot: number; ship: Ship; next: DieSize | null; cost: number | null; benched: boolean }
   | { kind: "empty"; cell: number; slot: number; cheapest: number }
   | { kind: "locked"; cell: number; slot: number; cost: number | null; opensLines: string[] };
 
@@ -141,7 +142,13 @@ function offerFor(player: PlayerState, cell: number): CellOffer {
   const ship = shipInSlot(player, slot);
   if (!ship) return { kind: "empty", cell, slot, cheapest: priceOf(4) };
   const next = upgradeTarget(ship.sides);
-  return { kind: "ship", cell, slot, ship, next, cost: next ? upgradeCost(ship.sides) : null };
+  // A ship that blocked last round sits out the round about to be played. By
+  // the time the shipyard is open `player.round` has already advanced, so the
+  // ship benched for it is the one whose `disabledRound` matches it. Worth
+  // saying here: spending Energy upgrading a hull that cannot fire next round
+  // is a purchase people make by accident and only notice a round later.
+  const benched = ship.disabledRound === player.round;
+  return { kind: "ship", cell, slot, ship, next, cost: next ? upgradeCost(ship.sides) : null, benched };
 }
 
 /* ------------------------------------------------------------------ */
@@ -286,14 +293,28 @@ function CellButton({
     cost = offer.cost;
     affordable = cost !== null && cost <= energy;
     state = "ship";
-    label = `d${offer.ship.sides} ship${offer.next ? `, upgrade to d${offer.next}` : ", at maximum"}`;
+    label =
+      `d${offer.ship.sides} ship${offer.next ? `, upgrade to d${offer.next}` : ", at maximum"}` +
+      (offer.benched ? ", out for this round after blocking" : "");
     body = (
       <>
         <span className="yard-cell-art">
-          <HullShape sides={offer.ship.sides} tone="live" />
+          {offer.benched ? (
+            // The same mark the board and the block screen use, so a hull
+            // sitting out looks the same wherever it is drawn.
+            <HelpHullPlate sides={offer.ship.sides} size={34} />
+          ) : (
+            <HullShape sides={offer.ship.sides} tone="live" />
+          )}
         </span>
         <span className="yard-cell-name">d{offer.ship.sides} ship</span>
-        <span className="yard-cell-sub yard-cell-sub-plain">{offer.next ? `upgrade → d${offer.next}` : "max ship"}</span>
+        {offer.benched ? (
+          <span className="yard-cell-sub yard-cell-out">out this round</span>
+        ) : (
+          <span className="yard-cell-sub yard-cell-sub-plain">
+            {offer.next ? `upgrade → d${offer.next}` : "max ship"}
+          </span>
+        )}
       </>
     );
   } else if (offer.kind === "empty") {

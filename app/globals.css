@@ -1345,6 +1345,17 @@ button {
   text-transform: none !important;
   letter-spacing: 0.02em !important;
 }
+
+/* A hull that blocked last round and cannot fire in the round you are shopping
+   for. Same red as the plate on the board, so the two read as one mark. */
+.yard-cell-out {
+  color: rgb(255 122 122 / 0.95);
+  font-weight: 600;
+}
+.yard-cell-art canvas {
+  max-width: 100%;
+  max-height: 100%;
+}
 .yard-cell-sub {
   font-size: var(--text-xs);
   letter-spacing: 0.06em;

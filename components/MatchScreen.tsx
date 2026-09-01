@@ -60,11 +60,17 @@ type Props = {
  * here is a hold on the *recap*, never on the rules: the match is already
  * decided and written down before any of this runs.
  */
-const FINISH_VOLLEY_MS = 900;
+const FINISH_VOLLEY_MS = 1800;
 /** A beat on the wide shot, wreckage still drifting, before the recap. */
-const FINISH_SETTLE_MS = 700;
+const FINISH_SETTLE_MS = 1400;
+/**
+ * How much longer the break itself plays than its default. The end of a match
+ * is the one moment worth lingering on: at full speed the flagship broke, the
+ * dice scattered and the recap arrived before any of it registered.
+ */
+const FINISH_BREAK_STRETCH = 2;
 /** Backstop: never strand a player on a board with no way forward. */
-const FINISH_HOLD_MAX_MS = 7000;
+const FINISH_HOLD_MAX_MS = 14000;
 
 export function MatchScreen({ controller, onExit, title, subtitle }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -487,7 +493,7 @@ export function MatchScreen({ controller, onExit, title, subtitle }: Props) {
         arena.stage.shake(1.3);
         arena.stage.flash(won ? 0x45e08b : 0xff4d4d, 0.6);
         void arena.vfx
-          .flagshipBreak(arena.flagshipWorld(loser), () => arena.scatterDice(loser))
+          .flagshipBreak(arena.flagshipWorld(loser), () => arena.scatterDice(loser), FINISH_BREAK_STRETCH)
           .then(() => {
             arena.setFocus("wide");
             // A beat on the wide shot with the wreckage still drifting, then
