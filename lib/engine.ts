@@ -1006,11 +1006,13 @@ function handleBrace(state: MatchState, player: PlayerState, selected: string[])
  * outside all of it** — no Shield reduces it and no ship blocks it.
  *
  * That is the whole point of Direct, and it is what gives Repair a job nothing
- * else can do: Shields answer Attack, ships answer what gets past them, and
- * Repair is the only answer to Direct there is. It was measured both ways —
- * letting hulls block Direct is *safe* (a commander who blocks with everything
- * every round still loses, 5.0% against 6.8%, because a blocked hull stops
- * dealing damage) but it leaves Repair with nothing of its own. See BALANCE.md.
+ * else can do: Shields answer Attack, ship blocking answers what gets past
+ * Shields, and Repair answers Direct — and nothing else does.
+ *
+ * It was measured both ways. Letting hulls block Direct is *safe* — a commander
+ * who blocks with everything every round still loses, 5.0% against 6.8%,
+ * because a blocked hull stops dealing damage — but it leaves Repair with
+ * nothing of its own. See BALANCE.md.
  *
  * One function so the settle and `inescapableDeath` can never disagree about
  * what a round costs.

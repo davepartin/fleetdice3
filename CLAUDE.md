@@ -122,20 +122,22 @@ line on purpose — comes from the engine's seeded RNG via `random()`. Never cal
 you do, and also replays a whole match on each tier to prove the seed still
 holds. (Audio, `lib/three/` and room codes are exempt — they do not touch
 rules. So is `engine.ts:353`, the one `Math.random` that *is* the default bag
-when nothing has called `setRng`.) This is what makes a paired A/B possible: run the same matches under two
-values of a `TUNING` number and the luck cancels, so a three-point effect is
-visible where independent runs would bury it in ±3.5 points of noise.
+when nothing has called `setRng`.) This is what makes a paired A/B possible:
+run the same matches under two values of a `TUNING` number and the luck
+cancels, so a three-point effect is visible where independent runs would bury
+it in ±3.5 points of noise.
 
 ## Settled with numbers — do not re-litigate without new measurements
 
 - **Direct is unblockable, and that is what gives Repair a job.** Shields answer
-  Attack, ships answer what gets past them, Repair answers Direct — nothing else
-  does. Letting hulls block Direct measured *safe* (a commander blocking with
-  everything every round still loses, 5.0% vs 6.8%, because a blocked hull stops
-  dealing damage) and was declined anyway, because it leaves Repair with nothing
-  of its own. `settlePlayer` is `before - damage + repair` in one step, so repair
-  can save a flagship the damage alone would destroy; `inescapableDeath` counts
-  it too. `tests/repair.test.mjs` fails if either moves.
+  Attack, ship blocking answers what gets past Shields, Repair answers Direct —
+  and nothing else does. Letting hulls block Direct measured *safe* (a commander
+  blocking with everything every round still loses, 5.0% vs 6.8%, because a
+  blocked hull stops dealing damage) and was declined anyway, because it leaves
+  Repair with nothing of its own. `settlePlayer` is `before - damage + repair`
+  in one step, so repair can save a flagship the damage alone would destroy,
+  and `inescapableDeath` counts it too. `tests/repair.test.mjs` fails if either
+  moves.
 
 - **Versus never holds a commander up except at the volley.** Freezing one side
   and racing the other reaches `block -> report -> shop -> roll -> locked in`

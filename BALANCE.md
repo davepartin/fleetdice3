@@ -1016,7 +1016,7 @@ damage would otherwise destroy? — and answering it showed what Direct is for.
 `inescapableDeath` counts repair too. That means the game has a clean triangle:
 
 - **Shields** answer Attack.
-- **Ships** answer what gets past Shields.
+- **Ship blocking** answers what gets past Shields.
 - **Repair** answers Direct — and nothing else does.
 
 Let hulls block Direct and that third line disappears: Direct becomes ordinary
