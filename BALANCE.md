@@ -610,3 +610,92 @@ run `node sim/lab.mjs fair 800` rather than `matchups`.
 **I did not test difficulty settings.** Everything here is Captain. Cadet and
 Admiral shop with the same broken preference, so I would expect the same
 picture, but I have not measured it and I am guessing.
+
+---
+
+## Measurements from the AAA polish pass
+
+Every number below is from a script in `sim/` that can be re-run. Caveat first:
+`lib/ai.ts` calls `Math.random()` in four places instead of the engine's seeded
+RNG, so runs involving any tier below Expert are **not** bit-for-bit
+reproducible. The confidence intervals still mean what they say.
+
+### Expert is a read plus ten health, and the read was not enough
+
+`readOpponent` does the race arithmetic on the other fleet — what each side
+lands per round from hulls, bays and flagship level, and therefore who finishes
+whom first — using only what is on the board for both players. It never reads
+unrevealed dice, and a test fails if that changes.
+
+It did not carry the tier on its own, measured twice:
+
+| Expert build | vs Hard |
+| --- | --- |
+| read wired into Energy and blocking, no health bonus | 47.8% ±4.0 |
+| read also pricing every shipyard buy, no health bonus | 47.6% ±3.7 |
+| read plus +10 starting health | **54.9% ±3.7** |
+
+Grok's original Expert was +20 health and no read; its knob differences from
+Hard contributed nothing measurable (48.2% ±3.3 with the health removed), and
+Hard's brain wearing that +20 scored 66.6% — the whole tier was the health bar.
+The read stays because it makes Expert *play* unlike Hard; the health, halved,
+is what makes the rung real.
+
+Ladder at 700 matches per pairing: Medium over Low 59.9%, Hard over Medium
+52.7%, Expert over Hard 54.9% ±3.7.
+
+### `samples` does nothing
+
+Hard at `samples: 120` against the identical brain at 40: **51.4% ±3.3**. The
+dial is saturated well below 40, and Hard and Expert pay three times the compute
+per decision for it. `sim/difficulty-source.mjs` re-runs this.
+
+### Nine d4s chasing one number: strong, fair, and not a solved game
+
+| Matchup | Result |
+| --- | --- |
+| swarm vs a hand-written "big hulls and straights" player | swarm 89.5% ±3.0 |
+| swarm vs the game's Expert | **swarm 27.3% ±5.0** |
+
+The first row is close to meaningless on its own — that opponent landed 0.23
+straights per match, so it never did what it existed to do. Against Expert the
+swarm completes ~11 lines a match to Expert's 2.5 **and still loses**, because a
+d4 caps at 4: between lines it produces almost nothing and blocks four at a
+time. Lines are a bonus, not a win condition.
+
+### What the tiers actually build
+
+200 matches per tier, both sides the same tier:
+
+| tier | straights/cmdr | lines/cmdr | ships | rounds | final fleet mix |
+| --- | --- | --- | --- | --- | --- |
+| low | 0.56 | 1.88 | 5.03 | 13.2 | d4 2% · d6 15% · d8 44% · d10 39% |
+| medium | 1.15 | 2.46 | 5.14 | 11.7 | d4 4% · d6 49% · d8 39% · d10 7% |
+| hard | 1.60 | 2.87 | 5.28 | 11.5 | d4 7% · d6 57% · d8 30% · d10 5% |
+| expert | 1.76 | 2.92 | 5.37 | 11.5 | d4 7% · d6 56% · d8 31% · d10 6% |
+
+Two open questions sit in that table. **d10 looks mispriced**: the best tier
+buys the fewest and the worst tier buys the most, so at 13 Energy the biggest
+hull is what weak play looks like. And **straights barely happen** — under twice
+a match even for Expert, needing five consecutive numbers from a fleet averaging
+five dice, for a mechanic with its own chart in How to Play.
+
+### Repair, and the order a round resolves in
+
+Damage and repair land in one step (`before - damage + repair` in
+`settlePlayer`), so repair can save a flagship that damage alone would destroy,
+and healing past the maximum raises the maximum. Zero is dead, not alive.
+
+Measured over 500 matches: repair turns a lethal round survivable in 1.3% of
+rounds — but **133 of those 136 saves happen in round 5 or later**. Repair does
+almost nothing early, when nothing is lethal yet, and is the entire late-game
+lifeline. Moving it after the death check would delete those saves and make
+matches end sooner and more abruptly.
+
+### Waiting, in versus
+
+Before the fix, `handleContinue` refused to leave the report screen while the
+other commander was still choosing blockers. Over 300 matches that stranded a
+player on **46.4% of resolved rounds** — the rounds where their own volley left
+them nothing to block. Both fleets roll at once; only the volley and the victory
+check need both players.
