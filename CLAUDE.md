@@ -21,11 +21,24 @@ Versus needs Firebase. Never test it against the real project — that puts junk
 rooms in front of real players:
 
 ```bash
-pnpm emulators           # local firestore + auth
+firebase emulators:start --only firestore,auth --project space-tribes
 pnpm build:emulator      # a build pointed at them
-pnpm serve
+pnpm serve               # the static build on :4321
 pnpm test:versus         # two browser clients, connection pulled mid-match
+node sim/versus-flow-emulator.mjs   # one plays on while the other sits still
 ```
+
+This needs a Java runtime and the Firebase CLI, neither of which ships with
+macOS. Installed on the owner's Mac as `~/.local/opt/jdk-21.*` (a plain Temurin
+tarball, no Homebrew, no sudo — delete the folder to remove it) and
+`firebase-tools` globally via npm. Export the JDK before starting:
+`export PATH="$HOME/.local/opt/jdk-21.0.12.1+1/Contents/Home/bin:$PATH"`.
+
+Use `firebase emulators:start` directly rather than `pnpm emulators`: the pnpm
+script runs a dependency check that fails on an unbuilt native module in
+`firebase-tools`. And `pnpm build:emulator` overwrites `out/` with a build
+pointed at 127.0.0.1 — run `pnpm build` afterwards so the deployable build is
+not left pointing at a local emulator.
 
 Balance and AI:
 
@@ -114,6 +127,15 @@ values of a `TUNING` number and the luck cancels, so a three-point effect is
 visible where independent runs would bury it in ±3.5 points of noise.
 
 ## Settled with numbers — do not re-litigate without new measurements
+
+- **Versus never holds a commander up except at the volley.** Freezing one side
+  and racing the other reaches `block -> report -> shop -> roll -> locked in`
+  in 796 of 796 situations, a full round ahead — the theoretical maximum, since
+  round 3 cannot precede round 2's volley. Confirmed through the real network
+  and UI by `sim/versus-flow-emulator.mjs` (6/6). Guarded by
+  `tests/versus-flow.test.mjs`, which fails if any control is disabled on the
+  other commander's phase; `waitingOnEnemy` may only mean "you locked in and
+  they have not".
 
 - **Paid rerolls are capped at three a round** (`paidRollsPerRound`), each still
   1 Energy per die. The old rule never got dearer, so a bank bought rounds: an
