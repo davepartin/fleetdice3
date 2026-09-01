@@ -23,6 +23,8 @@ import {
   flagBonusSize,
   fleetBlock,
   previewTally,
+  rollCostFor,
+  rollsLeft as engineRollsLeft,
   runMemberIds,
   straightPrizeTakes,
   type MatchAction,
@@ -520,7 +522,10 @@ export function MatchScreen({ controller, onExit, title, subtitle }: Props) {
 
   const enemyName = them?.name ?? "Enemy";
   const rollsLeft = TUNING.rollsPerRound - you.rolls;
-  const rerollCost = you.rolls >= TUNING.rollsPerRound ? selected.size : 0;
+  // Total rolls left, paid ones included — the engine refuses a roll past this,
+  // so the button has to know about it or it offers a move that throws.
+  const rollsRemaining = engineRollsLeft(you);
+  const rerollCost = rollCostFor(you, selected.size);
 
   return (
     <>
@@ -666,6 +671,7 @@ export function MatchScreen({ controller, onExit, title, subtitle }: Props) {
               hint={hint}
               selected={selected}
               rollsLeft={rollsLeft}
+              rollsRemaining={rollsRemaining}
               rerollCost={rerollCost}
               waiting={waitingOnEnemy}
               waitingName={enemyName}
@@ -842,6 +848,7 @@ function RollDock({
   hint,
   selected,
   rollsLeft,
+  rollsRemaining,
   rerollCost,
   waiting,
   waitingName,
@@ -859,6 +866,7 @@ function RollDock({
   hint: ReturnType<typeof rollHint>;
   selected: Set<string>;
   rollsLeft: number;
+  rollsRemaining: number;
   rerollCost: number;
   waiting: boolean;
   waitingName?: string;
@@ -877,6 +885,8 @@ function RollDock({
   const prizes = run ? straightPrizeTakes(run) : [];
   const chosenTake = you.straightTake ?? (prizes.length ? prizes[prizes.length - 1]! : 0);
   const canAffordReroll = rerollCost === 0 || you.energy >= rerollCost;
+  const outOfRolls = rollsRemaining <= 0;
+  const canReroll = canAffordReroll && !outOfRolls;
 
   return (
     <div className="roll-dock panel panel-you relative flex flex-col gap-2.5 p-3.5">
@@ -967,18 +977,22 @@ function RollDock({
                 size="lg"
                 full
                 onClick={onReroll}
-                disabled={busy || !canAffordReroll}
-                className={`reroll-action ${rerollCost && !canAffordReroll ? "reroll-unaffordable" : ""}`}
+                disabled={busy || !canReroll}
+                className={`reroll-action ${!canReroll ? "reroll-unaffordable" : ""}`}
                 ariaLabel={
-                  rerollCost
-                    ? canAffordReroll
-                      ? `Reroll ${selected.size} dice for ${rerollCost} Energy`
-                      : `Reroll unavailable. Need ${rerollCost} Energy`
-                    : `Reroll ${selected.size} dice for free`
+                  outOfRolls
+                    ? "No rerolls left this round. Lock in your decision."
+                    : rerollCost
+                      ? canAffordReroll
+                        ? `Reroll ${selected.size} dice for ${rerollCost} Energy`
+                        : `Reroll unavailable. Need ${rerollCost} Energy`
+                      : `Reroll ${selected.size} dice for free`
                 }
               >
                 <span>Reroll {selected.size}</span>
-                {rerollCost ? (
+                {outOfRolls ? (
+                  <span className="reroll-cost">No rerolls left</span>
+                ) : rerollCost ? (
                   <span className="reroll-cost">
                     {canAffordReroll ? "Cost" : "Need"}
                     <EnergyBolt />

@@ -183,8 +183,20 @@ export const TUNING = {
   startSlots: 4,
   /** Energy in the bank at the start. */
   startEnergy: 0,
-  /** Free rolls a round; after that 1 Energy per die. */
+  /** Free rolls a round. */
   rollsPerRound: 3,
+  /**
+   * Paid rerolls a round, after the free ones. Each still costs 1 Energy per
+   * die sent back; this caps how many times you may do it, not the price.
+   *
+   * The cap is the load-bearing part. With no cap, a paid reroll never gets
+   * dearer, so a big bank buys an unbounded number of them and the round turns
+   * into a hunt: a board of d4s chasing 2s pays 2 Direct each, which no Shield
+   * and no block can stop. Measured, an Expert handed +60 Energy went from an
+   * even match to winning 59% purely on rerolls. Capping the count fixes that
+   * without touching a price players already know. See BALANCE.md.
+   */
+  paidRollsPerRound: 3,
   /** Ship prices, by measured value rather than by size. */
   prices: { 4: 4, 6: 6, 8: 9, 10: 13 } as Record<DieSize, number>,
   /**
@@ -365,8 +377,44 @@ export function makeRng(seed: number): Rng {
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
 }
+/**
+ * What the next reroll costs this player, for `dieCount` dice.
+ *
+ * Zero while free rolls remain. Never hardcode this anywhere else: the help
+ * screen, the AI's budgeting and the simulations all have to agree with the
+ * rule the match actually enforces.
+ */
+export function rollCostFor(player: { rolls: number }, dieCount: number): number {
+  if (player.rolls < TUNING.rollsPerRound) return 0;
+  return dieCount;
+}
+
+/** Rolls of any kind still allowed this round, free ones included. */
+export function rollsLeft(player: { rolls: number }): number {
+  return Math.max(0, TUNING.rollsPerRound + TUNING.paidRollsPerRound - player.rolls);
+}
+
+/** Paid rerolls still allowed this round. */
+export function paidRollsLeft(player: { rolls: number }): number {
+  if (player.rolls < TUNING.rollsPerRound) return TUNING.paidRollsPerRound;
+  return rollsLeft(player);
+}
+
 export function roll(sides: number): number {
   return Math.floor(RNG() * sides) + 1;
+}
+
+/**
+ * A raw random number in [0, 1), from the same seeded source as the dice.
+ *
+ * Anything outside the engine that needs a coin flip — the opponent brain
+ * deciding to take a worse line, say — must come through here rather than
+ * calling `Math.random()`. Two sources of randomness means a seeded
+ * simulation is only half seeded, and re-running it does not reproduce it.
+ * `tests/rng.test.mjs` fails if `lib/ai.ts` reaches for `Math.random` again.
+ */
+export function random(): number {
+  return RNG();
 }
 
 const ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789";
@@ -823,9 +871,13 @@ function handleRoll(player: PlayerState, chosen: string[]) {
   for (const id of unique) {
     if (!player.dice.some((die) => die.id === id)) throw new Error("That die is not in your fleet.");
   }
-  if (player.rolls >= TUNING.rollsPerRound) {
-    spend(player, unique.length);
-    player.stats.rerollEnergy += unique.length;
+  if (rollsLeft(player) <= 0) {
+    throw new Error("You are out of rerolls this round.");
+  }
+  const cost = rollCostFor(player, unique.length);
+  if (cost > 0) {
+    spend(player, cost);
+    player.stats.rerollEnergy += cost;
   }
 
   for (const die of player.dice) {

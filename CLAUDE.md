@@ -34,6 +34,9 @@ node sim/sweep.mjs difficulty 1500       # the tier ladder
 node sim/difficulty-source.mjs 1200      # WHY a tier is strong, knob by knob
 node sim/swarm-vs-ai.mjs 300 expert      # a strategy against the game's best
 node sim/straights.mjs 200               # what tiers build when left alone
+node sim/d10.mjs 150                     # what each tier buys, and with what
+node sim/d10-policy.mjs 800 low          # is a hull step worth its Energy
+node sim/lab.mjs hulls 800               # which hull goes in the cell you opened
 ```
 
 ## House rules
@@ -80,8 +83,16 @@ because a screenshot looked plausible.
 animation is running.
 
 **Playwright, in this repo:** scripts must sit in the project root to resolve
-modules, and Chromium wants
-`{executablePath:"/opt/pw-browsers/chromium", args:["--use-gl=swiftshader","--enable-webgl","--ignore-gpu-blocklist","--disable-gpu-sandbox"]}`.
+modules. Pass the GL args —
+`{args:["--use-gl=swiftshader","--enable-webgl","--ignore-gpu-blocklist","--disable-gpu-sandbox"]}`
+— but **do not set `executablePath`**: `/opt/pw-browsers/chromium` was a path on
+a previous machine and does not exist on the owner's Mac, where Playwright's own
+bundled Chromium works. `cap-playtest.mjs` is a short worked example: it drives
+solo from the tier picker, follows whatever "next" button each screen offers
+rather than hardcoding the sequence, and reads button state from the DOM.
+Energy is the `N IN THE BANK` readout on the shipyard screen — the `+16` beside
+each flagship is **not** Energy, both sides show it, and misreading it cost this
+session two runs.
 Check 390×844, 390×620 and 360×780 — the dock clips horizontal overflow, so a
 too-wide row disappears silently rather than scrolling.
 
@@ -91,12 +102,29 @@ wrong answer. See `sim/swarm-vs-capital.mjs`, which measures 90% for one side
 and carries a warning pointing at `sim/swarm-vs-ai.mjs`, where the same strategy
 loses. Either file alone misleads.
 
-**`lib/ai.ts` calls `Math.random()` in four places** rather than the engine's
-seeded RNG, so a "seeded" simulation involving any tier below Expert is not
-reproducible. Confidence intervals still mean what they say; identical re-runs
-do not. Worth fixing.
+**One bag of dice, not two.** Every coin flip that decides how a match goes —
+including the ones inside `lib/ai.ts` that make the weaker tiers take a worse
+line on purpose — comes from the engine's seeded RNG via `random()`. Never call
+`Math.random()` in `lib/engine.ts` or `lib/ai.ts`; `tests/rng.test.mjs` fails if
+you do, and also replays a whole match on each tier to prove the seed still
+holds. (Audio, `lib/three/` and room codes are exempt — they do not touch
+rules. So is `engine.ts:353`, the one `Math.random` that *is* the default bag
+when nothing has called `setRng`.) This is what makes a paired A/B possible: run the same matches under two
+values of a `TUNING` number and the luck cancels, so a three-point effect is
+visible where independent runs would bury it in ±3.5 points of noise.
 
 ## Settled with numbers — do not re-litigate without new measurements
+
+- **Paid rerolls are capped at three a round** (`paidRollsPerRound`), each still
+  1 Energy per die. The old rule never got dearer, so a bank bought rounds: an
+  Expert handed +60⚡ went from an even match to 57.2%. Capping the count fixes
+  it (47.1% ±3.5 at +60⚡) and leaves the ordinary game exactly where it was
+  (50.0%, same 5.1⚡ a match). Raising the *price* instead measured worse — a
+  flat price makes the wide reroll cheaper, which is the reroll being abused.
+  Two is no better than three and costs a choice.
+- **A blocking ship absorbs damage equal to its die size** (`blocked +=
+  ship.sides`), so a d10 blocks 10 and a d4 blocks 4. Direct damage is added
+  *after* blocking and cannot be blocked at all.
 
 - **Expert reads the other fleet and carries +10 starting health.** The read
   alone did not carry the tier: 47.8% ±4.0 against Hard through Energy and
@@ -117,7 +145,12 @@ do not. Worth fixing.
 
 ## Open, unmeasured
 
-- **d10 looks mispriced.** Expert ends ~56% d6 and ~6% d10; the *worst* tier
-  ends ~39% d10. Buying the biggest hull is what weak play looks like.
+- **The d10 is fairly priced; the tier pattern is a spending pattern.** No AI
+  has ever bought a d10 fresh (0 in 960 commanders), so `prices[10]` only bites
+  as the d8 step, `13 - 9 = 4`. Taking that step wins 52–54% on all four tiers,
+  and for a person a cell + d10 beats a cell + d4 + the change 56.0% ±3.4. Weak
+  tiers hold d10s because they spend 30.6⚡ on the upgrade ladder against
+  Expert's 16.7 and less on cells — the d10 is where a surplus spent climbing
+  ends up. Changing `prices[10]` moves the shop price and the step together.
 - **Straights barely happen** — 1.76 per match at Expert level, needing five
   consecutive numbers from a ~5-dice fleet, for a prominent chunk of How to Play.
