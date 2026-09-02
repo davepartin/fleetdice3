@@ -155,6 +155,19 @@ it in ±3.5 points of noise.
 
 ## Settled with numbers — do not re-litigate without new measurements
 
+- **`energyWeight` per tier is the difficulty ladder.** Low 1.45 (the old value,
+  so a beginner's game is unchanged), Medium 2.4, Hard 3.4, Expert 4.2. It is
+  what `nearFormation` prices a row with — `lineAcrossEnergy x weight` against a
+  column's flat `lineDownAttack` — so below 2 the brain chases columns and only
+  columns. Worth 74.3% against the old brain, and it widened every rung:
+  Medium/Low 72.0%, Hard/Medium 63.4%, Expert/Hard 58.4%. The curve peaks near
+  four and falls away by fifteen. BALANCE.md's old guess that it should be
+  *lower* is measured wrong.
+- **Making the brain save up for a bay is worth nothing.** Six paired runs, all
+  ~50%. It buys more bays and ends with more ships and wins no more often. The
+  brain was never undervaluing bays — instrumented, it reaches the shipyard with
+  4.4 Energy and simply cannot afford one. Do not rebuild `patience`.
+
 - **Direct is unblockable, and that is what gives Repair a job.** Shields answer
   Attack, ship blocking answers what gets past Shields, Repair answers Direct —
   and nothing else does. Letting hulls block Direct measured *safe* (a commander

@@ -1043,3 +1043,105 @@ is moved after a death check:
 - healing past the starting maximum raises the maximum
 - the whole fleet blocking stops **none** of an incoming Direct
 - blocking still stops Attack, so that case cannot pass by accident
+
+---
+
+## The opponent's eye for Energy — the biggest single knob in the brain
+
+*Changed 2 September 2026. `energyWeight` per tier: Low 1.45, Medium 2.4,
+Hard 3.4, Expert 4.2. No `TUNING` number moved; this is all in `lib/ai.ts`.*
+
+### What was wrong
+
+`WEIGHTS.energy` was 1.45 for every tier. `nearFormation` — the function that
+decides which line the brain hunts — used it to price a row:
+
+```ts
+const prize = line.kind === "col" ? TUNING.lineDownAttack : TUNING.lineAcrossEnergy * WEIGHTS.energy;
+```
+
+A column pays 10 Attack. A row pays 5 Energy, which at 1.45 scored **7.25**. So
+the row never won that comparison, and **every brain on every tier chased
+columns and only columns**, whatever the board in front of it looked like.
+
+### What it is worth
+
+Paired seeds, same tier, all five plans, one side on the new weight:
+
+| energy weight | wins against 1.45 |
+| ---: | ---: |
+| 0.8 | 39.5% ±4.8 |
+| 1.0 | 42.3% ±4.8 |
+| 1.2 | 46.8% ±4.9 |
+| 1.7 | 50.5% ±4.9 |
+| 2.5 | 66.0% ±4.6 |
+| **4.2** | **74.3% ±3.5** |
+| 9 | 68.3% ±5.3 |
+| 30 | 48.3% ±5.7 |
+
+A real optimum around four, not a runaway — it climbs, peaks and falls away.
+Note the first three rows: BALANCE.md finding 3 guessed this number should be
+*lower*, "nearer 1.0". Measured, that is the wrong direction and costs about
+eight points.
+
+### The ladder, which is the point
+
+500 matches a rung:
+
+| rung | now | before |
+| --- | ---: | ---: |
+| Medium over Low | **72.0% ±3.9** | 59.9% |
+| Hard over Medium | **63.4% ±4.2** | 52.7% |
+| Expert over Hard | **58.4% ±4.3** | 54.9% |
+| Expert over Low | **87.2% ±2.9** | — |
+
+Every rung is a clear step now. **Low is deliberately untouched at 1.45**, so a
+beginner's first game plays exactly as it always did; the tiers above it got
+better rather than the bottom getting harder.
+
+150 matches a tier, both sides the same tier:
+
+| tier | straights/cmdr | lines/cmdr | ships | rows | cols | rounds |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| low | 0.66 | 2.00 | 5.09 | 0.90 | 1.11 | 13.4 |
+| medium | 1.70 | 2.30 | 5.51 | 1.28 | 0.98 | 11.2 |
+| hard | 2.43 | 3.04 | 6.06 | 1.74 | 1.34 | 11.1 |
+| expert | 2.82 | 3.36 | 6.32 | 1.98 | 1.35 | 11.5 |
+
+Straights at Expert go from 1.75 a commander to **2.82**, which is most of the
+"straights barely happen" open question answered from the other end: they were
+rare partly because nothing was hunting them. Fleets are bigger (5.43 → 6.32),
+and the board finally sees **both** kinds of formation instead of columns alone.
+
+### Two things that measured neutral and were not shipped
+
+**Saving up for a bay.** The obvious diagnosis — the brain never buys bays
+because `buyScore` divides by cost — is wrong. The arithmetic does not support
+it (a bay scores 7.5/11 = 0.68 against an upgrade's 1.3/2 = 0.65), and the real
+reason is simpler: instrumented, the brain arrives at the shipyard with **4.4
+Energy**, can afford a bay on 20% of visits, and buys one two thirds of the time
+it can. It was never undervaluing bays; it could never save up for one.
+
+So a `patience` knob was built, letting a tier hold Energy for a bay it could
+afford in a round or two. It works — bays per match went 1.45 → 1.88, ships 5.30
+→ 5.66 — and it is worth **nothing**: 50.2%, 49.3%, 50.0%, 47.0%, 50.2%, 50.2%
+across six paired runs at four tiers, before and after the energy fix. Two extra
+rounds of foregone upgrades exactly cancel the bay. It was removed rather than
+shipped. Finding 6 ("a bay plus a hull is the strongest purchase") still stands,
+but it was measured by *handing* a commander a bay at round one, which is not
+the same as spending two rounds earning one.
+
+### A measurement that lied, and how it was caught
+
+The energy-weight sweep above was first run by overriding the module-level
+`WEIGHTS.energy`. After the per-tier knob was added, the same comparison read
+**47.8%** instead of 74.3% — because `nearFormation` still read the global while
+everything else read the new knob. The knob was changing how a *roll* was
+valued and not which *line* was hunted, and the line is where almost all the
+value is: threading the weight into `valueOfTally` alone is worth 49.0%, and
+into `nearFormation` as well is worth 71.8%.
+
+Both experiments were internally valid and they disagreed by twenty-five points.
+The only reason it surfaced is that the numbers were re-measured after the
+refactor instead of being carried over. Re-measure after moving code, even when
+the change looks like plumbing.
