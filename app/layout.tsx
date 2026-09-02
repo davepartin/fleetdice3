@@ -46,13 +46,13 @@ const numeral = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "Fleet Dice 3",
+  title: "Fleet Dice",
   description:
     "Build the fleet. Break the flagship. A two-player dice battle you can play in any browser.",
-  applicationName: "Fleet Dice 3",
+  applicationName: "Fleet Dice",
   appleWebApp: { capable: true, statusBarStyle: "black-translucent", title: "Fleet Dice" },
   openGraph: {
-    title: "Fleet Dice 3",
+    title: "Fleet Dice",
     description: "Build the fleet. Break the flagship.",
     type: "website",
   },

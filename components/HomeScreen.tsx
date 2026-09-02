@@ -22,7 +22,7 @@ import {
   type LiveBattleRow,
   type RememberedRoomCard,
 } from "@/lib/rooms";
-import { basePath } from "@/lib/paths";
+import { basePath, href } from "@/lib/paths";
 import { NOUN } from "@/lib/reference";
 
 export function HomeScreen() {
@@ -101,34 +101,40 @@ export function HomeScreen() {
       <div className="hud">
         <div className="scroll-y fade-edges flex-1">
           <div className="mx-auto flex w-full max-w-[30rem] flex-col gap-4 px-4 pb-10 pt-8">
-            {/* Wordmark */}
-            <header className="anim-rise text-center">
-              <p className="t-eyebrow">Build the fleet · Break the flagship</p>
-              <h1 className="t-display mt-1 text-3xl text-white">
-                Fleet Dice<span className="c-energy"> 3</span>
-              </h1>
+            {/* The wordmark is the key art. It already carries the name and
+                the promise — "Build the fleet. Break the flagship." — so a
+                heading and a tagline underneath would only say it twice. Its
+                bottom edge is faded out so the painted starfield hands over to
+                the real dice turning behind the page rather than sitting on
+                top of them in a box. */}
+            <header className="anim-rise home-key-art">
+              {/* A plain <img> on purpose. `images.unoptimized` is set for the
+                  static export, so next/image has no optimiser to offer here —
+                  and with it on, next/image emits the src without the base
+                  path, which is a broken image on GitHub Pages. `href()` is
+                  the helper that knows where this app is mounted. */}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={href("/art/fleet-dice-key-art.png")}
+                alt="Fleet Dice — build the fleet, break the flagship"
+                width={1024}
+                height={640}
+                decoding="async"
+                fetchPriority="high"
+              />
+              <h1 className="sr-only">Fleet Dice</h1>
             </header>
 
-            {/* Straight under the wordmark, above the name field and the
-                modes: someone who has never played this should not have to
-                scroll past three ways to start a match to find the rules. */}
-            <Button tone="ghost" full onClick={() => setHelpOpen(true)}>
+            {/* Kept above the ways to play, as it was: someone who has never
+                played should not have to scroll past three ways to start a
+                match to find the rules. One quiet line is enough to do that. */}
+            <button
+              type="button"
+              onClick={() => setHelpOpen(true)}
+              className="home-help-link t-eyebrow"
+            >
               How to play
-            </Button>
-
-            {/* Name */}
-            <Panel className="p-3.5">
-              <label className="t-eyebrow mb-1.5 block" htmlFor="commander">
-                Your name
-              </label>
-              <input
-                id="commander"
-                value={name}
-                maxLength={20}
-                onChange={(event) => saveName(event.target.value)}
-                className="t-num w-full rounded-xl border border-white/12 bg-black/40 px-3 py-2.5 text-base text-white outline-none focus:border-white/40"
-              />
-            </Panel>
+            </button>
 
             {/* The two ways to play */}
             <div className="flex flex-col gap-2.5">
@@ -138,7 +144,7 @@ export function HomeScreen() {
                   <span className="min-w-0 flex-1">
                     <span className="t-display block text-xl text-white">Tutorial</span>
                     <span className="mt-0.5 block text-sm leading-snug c-dim">
-                      A short guided flight — faces, formations, the shipyard, a straight, and the flagship token.
+                      New here? Start with this.
                     </span>
                   </span>
                   <span className="c-energy" aria-hidden>
@@ -153,7 +159,7 @@ export function HomeScreen() {
                   <span className="min-w-0 flex-1">
                     <span className="t-display block text-xl text-white">Play solo</span>
                     <span className="mt-0.5 block text-sm leading-snug c-dim">
-                      Straight into a battle against the ship&apos;s computer. Pick how hard it plays.
+                      Against the ship&apos;s computer.
                     </span>
                   </span>
                   <span className="c-dim" aria-hidden>
@@ -168,7 +174,7 @@ export function HomeScreen() {
                   <span className="min-w-0 flex-1">
                     <span className="t-display block text-xl text-white">Play a friend</span>
                     <span className="mt-0.5 block text-sm leading-snug c-dim">
-                      Get a four-digit code and send them the link. Start as many games as you like.
+                      Four digits and a link.
                     </span>
                   </span>
                   <span className="c-dim" aria-hidden>
@@ -178,8 +184,20 @@ export function HomeScreen() {
               </Link>
             </div>
 
-            {/* Join by code */}
+            {/* Name and code together: both are only about playing someone
+                else, and as two separate panels they pushed the board and the
+                results off the first screen. */}
             <Panel className="p-4">
+              <label className="t-eyebrow mb-1.5 block" htmlFor="commander">
+                Your name
+              </label>
+              <input
+                id="commander"
+                value={name}
+                maxLength={20}
+                onChange={(event) => saveName(event.target.value)}
+                className="t-num mb-3 w-full rounded-xl border border-white/12 bg-black/40 px-3 py-2.5 text-base text-white outline-none focus:border-white/40"
+              />
               <p className="t-eyebrow mb-2">Got a code from a friend?</p>
               <div className="flex gap-2">
                 <input
@@ -313,7 +331,7 @@ export function HomeScreen() {
             )}
 
             <p className="pt-2 text-center text-xs c-dim">
-              Fleet Dice 3 · every number in this game was measured, not guessed
+              Fleet Dice · every number in this game was measured, not guessed
             </p>
           </div>
         </div>

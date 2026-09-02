@@ -156,7 +156,7 @@ export default function Lab() {
       <div className="hud">
         <div className="p-5">
           <p className="t-eyebrow">Bench</p>
-          <h1 className="t-display text-3xl">Fleet Dice 3</h1>
+          <h1 className="t-display text-3xl">Fleet Dice</h1>
           <p className="mt-1 text-sm c-dim">{ready ? "stage running" : "booting"}</p>
         </div>
       </div>

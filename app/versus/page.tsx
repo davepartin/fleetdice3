@@ -83,7 +83,7 @@ export default function VersusPage() {
     const text = `Come and fight me at Fleet Dice. Room ${room.match.state.code}: ${room.inviteUrl}`;
     try {
       if (navigator.share) {
-        await navigator.share({ title: "Fleet Dice 3", text, url: room.inviteUrl });
+        await navigator.share({ title: "Fleet Dice", text, url: room.inviteUrl });
         return;
       }
     } catch {

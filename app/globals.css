@@ -3278,3 +3278,52 @@ button {
 @media (prefers-reduced-motion: reduce) {
   .match-reconnect-dot { animation: none; opacity: 0.8; }
 }
+
+/* ------------------------------------------------------------------ */
+/* The title screen's key art                                          */
+/* ------------------------------------------------------------------ */
+
+/* The art carries the name and the promise, so nothing is written over it.
+   Its lower edge is faded to nothing so the painted starfield hands over to
+   the real dice turning behind the page — the point of the front page is that
+   the first thing you see is the actual renderer, not a picture of it. */
+.home-key-art {
+  /* Cancels the scroll region's top padding as well as its side padding, so
+     the art meets the top edge of the screen instead of floating in a band of
+     empty space. */
+  margin: -2rem -1rem 0;
+  line-height: 0;
+  -webkit-mask-image: linear-gradient(180deg, #000 58%, rgb(0 0 0 / 0.55) 80%, transparent 100%);
+  mask-image: linear-gradient(180deg, #000 58%, rgb(0 0 0 / 0.55) 80%, transparent 100%);
+}
+.home-key-art img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+/* Quiet enough not to compete with the two ways to play, present enough that
+   a first-timer finds the rules without scrolling. */
+.home-help-link {
+  align-self: center;
+  margin-top: -0.75rem;
+  padding: 0.35rem 0.9rem;
+  border-radius: 999px;
+  border: 1px solid rgb(255 255 255 / 0.14);
+  background: rgb(0 0 0 / 0.35);
+  color: var(--color-hull-100);
+  transition: border-color 120ms ease, color 120ms ease;
+}
+.home-help-link:hover {
+  border-color: rgb(255 255 255 / 0.34);
+  color: #fff;
+}
+
+/* A phone in landscape has almost no height to spare; the art gives way
+   first, because the buttons are the thing you came for. */
+@media (max-height: 520px) {
+  .home-key-art {
+    max-width: 20rem;
+    margin-inline: auto;
+  }
+}

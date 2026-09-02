@@ -86,6 +86,13 @@ the shape the game uses for it.
 
 ## Verifying work
 
+**`pnpm build` poisons the `pnpm dev` cache.** Running a production build
+while the dev server is up leaves Turbopack serving stale CSS from `.next` —
+edits to `app/globals.css` simply do not appear, and restarting the dev server
+does not clear it. The fix is `rm -rf .next` and restart. This cost several
+rounds of debugging a change that was already correct in the file: the source
+said one thing, `getComputedStyle` said another, and neither was lying.
+
 **Measure; do not eyeball a screenshot.** Use real DOM numbers — `scrollWidth`
 vs `clientWidth`, bounding boxes. Several bugs this session were invisible in a
 screenshot and obvious in a measurement, and at least one was "fixed" twice
