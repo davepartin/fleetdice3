@@ -3327,3 +3327,26 @@ button {
     margin-inline: auto;
   }
 }
+
+/* The victory and defeat paintings at the top of the recap. Bled to the panel
+   edges and faded out at the bottom, the same way the key art hands over on the
+   title screen, so the picture and the numbers under it read as one screen
+   rather than a poster stuck above a table. */
+.recap-art {
+  margin: -0.25rem -1rem 0.25rem;
+  line-height: 0;
+  -webkit-mask-image: linear-gradient(180deg, #000 62%, transparent 100%);
+  mask-image: linear-gradient(180deg, #000 62%, transparent 100%);
+}
+.recap-art img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+/* A short screen needs the numbers more than it needs the painting. */
+@media (max-height: 700px) {
+  .recap-art {
+    max-width: 15rem;
+    margin-inline: auto;
+  }
+}

@@ -12,6 +12,7 @@ import type { PlayerState } from "@/lib/engine";
 import { shipInSlot, slotForCell } from "@/lib/engine";
 import { NOUN } from "@/lib/reference";
 import { HelpFlagFace, HelpHullPlate, HelpShipFace } from "./HelpArt";
+import { href } from "@/lib/paths";
 import { Button, Ticker } from "./ui";
 
 const CELLS = Array.from({ length: 9 }, (_, cell) => cell);
@@ -259,8 +260,28 @@ export function BattleRecap({
   return (
     <div className="recap">
       <div className="recap-scroll fade-edges">
+        {/* The painted flagship, whole or wrecked. Only for a win or a loss:
+            a draw is neither, and a cancelled game did not finish, so claiming
+            either would be a lie told in 1024 pixels. The art already shouts
+            VICTORY or DEFEAT, so the eyebrow above the heading would only be
+            saying it again — the heading stays because it is the one line that
+            names who you played. */}
+        {(outcome === "won" || outcome === "lost") && (
+          <div className="recap-art">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={href(outcome === "won" ? "/art/fleet-dice-victory.png" : "/art/fleet-dice-defeat.png")}
+              alt=""
+              width={1024}
+              height={640}
+              decoding="async"
+            />
+          </div>
+        )}
         <div className="recap-head">
-          <p className="t-eyebrow">{cancelled ? "Game cancelled" : "Battle recap"}</p>
+          {outcome !== "won" && outcome !== "lost" && (
+            <p className="t-eyebrow">{cancelled ? "Game cancelled" : "Battle recap"}</p>
+          )}
           <h2 className={`t-display text-3xl recap-title-${outcome}`}>
             {cancelled
               ? youCancelled

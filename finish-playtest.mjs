@@ -14,7 +14,7 @@ const browser = await chromium.launch({
   args: ["--use-gl=swiftshader", "--enable-webgl", "--ignore-gpu-blocklist", "--disable-gpu-sandbox"],
 });
 const errors = [];
-let bannerFit = null, recapFaces = null;
+let bannerFit = null, recapFaces = null, recapArt = null;
 let held = null, sawHold = false, sawRecap = false, canvasDuringHold = null, rounds = 0;
 try {
   const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
@@ -40,9 +40,9 @@ try {
                    /^Return to battle/, /^Continue|^Next/i, /^Roll Fleet/];
 
   let stuck = 0;
-  for (let step = 0; step < 400; step += 1) {
+  for (let step = 0; step < 900; step += 1) {
     const t = await txt();
-    if (/BATTLE RECAP/i.test(t)) { sawRecap = true; break; }
+    if (/BACK TO HOME|BATTLE RECAP/i.test(t)) { sawRecap = true; break; }
     if (/The final volley/i.test(t)) {
       if (!sawHold) {
         sawHold = true;
@@ -91,7 +91,7 @@ try {
     if (!moved) moved = await tap(/^Block or be destroyed|^Confirm|^Block \d/, 1600);
     if (!moved) {
       stuck += 1;
-      if (stuck === 6) {
+      if (stuck === 14) {
         const bs = await page.evaluate(() => [...document.querySelectorAll("button")]
           .map((b) => ({ t: (b.textContent||"").replace(/\s+/g," ").trim().slice(0,30), off: b.disabled })));
         console.log("STUCK at step", step, JSON.stringify(bs.slice(0, 8)));
@@ -106,6 +106,14 @@ try {
   if (sawRecap) {
     await page.waitForTimeout(1200);   // let the face canvases paint
     await page.screenshot({ path: "shots/finish-recap.png", fullPage: true });
+    recapArt = await page.evaluate(() => {
+      const a = document.querySelector(".recap-art img");
+      if (!a) return { present: false };
+      const r = a.getBoundingClientRect();
+      return { present: true, src: a.getAttribute("src"),
+               complete: a.complete && a.naturalWidth > 0,
+               w: Math.round(r.width), h: Math.round(r.height) };
+    });
     recapFaces = await page.evaluate(() => {
       const boards = [...document.querySelectorAll(".recap-board")];
       return boards.map((b) => ({
@@ -125,7 +133,8 @@ console.log(`  board on screen during the hold          : ${canvasDuringHold ? `
 console.log(`  hold lasted                              : ${sawHold && sawRecap ? `${held}ms` : "n/a"}`);
 console.log(`  recap arrived on its own                 : ${sawRecap ? "YES" : "NO"}`);
 console.log(`  banner fit                               : ${JSON.stringify(bannerFit)}`);
-console.log(`  recap boards (faces/silhouettes)         : ${JSON.stringify(recapFaces)}`);
+console.log(`  recap art                                : ${JSON.stringify(recapArt)}`);
+  console.log(`  recap boards (faces/silhouettes)         : ${JSON.stringify(recapFaces)}`);
 console.log(`  console errors                           : ${errors.length}`);
 for (const e of errors.slice(0, 3)) console.log(`    ${e.slice(0, 140)}`);
 const ok = sawHold && sawRecap && canvasDuringHold?.visible;
