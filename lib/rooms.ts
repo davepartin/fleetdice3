@@ -58,6 +58,7 @@ import {
   type MatchState,
   type SideId,
 } from "./engine";
+import { isOnTheField } from "./liveboard";
 import { NOUN } from "./reference";
 
 /* ------------------------------------------------------------------ */
@@ -79,8 +80,8 @@ const ROOMS_KEY = "fd3-rooms";
 /** How many live rooms one phone can keep on its Continue list. */
 const MAX_REMEMBERED_ROOMS = 8;
 
-/** An empty waiting room drops off the public board after this long with no heartbeat. */
-export const WAITING_STALE_MS = 45 * 60 * 1000;
+/** Re-exported so callers of this module keep working. */
+export { WAITING_STALE_MS, ACTIVE_STALE_MS } from "./liveboard";
 
 /** How often the waiting screen should say "still here". Comfortably inside the 45 minutes. */
 export const HEARTBEAT_MS = 5 * 60 * 1000;
@@ -753,14 +754,11 @@ export function watchLiveBattles(
             updatedAt: toDate(data.updatedAt),
           } satisfies LiveBattleRow;
         })
-        // An abandoned empty room is worse than no room: someone taps it and
-        // waits for a host who closed their phone an hour ago. No heartbeat in
-        // 45 minutes and it stops being shown.
-        .filter((row) => {
-          if (row.status === "active") return true;
-          if (!row.updatedAt) return false;
-          return Date.now() - row.updatedAt.getTime() < WAITING_STALE_MS;
-        })
+        // An abandoned room is worse than no room: someone reads "Round 3" and
+        // thinks a game is going on. Both kinds go quiet if nothing has touched
+        // them — a waiting room sooner, since it has nothing to show for itself
+        // but a host who closed their phone.
+        .filter((row) => isOnTheField(row.status, row.updatedAt))
         .sort((a, b) => {
           if (a.status !== b.status) return a.status === "active" ? -1 : 1;
           return a.hostName.localeCompare(b.hostName);
