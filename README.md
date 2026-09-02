@@ -1,45 +1,49 @@
-# Fleet Dice 3
+# Fleet Dice
 
 **Build the fleet. Break the flagship.**
+
+**Play it: <https://fleetdice.ministrybag.com>**
 
 A two-player dice battle you play in a browser. Every ship is a die — a d4, d6,
 d8 or d10 — sitting in a three-by-three grid. In the middle is your flagship: a
 d6 carrying all 60 of your health, which never fights. The first flagship to
 reach zero loses.
 
-This is the third version. Fleet Dice 1 and 2 live in
-[`spacetribe-dice`](https://github.com/davepartin/spacetribe-dice) and are
-untouched by anything here.
+This is the third version, and the only one still running. Fleet Dice 1 and 2
+live in [`spacetribe-dice`](https://github.com/davepartin/spacetribe-dice),
+which was archived and taken offline on 2 September 2026 — their key art was
+salvaged first and is what you see on the title, victory and defeat screens.
+Their Firestore data and security rules are deliberately left alone.
+
+The repository is still called `fleetdice3` and the collections are still
+`fd3*`. The 3 was the development name; it now survives only where renaming
+would break a live URL or live data.
 
 ---
 
-## Getting it online, once
+## How it gets online
 
-You only do this part once. It takes about five minutes.
+All of this is already set up. It is written down so you know what is holding
+it together.
 
-**1. Make an empty repository on GitHub** called exactly `fleetdice3`. Do not
-let GitHub add a README, a licence or a `.gitignore` — it must be empty.
+**Push to `main` and it deploys itself.** `.github/workflows/deploy.yml` runs
+the tests, and only builds and publishes if they pass — so a broken push fails
+loudly instead of quietly replacing a working game.
 
-**2. Push this folder to it.** From inside the `fleetdice3` folder on your Mac:
+**It lives at its own address**, <https://fleetdice.ministrybag.com>, a subdomain
+of the owner's domain pointed at GitHub Pages by a CNAME record. `public/CNAME`
+carries that domain into every build; **if that file ever leaves the build, Pages
+drops the custom domain** and every asset path breaks. Two older addresses
+redirect to it, so nothing shared before the move is lost:
 
-```bash
-git init
-git add .
-git commit -m "Fleet Dice 3"
-git branch -M main
-git remote add origin https://github.com/davepartin/fleetdice3.git
-git push -u origin main
-```
+| address | what it does |
+| --- | --- |
+| `fleetdice.ministrybag.com` | the game |
+| `ministrybag.com/fleetdice` | redirects here |
+| `davepartin.github.io/fleetdice3/` | redirects here |
 
-**3. Turn on GitHub Pages.** On the repository page go to **Settings → Pages**,
-and under *Build and deployment* set **Source** to **GitHub Actions**. That's
-the only setting.
-
-Give it two or three minutes and the game is at:
-
-**https://davepartin.github.io/fleetdice3/**
-
-**4. Deploy the Firebase rules** — needed once, before two-player games work:
+**The Firebase rules are deployed** and were confirmed live on 1 September 2026.
+You only need this again if `firestore.rules` changes:
 
 ```bash
 npx -y firebase-tools@latest deploy --only firestore:rules --project space-tribes
@@ -47,9 +51,6 @@ npx -y firebase-tools@latest deploy --only firestore:rules --project space-tribe
 
 Read [`FIREBASE.md`](FIREBASE.md) before you run that. There is one way to break
 Fleet Dice 1 and 2 with it, and that file explains how to avoid it.
-
-After that, every time you push to `main` the site rebuilds itself. Nothing else
-to do.
 
 ---
 
@@ -83,21 +84,20 @@ pnpm install
 pnpm dev
 ```
 
-Then open `http://localhost:3000/fleetdice3/`.
-
-For the root path instead:
-
-```bash
-BASE_PATH= pnpm dev
-```
+Then open `http://localhost:3000/`. The game serves from the root now that it
+has its own domain — it used to be under `/fleetdice3/`, and that path 404s.
 
 Other useful commands:
 
 ```bash
-pnpm test        # the rules, checked against themselves
+pnpm test        # the rules, checked against themselves — 111 of them
 pnpm sim         # what the numbers actually do, over thousands of matches
 pnpm build       # the static site, into out/
 ```
+
+If a change to `app/globals.css` refuses to appear, `rm -rf .next` and restart:
+running `pnpm build` while `pnpm dev` is up leaves the dev server serving stale
+CSS, through restarts.
 
 ---
 

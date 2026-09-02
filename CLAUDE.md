@@ -8,36 +8,45 @@ The owner is not a developer. He thinks in how the game feels. Prefer plain
 words, and prefer showing him something he can open on a phone over explaining
 an approach.
 
-## Two homes, one game
+## Where it lives
 
-The game is served from **two** places, and both have to be updated:
+<https://fleetdice.ministrybag.com> — its own subdomain on the owner's domain,
+published by `.github/workflows/deploy.yml` on every push to `main`. There is
+**one copy of the game**, in this repo, and nothing is copied anywhere else.
 
-| where | how | when |
-| --- | --- | --- |
-| `davepartin.github.io/fleetdice3/` | `.github/workflows/deploy.yml` | automatically, every push to `main` |
-| `ministrybag.com/fleetdice` | `pnpm publish:ministrybag` | **by hand** |
+| address | what it is |
+| --- | --- |
+| `fleetdice.ministrybag.com` | the game |
+| `ministrybag.com/fleetdice` | a redirect, four small files in `davepartin/ministrybag1` |
+| `davepartin.github.io/fleetdice3/` | GitHub's own redirect to the custom domain |
 
-The second one is the nice URL and the one the owner shares. It is a folder
-inside `davepartin/ministrybag1`, a live ministry site with dozens of unrelated
-things on it, so the publish script refuses to push if anything outside
-`fleetdice/` would change. Push to `main` and forget the second command and
-ministrybag.com quietly serves an old build — that is the failure to watch for.
+**`public/CNAME` is load-bearing.** It carries the domain into the build
+artifact; without it in the build, Pages drops the custom domain on the next
+deploy, the site moves back to `davepartin.github.io/fleetdice3/`, and every
+asset path breaks because `basePath` is empty.
 
-Open Graph needs to know which host it is on, so `SITE_URL` is a build-time
-variable: the workflow sets `https://davepartin.github.io`, the publish script
-sets `https://ministrybag.com`.
+It briefly worked another way — the whole built site committed into a
+`fleetdice/` folder in the ministry repo, kept in step by a `publish:ministrybag`
+script. That meant two copies of one website to keep in step and about 5MB added
+to that repo's history on every deploy. **Do not put a copy back there**; the
+subdomain exists so there does not have to be one.
+
+`SITE_URL` is a build-time variable because Open Graph has to name an absolute
+image URL. The workflow sets `https://fleetdice.ministrybag.com`.
 
 ## Running it
 
 ```bash
 pnpm dev                 # localhost:3000, live reload — use this, not a build
-pnpm test                # 70 rule tests, ~2s
+pnpm test                # 111 tests, ~2s
 pnpm build               # static export to out/ (what GitHub Pages serves)
 pnpm lint
 ```
 
-Versus needs Firebase. Never test it against the real project — that puts junk
-rooms in front of real players:
+Versus needs Firebase. Prefer the emulator — testing against the real project
+puts junk rooms on the live board. (A real two-device match *was* played on
+1 September, deliberately and once, to close the last unknown; the room cleaned
+itself up on the win.)
 
 ```bash
 firebase emulators:start --only firestore,auth --project space-tribes

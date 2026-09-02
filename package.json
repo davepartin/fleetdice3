@@ -16,8 +16,7 @@
     "lint": "eslint . --ignore-pattern out --ignore-pattern .next",
     "emulators": "firebase emulators:start --only firestore,auth --project space-tribes",
     "build:emulator": "BASE_PATH= NEXT_PUBLIC_FIREBASE_EMULATOR=127.0.0.1:8080:9099 next build",
-    "test:versus": "node sim/versus-emulator.mjs",
-    "publish:ministrybag": "node tools/publish-ministrybag.mjs"
+    "test:versus": "node sim/versus-emulator.mjs"
   },
   "dependencies": {
     "firebase": "12.16.0",

@@ -1,7 +1,21 @@
-# Fleet Dice 3 online — the whole thing in plain words
+# Fleet Dice online — the whole thing in plain words
 
 This file is for the person who owns the game, not for a programmer. If online
 play stops working, start here.
+
+**Where things stand (2 September 2026)**
+
+- The security rules **are deployed**. A re-deploy on 1 September reported
+  "already up to date", which means the live rules already matched this repo.
+  You only need to deploy again if `firestore.rules` changes.
+- Two-player **has been played end to end** on two real devices against the real
+  database — a whole match, start to victory screen.
+- The project is on Firebase's **Blaze** (pay-as-you-go) plan with a $25 budget
+  alert. That alert is a **warning email, not a cap** — it does not switch
+  anything off. Real spending is pennies: roughly five cents for a hundred
+  matches in a day, because the free allowance still applies underneath.
+- Fleet Dice 1 and 2 were retired on 2 September. Their data and their section
+  of the rules were **deliberately left in place** — see the warning below.
 
 ---
 
@@ -31,7 +45,10 @@ file and look for that line before you deploy.
 
 ## Deploying the rules
 
-One line, run from inside the `fleetdice3` folder:
+**You should not normally need to do this.** They are already live. Do it only
+after `firestore.rules` has actually changed.
+
+One line, run from inside the game's folder:
 
 ```bash
 npx -y firebase-tools@latest deploy --only firestore:rules --project space-tribes
