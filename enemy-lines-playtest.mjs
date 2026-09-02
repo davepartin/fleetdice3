@@ -22,7 +22,7 @@ try {
   page.on("pageerror", (e) => errors.push(String(e)));
   page.on("console", (m) => { if (m.type() === "error") errors.push(m.text()); });
 
-  await page.goto("http://localhost:3000/fleetdice3/solo/?q=low", { waitUntil: "domcontentloaded" });
+  await page.goto("http://localhost:3000/solo/?q=low", { waitUntil: "domcontentloaded" });
   await page.waitForTimeout(2200);
   await page.getByRole("button", { name: /^Low/ }).first().click({ force: true }).catch(() => {});
   await page.waitForTimeout(1600);
@@ -66,7 +66,7 @@ try {
     if (!moved) break;
     if (/You win|Defeat|Victory|BATTLE/i.test(await page.evaluate(() => document.body.innerText))) {
       // Match over — start another so we keep sampling.
-      await page.goto("http://localhost:3000/fleetdice3/solo/?q=low", { waitUntil: "domcontentloaded" });
+      await page.goto("http://localhost:3000/solo/?q=low", { waitUntil: "domcontentloaded" });
       await page.waitForTimeout(2000);
       await page.getByRole("button", { name: /^Low/ }).first().click({ force: true }).catch(() => {});
       await page.waitForTimeout(1600);

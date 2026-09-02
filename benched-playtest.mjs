@@ -4,7 +4,7 @@ const browser = await chromium.launch({ args: ["--use-gl=swiftshader","--enable-
 let found = null, blockedOnce = false;
 try {
   const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
-  await page.goto("http://localhost:3000/fleetdice3/solo/?q=low", { waitUntil: "domcontentloaded" });
+  await page.goto("http://localhost:3000/solo/?q=low", { waitUntil: "domcontentloaded" });
   await page.waitForTimeout(2200);
   await page.getByRole("button", { name: /^Low/ }).first().click({ force: true }).catch(() => {});
   await page.waitForTimeout(1600);

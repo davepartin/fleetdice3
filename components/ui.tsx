@@ -23,7 +23,7 @@ type ButtonProps = {
   disabled?: boolean;
   /** Exactly one filled style exists: "primary", bone white, one per screen.
    *  Everything else is "ghost" — outline-only. */
-  tone?: "primary" | "ghost";
+  tone?: "primary" | "buy" | "ghost";
   size?: "sm" | "md" | "lg";
   full?: boolean;
   className?: string;

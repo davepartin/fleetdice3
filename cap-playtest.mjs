@@ -9,7 +9,7 @@
  */
 import { chromium } from "playwright";
 
-const BASE = "http://localhost:3000/fleetdice3";
+const BASE = "http://localhost:3000";  // the game serves from the root now
 const browser = await chromium.launch({
   args: ["--use-gl=swiftshader", "--enable-webgl", "--ignore-gpu-blocklist", "--disable-gpu-sandbox"],
 });

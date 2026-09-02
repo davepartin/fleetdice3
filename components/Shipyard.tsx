@@ -392,7 +392,9 @@ function PurchaseButton({
   return (
     <>
       {short > 0 && <Notice tone="warn">Need {short} more Energy.</Notice>}
-      <Button tone="primary" full disabled={busy || short > 0} onClick={onClick}>
+      {/* The shipyard's own colour, so the thing that spends Energy on a hull
+          does not look identical to "Return to battle" underneath it. */}
+      <Button tone="buy" full disabled={busy || short > 0} onClick={onClick}>
         {verb} · {cost} Energy
       </Button>
     </>
