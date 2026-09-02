@@ -3350,3 +3350,21 @@ button {
     margin-inline: auto;
   }
 }
+
+/* The reroll button's two halves. The name on the left says which of the paid
+   rerolls this is — the decision a player is actually making once the free
+   rolls are gone — and the pill on the right is only the price. A reroll costs
+   one Energy per die, so the price already tells you how many dice are going
+   back; printing the count as well said the same number twice. */
+.reroll-label {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  line-height: 1.05;
+  min-width: 0;
+}
+.reroll-of {
+  font-size: 0.78em;
+  opacity: 0.72;
+  letter-spacing: 0.04em;
+}

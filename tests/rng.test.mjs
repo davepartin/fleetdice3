@@ -19,7 +19,7 @@ import { bundlePath } from "../sim/bundle.mjs";
 
 const G = await import(bundlePath);
 const { PLANS, TUNING, applyAction, applyDifficultyStart, makeRng, newBrain, newMatch,
-        newPlayer, nextActions, rollsLeft, setRng } = G;
+        newPlayer, nextActions, paidRollNumber, rollsLeft, setRng } = G;
 
 test("the opponent brain never reaches for Math.random", () => {
   // Comment lines are skipped so the note above can name the thing it bans.
@@ -178,4 +178,52 @@ test("the help screen and the tutorial state the rule the engine enforces", () =
       `${file} still hardcodes the old reroll sentence`,
     );
   }
+});
+
+test("the reroll button names the paid rerolls, and says Energy once", () => {
+  // The owner's note: the button read "REROLL 1" beside "COST ⚡ 1 ENERGY",
+  // which printed the word Energy next to the bolt that already meant it, and
+  // never distinguished a paid reroll from a free one. It now reads
+  // "Energy reroll 2 of 3" with the price alone beside it.
+  const src = readFileSync(new URL("../components/MatchScreen.tsx", import.meta.url), "utf8");
+  assert.match(src, /Energy reroll/, "a paid reroll should say so");
+  assert.match(
+    src,
+    /TUNING\.paidRollsPerRound/,
+    "the 'of 3' has to come from TUNING, not a number typed into the button",
+  );
+  // The price pill is a bolt and a number. The word next to the bolt was the
+  // thing being complained about.
+  const pill = src.slice(src.indexOf("reroll-cost ${canAffordReroll"));
+  assert.doesNotMatch(
+    pill.slice(0, 320),
+    /\{rerollCost\}\s*Energy/,
+    "the bolt already says Energy; do not print the word beside it as well",
+  );
+});
+
+test("which paid reroll you are on counts from the engine, not the screen", () => {
+  setRng(makeRng(31337));
+  const s = newMatch("num", "0000", "A", "A", "versus");
+  s.players.guest = newPlayer("B", "B", "ready");
+  s.status = "active";
+  s.players.host.phase = "ready";
+  const p = s.players.host;
+  p.energy = 999;
+  applyAction(s, "host", { type: "roll", dice: [] });
+
+  assert.equal(paidRollNumber(p), 0, "the opening roll is free, so there is no number yet");
+  const all = () => p.dice.map((d) => d.id);
+  // It describes the roll about to be taken, so check before each one rather
+  // than after: once the last free roll is spent, the next is paid number 1.
+  for (let i = 1; i < TUNING.rollsPerRound; i += 1) {
+    assert.equal(paidRollNumber(p), 0, "the roll about to be taken is still free");
+    applyAction(s, "host", { type: "roll", dice: all() });
+  }
+  // Then the paid ones count 1, 2, 3.
+  for (let n = 1; n <= TUNING.paidRollsPerRound; n += 1) {
+    assert.equal(paidRollNumber(p), n, `the next paid reroll should be number ${n}`);
+    applyAction(s, "host", { type: "roll", dice: all() });
+  }
+  assert.equal(rollsLeft(p), 0, "and then there are none left");
 });

@@ -407,6 +407,16 @@ export function rollsLeft(player: { rolls: number }): number {
   return Math.max(0, TUNING.rollsPerRound + TUNING.paidRollsPerRound - player.rolls);
 }
 
+/**
+ * Which paid reroll the next one would be, counting from 1, or 0 while the free
+ * rolls last. The screen says "Energy reroll 2 of 3" from this, so the count
+ * comes from `TUNING` rather than a number typed into a button.
+ */
+export function paidRollNumber(player: { rolls: number }): number {
+  if (player.rolls < TUNING.rollsPerRound) return 0;
+  return Math.min(TUNING.paidRollsPerRound, player.rolls - TUNING.rollsPerRound + 1);
+}
+
 /** Paid rerolls still allowed this round. */
 export function paidRollsLeft(player: { rolls: number }): number {
   if (player.rolls < TUNING.rollsPerRound) return TUNING.paidRollsPerRound;

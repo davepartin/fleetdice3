@@ -24,6 +24,7 @@ import {
   fleetBlock,
   previewTally,
   rollCostFor,
+  paidRollNumber,
   rollsLeft as engineRollsLeft,
   runMemberIds,
   straightPrizeTakes,
@@ -580,6 +581,9 @@ export function MatchScreen({ controller, onExit, title, subtitle }: Props) {
   // Total rolls left, paid ones included — the engine refuses a roll past this,
   // so the button has to know about it or it offers a move that throws.
   const rollsRemaining = engineRollsLeft(you);
+  // 0 while the free rolls last, then 1, 2, 3 — so the button can say which
+  // paid reroll this is rather than just "Reroll".
+  const paidNumber = paidRollNumber(you);
   const rerollCost = rollCostFor(you, selected.size);
 
   return (
@@ -727,6 +731,7 @@ export function MatchScreen({ controller, onExit, title, subtitle }: Props) {
               selected={selected}
               rollsLeft={rollsLeft}
               rollsRemaining={rollsRemaining}
+              paidNumber={paidNumber}
               rerollCost={rerollCost}
               waiting={waitingOnEnemy}
               waitingName={enemyName}
@@ -904,6 +909,7 @@ function RollDock({
   selected,
   rollsLeft,
   rollsRemaining,
+  paidNumber,
   rerollCost,
   waiting,
   waitingName,
@@ -922,6 +928,7 @@ function RollDock({
   selected: Set<string>;
   rollsLeft: number;
   rollsRemaining: number;
+  paidNumber: number;
   rerollCost: number;
   waiting: boolean;
   waitingName?: string;
@@ -1037,21 +1044,37 @@ function RollDock({
                 ariaLabel={
                   outOfRolls
                     ? "No rerolls left this round. Lock in your decision."
-                    : rerollCost
+                    : paidNumber > 0
                       ? canAffordReroll
-                        ? `Reroll ${selected.size} dice for ${rerollCost} Energy`
-                        : `Reroll unavailable. Need ${rerollCost} Energy`
-                      : `Reroll ${selected.size} dice for free`
+                        ? `Energy reroll ${paidNumber} of ${TUNING.paidRollsPerRound}. ` +
+                          `${selected.size} dice for ${rerollCost} Energy`
+                        : `Energy reroll unavailable. Need ${rerollCost} Energy`
+                      : `Free reroll. ${selected.size} dice`
                 }
               >
-                <span>Reroll {selected.size}</span>
+                {/* A paid reroll says which of the three it is, because that is
+                    the thing a player is deciding about. The count of dice is
+                    already in the price beside it — a reroll costs one Energy
+                    per die — so printing both said the same number twice. */}
+                <span className="reroll-label">
+                  {paidNumber > 0 ? (
+                    <>
+                      Energy reroll
+                      <span className="reroll-of">
+                        {paidNumber} of {TUNING.paidRollsPerRound}
+                      </span>
+                    </>
+                  ) : (
+                    <>Reroll {selected.size}</>
+                  )}
+                </span>
                 {outOfRolls ? (
                   <span className="reroll-cost">No rerolls left</span>
-                ) : rerollCost ? (
-                  <span className="reroll-cost">
-                    {canAffordReroll ? "Cost" : "Need"}
+                ) : paidNumber > 0 ? (
+                  <span className={`reroll-cost ${canAffordReroll ? "" : "reroll-cost-short"}`}>
+                    {!canAffordReroll && "Need "}
                     <EnergyBolt />
-                    {rerollCost} Energy
+                    {rerollCost}
                   </span>
                 ) : rollsLeft > 0 ? (
                   <span className="reroll-free">Free</span>
