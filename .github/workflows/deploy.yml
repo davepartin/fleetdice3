@@ -46,6 +46,9 @@ jobs:
           # The repo is called fleetdice3, so GitHub Pages serves it from
           # /fleetdice3/. Every link in the game needs that prefix.
           BASE_PATH: /fleetdice3
+          # Open Graph needs an absolute image URL, and this same game is also
+          # served from ministrybag.com/fleetdice. Each build names its host.
+          SITE_URL: https://davepartin.github.io
 
       - uses: actions/upload-pages-artifact@v3
         with:

@@ -8,6 +8,25 @@ The owner is not a developer. He thinks in how the game feels. Prefer plain
 words, and prefer showing him something he can open on a phone over explaining
 an approach.
 
+## Two homes, one game
+
+The game is served from **two** places, and both have to be updated:
+
+| where | how | when |
+| --- | --- | --- |
+| `davepartin.github.io/fleetdice3/` | `.github/workflows/deploy.yml` | automatically, every push to `main` |
+| `ministrybag.com/fleetdice` | `pnpm publish:ministrybag` | **by hand** |
+
+The second one is the nice URL and the one the owner shares. It is a folder
+inside `davepartin/ministrybag1`, a live ministry site with dozens of unrelated
+things on it, so the publish script refuses to push if anything outside
+`fleetdice/` would change. Push to `main` and forget the second command and
+ministrybag.com quietly serves an old build — that is the failure to watch for.
+
+Open Graph needs to know which host it is on, so `SITE_URL` is a build-time
+variable: the workflow sets `https://davepartin.github.io`, the publish script
+sets `https://ministrybag.com`.
+
 ## Running it
 
 ```bash

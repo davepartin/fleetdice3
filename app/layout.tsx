@@ -51,10 +51,29 @@ export const metadata: Metadata = {
     "Build the fleet. Break the flagship. A two-player dice battle you can play in any browser.",
   applicationName: "Fleet Dice",
   appleWebApp: { capable: true, statusBarStyle: "black-translucent", title: "Fleet Dice" },
+  // A shared link should show the ship, not a blank card. The image has to be
+  // an absolute URL, and this game is served from two hosts, so the host comes
+  // from `SITE_URL` at build time and the path from `BASE_PATH`.
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "https://davepartin.github.io"),
   openGraph: {
     title: "Fleet Dice",
     description: "Build the fleet. Break the flagship.",
     type: "website",
+    url: `${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/`,
+    images: [
+      {
+        url: `${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/art/fleet-dice-key-art.png`,
+        width: 1024,
+        height: 640,
+        alt: "Fleet Dice — build the fleet, break the flagship",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Fleet Dice",
+    description: "Build the fleet. Break the flagship.",
+    images: [`${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/art/fleet-dice-key-art.png`],
   },
 };
 
