@@ -1,5 +1,5 @@
 {
-  "name": "fleet-dice-3",
+  "name": "fleet-dice",
   "version": "3.0.0",
   "private": true,
   "packageManager": "pnpm@11.9.0",

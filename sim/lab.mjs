@@ -921,7 +921,7 @@ function modeSpend(n) {
 const mode = process.argv[2] ?? "all";
 const n = Number(process.argv[3]) || 400;
 
-console.log("Fleet Dice 3 — balance lab");
+console.log("Fleet Dice — balance lab");
 console.log(
   `HP ${TUNING.hp} · prices ${JSON.stringify(TUNING.prices)} · cells +${TUNING.slotCostOffset} · ` +
   `across ${TUNING.lineAcrossEnergy}⚡ · down ${TUNING.lineDownAttack} atk · run ${TUNING.runMin}–${TUNING.runMax}`,

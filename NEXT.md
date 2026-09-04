@@ -12,7 +12,7 @@ loose.
 - **Solo plays start to finish.** Shipyard, roll, reroll, straights, formations,
   bracing, the round report, victory and defeat. Verified by a script that
   plays the real game in a real browser and screenshots every screen.
-- **The rules are tested.** 111 tests, including "every ledger row sums to its
+- **The rules are tested.** 113 tests, including "every ledger row sums to its
   total" checked on every round of a real match, "a match always ends", the
   reroll cap, repair landing in the same breath as damage, and a set of guards
   that fail if a fix regresses.

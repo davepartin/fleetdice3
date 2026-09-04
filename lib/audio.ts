@@ -1,5 +1,5 @@
 /**
- * Fleet Dice 3 — sound design.
+ * Fleet Dice — sound design.
  *
  * Every sound in this game is synthesised at runtime. There are no audio
  * assets, no CDN, nothing to download: one module, the Web Audio API, and a

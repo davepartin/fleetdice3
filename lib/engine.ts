@@ -1,5 +1,5 @@
 /**
- * Fleet Dice 3 — the rules engine.
+ * Fleet Dice — the rules engine.
  *
  * One file, no framework, no DOM. The React app, the solo opponent and the
  * simulation harness all call these same functions, so what you measure in a

@@ -1,16 +1,16 @@
 "use client";
 
 /**
- * Fleet Dice 3 — online rooms.
+ * Fleet Dice — online rooms.
  *
  * The whole match lives in one Firestore document. lib/engine.ts is pure and
  * serialisable, so a move is: read the document inside a transaction, run
  * `applyAction` on it, write it back. Two commanders can tap at the same moment
  * and neither can corrupt the other, because the transaction retries.
  *
- * COLLECTIONS — Fleet Dice 3 uses its own, and must keep using its own, so it
- * can never collide with the Fleet Dice 1 and 2 rooms the owner's family are
- * playing right now:
+ * COLLECTIONS — names keep the fd3* prefix because renaming them would break
+ * live rooms. Fleet Dice 1 and 2 are retired; this game never writes to their
+ * old collections (`codes`, `matches`, `liveBattles`, `battleResults`).
  *
  *   fd3Matches/{matchId}  the private match document (the whole MatchState)
  *   fd3Codes/{0000}       four-digit room code -> matchId, plus seating
@@ -71,9 +71,10 @@ export const LIVE = "fd3Live";
 export const RESULTS = "fd3Results";
 
 /**
- * GitHub Pages serves every one of this owner's projects from one origin, so
- * localStorage is shared with the live Fleet Dice 1 and 2 site. Prefix
- * everything with `fd3-`.
+ * GitHub Pages used to serve every one of this owner's projects from one
+ * origin, so localStorage was shared with Fleet Dice 1 and 2. Prefix
+ * everything with `fd3-` and leave it — renaming the keys would forget
+ * every remembered room on every phone.
  */
 const ROOMS_KEY = "fd3-rooms";
 
@@ -210,7 +211,7 @@ const CODES_EXHAUSTED_MESSAGE =
   "Every room code was busy just then. Tap Create the room once more.";
 
 const RULES_NOT_DEPLOYED_MESSAGE =
-  `Two-player ${NOUN.games} are not switched on in the database yet. The site can sign you in, but it cannot open a room until the Fleet Dice 3 rules are published. On a computer signed into the space-tribes Google account, run: npx -y firebase-tools@latest deploy --only firestore:rules --project space-tribes`;
+  `Two-player ${NOUN.games} are not switched on in the database yet. The site can sign you in, but it cannot open a room until the Fleet Dice rules are published. On a computer signed into the space-tribes Google account, run: npx -y firebase-tools@latest deploy --only firestore:rules --project space-tribes`;
 
 /* ------------------------------------------------------------------ */
 /* Creating, joining, entering                                         */

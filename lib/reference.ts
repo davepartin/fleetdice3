@@ -1,5 +1,5 @@
 /**
- * Fleet Dice 3 — the teaching material.
+ * Fleet Dice — the teaching material.
  *
  * Plain data and copy. No React, no JSX, no DOM: the How to Play screen and the
  * in-game tooltips import from here and render it however they like.

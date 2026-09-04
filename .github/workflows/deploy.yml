@@ -1,4 +1,4 @@
-name: Put Fleet Dice 3 online
+name: Put Fleet Dice online
 
 # Every push to main rebuilds the site and publishes it to GitHub Pages.
 # This does NOT touch the Firebase security rules — those are deployed

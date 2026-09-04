@@ -3,50 +3,54 @@
 This file is for the person who owns the game, not for a programmer. If online
 play stops working, start here.
 
-**Where things stand (2 September 2026)**
+**Where things stand (4 September 2026)**
 
-- The security rules **are deployed**. A re-deploy on 1 September reported
-  "already up to date", which means the live rules already matched this repo.
-  You only need to deploy again if `firestore.rules` changes.
+- The file in this repo is now **Fleet Dice only**. The live project still
+  has the older rules (with Fleet Dice 1 and 2 in them) until you deploy
+  this file. Deploying is a separate step — see below. Putting a new version
+  of the website online does **not** update the rules.
 - Two-player **has been played end to end** on two real devices against the real
   database — a whole match, start to victory screen.
 - The project is on Firebase's **Blaze** (pay-as-you-go) plan with a $25 budget
   alert. That alert is a **warning email, not a cap** — it does not switch
   anything off. Real spending is pennies: roughly five cents for a hundred
   matches in a day, because the free allowance still applies underneath.
-- Fleet Dice 1 and 2 were retired on 2 September. Their data and their section
-  of the rules were **deliberately left in place** — see the warning below.
+- Fleet Dice 1 and 2 were **retired** on 2 September 2026. Their Pages site is
+  off and their repo is archived. The rules in this repo are **Fleet Dice
+  only**. The leftover collections (`codes`, `matches`, `liveBattles`,
+  `battleResults`) are still in the database until the owner deletes them —
+  this repo does not delete that data.
 
 ---
 
-## ⚠️ READ THIS FIRST — the one way to break the family's games
+## ⚠️ READ THIS FIRST — one project, one set of rules
 
-Fleet Dice 1, Fleet Dice 2 and Fleet Dice 3 all share **one** Firebase project,
-called `space-tribes`. That project has **one** set of security rules. There is
-no such thing as "the Fleet Dice 3 rules" on Google's side.
+Fleet Dice lives in **one** Firebase project, called `space-tribes`. That
+project has **one** set of security rules. There is no such thing as a
+second, quieter copy on Google's side.
 
-So: **deploying `firestore.rules` replaces the rules for all three games at
-once.**
+So: **deploying `firestore.rules` replaces the rules for the whole project.**
+A bad deploy can break live Fleet Dice **immediately and silently** — no
+warning, no email, just "something went wrong" on people's phones. The fix
+is to deploy the file in this repo again, but you have to know that's what
+happened.
 
-`fleetdice3/firestore.rules` already contains the Fleet Dice 1 and 2 rules,
-copied word for word, followed by the new Fleet Dice 3 rules. That is on
-purpose. Deploy that whole file and nothing breaks.
+The file here is the Fleet Dice rules: `fd3Codes`, `fd3Matches`, `fd3Live`,
+`fd3Results`. Open it and look for those four names before you deploy.
+Fleet Dice 1 and 2 are retired; do not put their old collections back.
 
-If anyone ever deploys a file that has only the Fleet Dice 3 part in it, the
-games your family plays today stop working **immediately and silently** — no
-warning, no email, just "something went wrong" on their phones. The fix is to
-deploy the full file again, but you have to know that's what happened.
-
-**The rule of thumb:** never deploy a `firestore.rules` that does not have the
-big `FLEET DICE 1 AND 2 — LIVE. COPIED VERBATIM.` banner inside it. Open the
-file and look for that line before you deploy.
+The leftover Fleet Dice 1 and 2 data (`codes`, `matches`, `liveBattles`,
+`battleResults`) is for the **owner to delete** in the Firebase console.
+Do not delete it from an agent, and do not deploy a fragment of this file.
 
 ---
 
 ## Deploying the rules
 
-**You should not normally need to do this.** They are already live. Do it only
-after `firestore.rules` has actually changed.
+**Do this once** after the file dropped Fleet Dice 1 and 2, then only again
+when `firestore.rules` has actually changed. Putting a new version of the
+website online (GitHub Pages) does **not** update the rules, and updating the
+rules does **not** update the website. They are two separate things.
 
 One line, run from inside the game's folder:
 
@@ -57,11 +61,6 @@ npx -y firebase-tools@latest deploy --only firestore:rules --project space-tribe
 The first time it will ask you to sign in with the Google account that owns the
 `space-tribes` project. It prints something like `+ Deploy complete!` when it
 worked.
-
-You only need to run this when `firestore.rules` has actually changed. Putting a
-new version of the website online (GitHub Pages) does **not** update the rules,
-and updating the rules does **not** update the website. They are two separate
-things.
 
 If the command complains that it can't find a project, add a small file called
 `.firebaserc` next to `firestore.rules` containing:
@@ -100,10 +99,8 @@ or sign-in will refuse it.
 
 **3. The rules are actually deployed.**
 `Build → Firestore Database → Rules`. Scroll the text shown there. You should
-see blocks for `codes`, `matches`, `liveBattles`, `battleResults` (the older
-games) **and** `fd3Codes`, `fd3Matches`, `fd3Live`, `fd3Results` (this game). If
-the `fd3` ones are missing, the rules were never deployed — run the deploy
-command above.
+see blocks for `fd3Codes`, `fd3Matches`, `fd3Live`, `fd3Results`. If those
+are missing, the rules were never deployed — run the deploy command above.
 
 A fourth thing, rarely: `Build → Firestore Database → Usage`. The free tier is
 generous but not infinite. If reads or writes are maxed out, everything looks
@@ -113,8 +110,9 @@ generous but not infinite. If reads or writes are maxed out, everything looks
 
 ## What is stored, and why
 
-Everything lives in Firestore, the project's database. Fleet Dice 3 keeps to its
-own four collections so it can never tread on the older games.
+Everything lives in Firestore, the project's database. Fleet Dice uses these
+four collections. The `fd3` names stay because renaming them would break live
+rooms.
 
 | Collection | What one entry is | Who can see it |
 | --- | --- | --- |
@@ -138,8 +136,9 @@ phone and never comes back, that stops, and after about **45 minutes** the room
 stops being shown on the home page. This stops the board filling up with empty
 rooms nobody can join.
 
-Fleet Dice 3 never writes to `codes`, `matches`, `liveBattles` or
-`battleResults`. Those belong to Fleet Dice 1 and 2.
+The old Fleet Dice 1 and 2 collections (`codes`, `matches`, `liveBattles`,
+`battleResults`) are retired. The owner will delete them. This game never
+writes to them.
 
 ---
 
@@ -257,8 +256,9 @@ play still works.
   public boards and the heartbeat. It never invents game rules; it reads the
   match, runs `applyAction` from `lib/engine.ts` inside a transaction, and
   writes it back.
-- `firestore.rules` — the Fleet Dice 1/2 rules verbatim, then the `fd3` rules.
-  Read the comments before loosening anything: a permissions complaint from a
-  player has historically meant a confused host, not a rule that is too tight.
+- `firestore.rules` — Fleet Dice only (`fd3Codes`, `fd3Matches`, `fd3Live`,
+  `fd3Results`, including reclaiming a quiet guest seat). Read the comments
+  before loosening anything: a permissions complaint from a player has
+  historically meant a confused host, not a rule that is too tight.
 - The invite link is `/join/?id=…&code=0525`. Whatever page answers that route
   should call `joinRoomByCode` or `joinRoomById`.

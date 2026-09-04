@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Fleet Dice 3 — Firebase wiring.
+ * Fleet Dice — Firebase wiring.
  *
  * Anonymous auth only. There is nothing to sign up for: the players are
  * strangers' phones, and a phone's "identity" is an anonymous uid the browser
@@ -10,14 +10,15 @@
  *
  *   A NEW TAB, A DIFFERENT BROWSER, OR CLEARED SITE DATA IS A NEW PERSON.
  *
- * Almost every "Missing or insufficient permissions" report from Fleet Dice 1
- * and 2 was really that: a host opening their own invite link in a second tab,
+ * Almost every "Missing or insufficient permissions" report from the older
+ * games was really that: a host opening their own invite link in a second tab,
  * arriving as a third anonymous stranger, and being refused a seat in a room
  * that already had two. Never show a raw Firebase error to a player.
  *
- * This is the same Firebase project (`space-tribes`) that runs Fleet Dice 1 and
- * 2, so the owner has nothing new to set up. Fleet Dice 3 keeps its own
- * `fd3*` collections — see lib/rooms.ts and firestore.rules.
+ * This is the same Firebase project (`space-tribes`) that used to run Fleet
+ * Dice 1 and 2. Fleet Dice 1 and 2 are retired. Collection names stay `fd3*`
+ * because renaming them would break live rooms — see lib/rooms.ts and
+ * firestore.rules.
  */
 
 import { getApp, getApps, initializeApp } from "firebase/app";
@@ -224,10 +225,11 @@ export function friendlyAuthError(error: unknown): Error {
 }
 
 /*
- * Commander name. Fleet Dice 3 uses its own storage key because GitHub Pages
- * serves all of this owner's projects from one origin — davepartin.github.io —
- * so fleetdice3 and the older games share one localStorage. Anything not
- * prefixed `fd3-` risks stepping on the live games.
+ * Commander name. Fleet Dice uses its own storage key because GitHub Pages
+ * used to serve all of this owner's projects from one origin —
+ * davepartin.github.io — so fleetdice3 and the older games shared one
+ * localStorage. Anything not prefixed `fd3-` risked stepping on those games.
+ * Leave the key as it is: renaming it would forget names already saved.
  */
 const NAME_KEY = "fd3-commander-name";
 const LEGACY_NAME_KEY = "fleet-dice-commander-name";
