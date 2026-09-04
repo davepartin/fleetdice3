@@ -13,7 +13,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Button, Notice, Panel, RoomCode, Spinner } from "@/components/ui";
 import { HowToPlaySheet } from "@/components/HowToPlay";
 import { commanderName, ensurePlayerIdentity, rememberCommanderName } from "@/lib/firebase";
-import { joinRoomByCode, joinRoomById } from "@/lib/rooms";
+import { joinRoomByCode, joinRoomById, reclaimGuestSeat } from "@/lib/rooms";
 import { NOUN } from "@/lib/reference";
 
 export default function JoinPage() {
@@ -41,6 +41,7 @@ function JoinInner() {
   const [name, setName] = useState("Commander");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [seatTaken, setSeatTaken] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
 
   useEffect(() => {
@@ -56,10 +57,29 @@ function JoinInner() {
       const room = id ? await joinRoomById(id, name) : await joinRoomByCode(code, name);
       router.push(`/match/?id=${room.id}`);
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : String(reason));
+      const message = reason instanceof Error ? reason.message : String(reason);
+      setError(message);
+      // "Full" is also what it looks like when the seat is your own and your
+      // browser has forgotten it — a private tab, a different address, cleared
+      // storage. Offer the way back rather than leaving a dead end.
+      setSeatTaken(/two commanders|already started/i.test(message));
       setBusy(false);
     }
   }, [id, code, name, router]);
+
+  const reclaim = useCallback(async () => {
+    if (!id) return;
+    setBusy(true);
+    setError(null);
+    try {
+      rememberCommanderName(name);
+      await reclaimGuestSeat(id, name);
+      router.push(`/match/?id=${id}`);
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : String(reason));
+      setBusy(false);
+    }
+  }, [id, name, router]);
 
   if (!id && code.length !== 4) {
     return (
@@ -116,6 +136,20 @@ function JoinInner() {
           </Panel>
 
           {error && <Notice tone="warn">{error}</Notice>}
+
+          {seatTaken && id && (
+            <Panel className="flex flex-col gap-2 p-4">
+              <p className="t-eyebrow">Were you already in this game?</p>
+              <p className="text-sm leading-snug c-dim-bright">
+                If that second seat is yours and this browser has forgotten it, you can take it
+                back. It only works once the other device has been quiet for a minute, so nobody
+                can be pushed out of a game they are still playing.
+              </p>
+              <Button tone="ghost" size="lg" full onClick={reclaim} disabled={busy}>
+                {busy ? "Taking the seat…" : "Take my seat back"}
+              </Button>
+            </Panel>
+          )}
 
           <Button tone="primary" size="lg" full onClick={join} disabled={busy}>
             {busy ? "Sitting down…" : "Join the game"}

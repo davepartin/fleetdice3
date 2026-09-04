@@ -29,6 +29,7 @@ import {
   isTransientRoomError,
   playAction,
   startRoomHeartbeat,
+  startSeatPresence,
   watchRoom,
   type LiveRoom,
 } from "./rooms";
@@ -302,7 +303,16 @@ export function useRoomMatch(matchId: string | null): MatchController {
         setStatus("ready");
         setReconnecting(false);
         await subscribe();
-        if (!cancelled && !stopBeat) stopBeat = startRoomHeartbeat(matchId);
+        if (!cancelled && !stopBeat) {
+          const beat = startRoomHeartbeat(matchId);
+          // Says "still here" for this seat alone, so a seat that goes quiet
+          // can be taken back without a live one ever being taken.
+          const seat = startSeatPresence(matchId, first.side);
+          stopBeat = () => {
+            beat();
+            seat();
+          };
+        }
       } catch (reason) {
         if (cancelled) return;
         if (isTransientRoomError(reason)) {

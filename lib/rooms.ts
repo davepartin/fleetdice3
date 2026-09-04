@@ -85,6 +85,19 @@ export const WAITING_STALE_MS = 45 * 60 * 1000;
 /** How often the waiting screen should say "still here". Comfortably inside the 45 minutes. */
 export const HEARTBEAT_MS = 5 * 60 * 1000;
 
+/**
+ * How often a seated commander says "still here", and how long a seat must go
+ * quiet before someone may take it back.
+ *
+ * These two are a pair. The beat has to be comfortably shorter than the window
+ * or a player who is merely thinking about a shop purchase would look gone and
+ * could be turfed out of a live match. Sixty seconds is also about as long as
+ * someone whose tab just died is willing to wait before deciding the game is
+ * broken.
+ */
+export const SEAT_BEAT_MS = 20 * 1000;
+export const SEAT_STALE_MS = 60 * 1000;
+
 /** Firestore calls that get no answer in this long are reported, not left spinning. */
 const NETWORK_TIMEOUT_MS = 15000;
 
@@ -819,6 +832,77 @@ export async function touchRoom(matchId: string): Promise<void> {
   } catch {
     // The room is gone, or we are not seated in it. Either way there is
     // nothing for a player to do about a heartbeat, so it stays silent.
+  }
+}
+
+/**
+ * Say "still here" for one seat.
+ *
+ * Written on the match itself rather than the public board, because the point
+ * is to tell one commander's presence from the other's — the board has a single
+ * `updatedAt` that either of them touches.
+ */
+export async function touchSeat(matchId: string, side: SideId): Promise<void> {
+  if (!firestore || !matchId) return;
+  try {
+    await ensurePlayerIdentity();
+    await updateDoc(doc(firestore, MATCHES, matchId), {
+      [side === "host" ? "hostSeenAt" : "guestSeenAt"]: serverTimestamp(),
+    });
+  } catch {
+    // Not seated, or the room is gone. Nothing a player can do about a
+    // heartbeat, so it stays silent.
+  }
+}
+
+/** Beat for as long as this commander is on the match screen. */
+export function startSeatPresence(matchId: string, side: SideId, everyMs = SEAT_BEAT_MS): () => void {
+  if (typeof window === "undefined" || !matchId) return () => {};
+  void touchSeat(matchId, side);
+  const timer = window.setInterval(() => void touchSeat(matchId, side), everyMs);
+  return () => window.clearInterval(timer);
+}
+
+/**
+ * Take back a guest seat whose commander has gone quiet.
+ *
+ * This is the answer to losing your seat by closing a tab. A seat belongs to an
+ * anonymous id in that browser's storage for that exact address; a private tab,
+ * a different domain, or cleared storage all mint a new person, and the old one
+ * holds the seat with nothing able to reach it. Before this, that ended the
+ * match for both players.
+ *
+ * It is a blind write on purpose. An active match may not be read by anyone but
+ * its two commanders — the document holds both fleets, including dice that have
+ * not been revealed — so someone locked out cannot look before they leap. They
+ * send only the two fields that change their own identity, and the rules decide,
+ * from the seat's own timestamp, whether the seat was really abandoned.
+ */
+export async function reclaimGuestSeat(matchId: string, name: string): Promise<void> {
+  const db = requireDb();
+  if (!matchId) throw new Error("That invite link is missing its room. Ask your friend to send it again.");
+  assertOnline();
+  const user = await ensurePlayerIdentity();
+  try {
+    await withTimeout(
+      updateDoc(doc(db, MATCHES, matchId), {
+        guestUid: user.uid,
+        "state.players.guest.uid": user.uid,
+        "state.players.guest.name": name.trim() || "Commander",
+        guestSeenAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      }),
+      NETWORK_TIMEOUT_MS,
+      "Taking your seat back",
+    );
+    rememberRoom(matchId);
+  } catch (reason) {
+    if (isPermissionDenied(reason)) {
+      throw new Error(
+        "That seat is still in use. If it is yours, the other device is still connected — close it, wait a minute, and try again.",
+      );
+    }
+    throw friendlyRoomError(reason);
   }
 }
 

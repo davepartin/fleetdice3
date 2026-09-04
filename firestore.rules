@@ -378,10 +378,68 @@ service cloud.firestore {
         || (signedIn() && resource.data.status == "finished");
       allow list: if false;
 
-      // Seating is immutable once taken. Within that, the two commanders
-      // may write whatever state the engine produces — the engine runs on
-      // their phones, so these rules protect the ROOM, not the dice.
+      // A seat whose commander has gone quiet may be taken back by whoever
+      // holds the link.
+      //
+      // This exists because a seat belongs to an anonymous id kept in one
+      // browser's storage for one exact address. A private tab, a different
+      // domain, or cleared storage mints a new person — and the seat stays
+      // held by an id that nothing can reach any more. That ended matches:
+      // both players locked out of a game still in progress.
+      //
+      // What keeps this from being a way to shove someone out of a live game
+      // is the seat's own clock. A seated commander stamps `guestSeenAt`
+      // every twenty seconds while the match screen is open, so a seat can
+      // only be taken after a full minute of silence. Someone merely
+      // deciding what to buy is never quiet that long.
+      //
+      // A missing stamp counts as quiet, which is deliberate: rooms created
+      // before this feature have no stamp at all, and those are exactly the
+      // games already stuck.
+      //
+      // The claimant may change only who they are — their uid and their
+      // name. Health, energy, round, phase, dice and ships must all survive
+      // the write untouched, and the host's whole player object with them, so
+      // a reclaim cannot be used to edit the game it is rejoining.
+      function seatIsQuiet(seenAt) {
+        return seenAt == null
+          || request.time > seenAt + duration.value(60, 's');
+      }
+
+      function reclaimingQuietGuestSeat() {
+        return signedIn()
+          && resource.data.status == "active"
+          && resource.data.guestUid != null
+          && resource.data.guestUid != request.auth.uid
+          && seatIsQuiet(resource.data.get("guestSeenAt", null))
+          && request.resource.data.guestUid == request.auth.uid
+          && request.resource.data.state.players.guest.uid == request.auth.uid
+          && request.resource.data.hostUid == resource.data.hostUid
+          && request.resource.data.code == resource.data.code
+          && request.resource.data.status == resource.data.status
+          && request.resource.data.state.players.host
+            == resource.data.state.players.host
+          && request.resource.data.state.players.guest.hp
+            == resource.data.state.players.guest.hp
+          && request.resource.data.state.players.guest.energy
+            == resource.data.state.players.guest.energy
+          && request.resource.data.state.players.guest.round
+            == resource.data.state.players.guest.round
+          && request.resource.data.state.players.guest.phase
+            == resource.data.state.players.guest.phase
+          && request.resource.data.state.players.guest.dice
+            == resource.data.state.players.guest.dice
+          && request.resource.data.state.players.guest.ships
+            == resource.data.state.players.guest.ships
+          && request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(["guestUid", "state", "guestSeenAt", "updatedAt"]);
+      }
+
+      // Seating is otherwise immutable once taken. Within that, the two
+      // commanders may write whatever state the engine produces — the engine
+      // runs on their phones, so these rules protect the ROOM, not the dice.
       allow update: if joiningOpenSeat()
+        || reclaimingQuietGuestSeat()
         || (participant()
           && request.resource.data.hostUid == resource.data.hostUid
           && request.resource.data.guestUid == resource.data.guestUid);
