@@ -1,4 +1,4 @@
-# Working on Fleet Dice 3
+# Working on Fleet Dice
 
 Read `HANDOFF.md` first for the project's history and state, `BALANCE.md` before
 you touch any number. This file is the short version of how to work here without
@@ -38,7 +38,7 @@ image URL. The workflow sets `https://fleetdice.ministrybag.com`.
 
 ```bash
 pnpm dev                 # localhost:3000, live reload — use this, not a build
-pnpm test                # 111 tests, ~2s
+pnpm test                # 113 tests, ~2s
 pnpm build               # static export to out/ (what GitHub Pages serves)
 pnpm lint
 ```

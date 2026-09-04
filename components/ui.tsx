@@ -3,7 +3,7 @@
 /**
  * The shared vocabulary of the interface.
  *
- * Every screen in Fleet Dice 3 is built from these. If a button, panel or
+ * Every screen in Fleet Dice is built from these. If a button, panel or
  * number badge is needed twice, it belongs here — that is what stops the game
  * from drifting into five slightly different greys.
  */

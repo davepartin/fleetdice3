@@ -1,5 +1,5 @@
 /**
- * Fleet Dice 3 — the first-flight tutorial.
+ * Fleet Dice — the first-flight tutorial.
  *
  * A short scripted battle that forces the teaching beats (a row, a column, a
  * shipyard trip, a straight, the flagship token) so a new commander meets every

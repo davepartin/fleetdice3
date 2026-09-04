@@ -898,7 +898,7 @@ function fullMatchD(planA, diffA, planB, diffB, seed) {
 const mode = process.argv[2] ?? "final";
 const n = Number(process.argv[3]) || 300;
 
-console.log("Fleet Dice 3 — tuning sweeps");
+console.log("Fleet Dice — tuning sweeps");
 console.log(
   `HP ${TUNING.hp} · prices ${JSON.stringify(TUNING.prices)} · cells +${TUNING.slotCostOffset} · ` +
   `flag ${JSON.stringify(TUNING.flagCost)} bonus ${JSON.stringify(TUNING.flagBonus)}`,

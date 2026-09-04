@@ -2,7 +2,7 @@
  * The measuring stick.
  *
  * Nearly every design instinct in this project has been wrong at least once, so
- * nothing goes into Fleet Dice 3 on a hunch. This harness plays the real engine
+ * nothing goes into Fleet Dice on a hunch. This harness plays the real engine
  * — the exact code the browser runs — thousands of times and reports what
  * actually happens.
  *
@@ -409,7 +409,7 @@ if (process.env.FLAG_COST) { const v = JSON.parse(process.env.FLAG_COST); TUNING
 const mode = process.argv[2] ?? "all";
 const size = Number(process.argv[3]) || 0;
 
-console.log("Fleet Dice 3 — engine measurements");
+console.log("Fleet Dice — engine measurements");
 console.log(
   `HP ${TUNING.hp} · straight needs ${TUNING.runMin} · across ${TUNING.lineAcrossEnergy}⚡ · down ${TUNING.lineDownAttack} attack · escalates after round ${TUNING.escalateAfterRound}`,
 );

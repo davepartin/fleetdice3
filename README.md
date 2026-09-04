@@ -13,7 +13,9 @@ This is the third version, and the only one still running. Fleet Dice 1 and 2
 live in [`spacetribe-dice`](https://github.com/davepartin/spacetribe-dice),
 which was archived and taken offline on 2 September 2026 — their key art was
 salvaged first and is what you see on the title, victory and defeat screens.
-Their Firestore data and security rules are deliberately left alone.
+The owner will delete their leftover Firestore collections (`codes`,
+`matches`, `liveBattles`, `battleResults`). The rules in this repo are
+Fleet Dice only.
 
 The repository is still called `fleetdice3` and the collections are still
 `fd3*`. The 3 was the development name; it now survives only where renaming
@@ -49,8 +51,8 @@ You only need this again if `firestore.rules` changes:
 npx -y firebase-tools@latest deploy --only firestore:rules --project space-tribes
 ```
 
-Read [`FIREBASE.md`](FIREBASE.md) before you run that. There is one way to break
-Fleet Dice 1 and 2 with it, and that file explains how to avoid it.
+Read [`FIREBASE.md`](FIREBASE.md) before you run that. There is one Firebase
+project, and a bad deploy of the rules can break live Fleet Dice.
 
 ---
 
@@ -90,7 +92,7 @@ has its own domain — it used to be under `/fleetdice3/`, and that path 404s.
 Other useful commands:
 
 ```bash
-pnpm test        # the rules, checked against themselves — 111 of them
+pnpm test        # the rules, checked against themselves — 113 of them
 pnpm sim         # what the numbers actually do, over thousands of matches
 pnpm build       # the static site, into out/
 ```

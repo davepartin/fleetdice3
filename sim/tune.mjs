@@ -172,7 +172,7 @@ function reset() {
   TUNING.startSlots = baseline.startSlots;
 }
 
-console.log(`Fleet Dice 3 — tuning sweep, ${PER_PAIR} matches a pairing\n`);
+console.log(`Fleet Dice — tuning sweep, ${PER_PAIR} matches a pairing\n`);
 console.log("A spread is the gap between the best and worst strategy. Under about");
 console.log("10 points means no single plan is running away with the game.\n");
 

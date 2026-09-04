@@ -19,7 +19,7 @@ he can open on a phone over inventing architecture.
 | --- | --- | --- |
 | 1 | Study the Fleet Dice 2 engine and rules | **Done** |
 | 2 | Scaffold the repo | **Done** — Next 16 static export, Tailwind 4, Three 0.185 |
-| 3 | Build the rules engine | **Done** — `lib/engine.ts`, 111 tests passing |
+| 3 | Build the rules engine | **Done** — `lib/engine.ts`, 113 tests passing |
 | 4 | Simulate and retune the balance | **Done** — see `BALANCE.md`, including a correction |
 | 5 | AAA 3D dice and battlefield | **Done, not finished** — see below |
 | 6 | HUD, VFX and audio | **Built. Audio still never heard by a human** |
@@ -69,7 +69,7 @@ Node 22+, pnpm.
 pnpm install
 pnpm dev                 # http://localhost:3000/ — the game serves from the
                          # root now that it has its own domain
-pnpm test                # 111 tests
+pnpm test                # 113 tests
 pnpm build               # static export into out/
 node sim/simulate.mjs    # the measurement harness
 node sim/ladder.mjs 500  # does each difficulty beat the one below it?
@@ -97,18 +97,17 @@ second copy of the rules for a simulation.
 
 ## The one thing that will bite you
 
-**Fleet Dice 1, 2 and 3 share one Firebase project (`space-tribes`) and one set
-of security rules.** Deploying `firestore.rules` replaces the rules for all
-three games. The file in this repo contains the Fleet Dice 1 and 2 rules copied
-verbatim, followed by the `fd3*` ones. Deploy the whole file, never a fragment.
-`FIREBASE.md` has the detail. Verified byte-for-byte against the live file on
-20 August 2026 and re-confirmed on 1 September 2026.
+**There is one Firebase project (`space-tribes`) and one set of security
+rules.** Deploying `firestore.rules` replaces the rules for that whole
+project — which is live Fleet Dice. A fragment, a typo, or a file that does
+not contain the `fd3*` blocks will break two-player play immediately and
+silently. `FIREBASE.md` has the detail.
 
-Fleet Dice 1 and 2 were retired on 2 September 2026 — the `spacetribe-dice` repo
-is archived and its Pages site switched off — but **leave their rules section
-alone anyway**. It is harmless where it is, their `codes` / `matches` /
-`liveBattles` / `battleResults` collections still hold real match history, and
-removing it is the one edit that could break something silently.
+Fleet Dice 1 and 2 are retired (2 September 2026 — the `spacetribe-dice` repo
+is archived and its Pages site is off). The rules in this repo are **Fleet
+Dice only**. Their leftover collections (`codes` / `matches` /
+`liveBattles` / `battleResults`) are for the **owner to delete**; do not
+delete them from an agent, and do not put those match blocks back.
 
 ---
 
@@ -135,15 +134,16 @@ confused is the easiest bug to write in this codebase.
 
 Both of the old first-things are done.
 
-**The Firestore rules are deployed** — confirmed on 1 September 2026, when a
-re-deploy reported "already up to date", meaning the live rules were byte-identical
-to the file in this repo. They had been live all along.
-
 **Versus has been played end to end**, twice over: two browser clients against a
 local emulator, and then a whole match on two real devices against real Firebase,
 start to victory screen. That was the largest unknown in the project and it is
 closed. It also found a real bug that no local test could have — see the round
 report note in `BALANCE.md`.
+
+**The Firestore rules in this repo are Fleet Dice only.** Fleet Dice 1 and 2
+are retired. The live `space-tribes` project still has the older combined
+file until the owner deploys this one. Deploying the website does not deploy
+the rules. See `FIREBASE.md`.
 
 The project is on Firebase's **Blaze** plan, so the free tier's ~55-matches-a-day
 ceiling is gone. Real cost is pennies: a hundred matches a day is about five.
