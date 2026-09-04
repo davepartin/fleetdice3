@@ -371,8 +371,9 @@ export function HowToPlayBody() {
           <li>
             <span className="help-step-num t-num">1</span>
             <span>
-              <strong>Roll.</strong> {TUNING.rollsPerRound} rolls free, then
-              spend 1 Energy per die to reroll — then lock in your decision.
+              <strong>Roll.</strong> {TUNING.rollsPerRound} rolls free, then up
+              to {TUNING.paidRollsPerRound} more at 1 Energy for each die you
+              send back — then lock in your decision.
             </span>
           </li>
           <li>

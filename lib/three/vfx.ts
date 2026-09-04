@@ -118,7 +118,7 @@ export type Vfx = {
   /** A flagship dying. Resolves when the dust has settled (~1.5s).
    *  `onDetonate` fires at the boom itself, not the build-up — the right
    *  moment to trigger anything that should read as caused by this blast. */
-  flagshipBreak(at: THREE.Vector3, onDetonate?: () => void): Promise<void>;
+  flagshipBreak(at: THREE.Vector3, onDetonate?: () => void, stretch?: number): Promise<void>;
   update(dt: number, time: number): void;
   dispose(): void;
 };
@@ -2305,12 +2305,17 @@ export function createVfx(stage: Stage, options: VfxOptions = {}): Vfx {
    *   0.70–1.55  aftermath: embers falling, smoke lifting, scorch on the plate,
    *              the light dying down to nothing.
    */
-  function flagshipBreak(at: THREE.Vector3, onDetonate?: () => void): Promise<void> {
+  /**
+   * `stretch` lengthens every phase together, so the whole break plays slower
+   * without changing its shape. The end of a match is the one moment worth
+   * lingering on, and at full speed it was over before it registered.
+   */
+  function flagshipBreak(at: THREE.Vector3, onDetonate?: () => void, stretch = 1): Promise<void> {
     const point = at.clone();
-    const build = span(0.6);
-    const beat = span(0.1);
+    const build = span(0.6 * stretch);
+    const beat = span(0.1 * stretch);
     const boom = build + beat;
-    const total = span(1.58);
+    const total = span(1.58 * stretch);
     const now = stage.time;
 
     let detonated = false;

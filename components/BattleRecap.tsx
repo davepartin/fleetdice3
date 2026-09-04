@@ -11,33 +11,69 @@
 import type { PlayerState } from "@/lib/engine";
 import { shipInSlot, slotForCell } from "@/lib/engine";
 import { NOUN } from "@/lib/reference";
-import { HullShape } from "./HullShape";
+import { HelpFlagFace, HelpHullPlate, HelpShipFace } from "./HelpArt";
+import { href } from "@/lib/paths";
 import { Button, Ticker } from "./ui";
 
 const CELLS = Array.from({ length: 9 }, (_, cell) => cell);
 
 /** The 3×3 fleet, exactly as the shipyard draws it, at the size a screenshot needs. */
+/**
+ * The board as it stood at the end, with the last roll still on it.
+ *
+ * The dice a match ends on are the most interesting dice in it, and they were
+ * being thrown away: the recap drew empty hull silhouettes. `player.dice` still
+ * holds the final roll here — nothing clears it until a new round is prepared,
+ * and `publicMatchView` only hides an opponent's dice while a match is still
+ * active — so the faces are drawn on their own hulls, in formation.
+ *
+ * If there are no dice (a room cancelled before anyone rolled), it falls back
+ * to the silhouette rather than showing an empty board.
+ */
+/** Face art is a canvas, so it needs a pixel size rather than a percentage. */
+const RECAP_FACE_PX = 40;
+
 function FleetBoard({ player }: { player: PlayerState }) {
+  const faces = new Map(player.dice.filter((die) => !die.flag).map((die) => [die.id, die.value]));
+  const flagDie = player.dice.find((die) => die.flag);
   return (
     <div className="recap-board" role="group" aria-label="Final fleet">
       {CELLS.map((cell) => {
         if (cell === 4) {
           return (
             <div key={cell} className="recap-cell recap-cell-flag">
-              <span className="recap-cell-flag-star" aria-hidden="true">★</span>
+              {flagDie ? (
+                <span className="recap-cell-face">
+                  <HelpFlagFace face={flagDie.value} size={RECAP_FACE_PX} />
+                </span>
+              ) : (
+                <span className="recap-cell-flag-star" aria-hidden="true">★</span>
+              )}
               <span className="recap-cell-flag-level t-num">L{player.flag.level}</span>
             </div>
           );
         }
         const slot = slotForCell(cell)!;
         const ship = player.open[slot] ? shipInSlot(player, slot) : undefined;
+        const face = ship ? faces.get(ship.id) : undefined;
         return (
           <div key={cell} className={`recap-cell ${ship ? "recap-cell-ship" : "recap-cell-empty"}`}>
             {ship && (
               <>
-                <span className="recap-cell-hull">
-                  <HullShape sides={ship.sides} tone="live" />
-                </span>
+                {face === undefined ? (
+                  // No die on the final roll means this hull was sitting the
+                  // round out, so it gets the out-plate rather than a bare
+                  // silhouette that leaves you wondering where its number went.
+                  <span className="recap-cell-face">
+                    <HelpHullPlate sides={ship.sides} size={RECAP_FACE_PX} />
+                  </span>
+                ) : (
+                  <span className="recap-cell-face">
+                    {/* The ship's own hull, not the smallest one showing this
+                      * number: a 4 on a d10 is still a pentagon. */}
+                    <HelpShipFace value={face} hull={ship.sides} size={RECAP_FACE_PX} />
+                  </span>
+                )}
                 <span className="recap-cell-hull-label t-num">d{ship.sides}</span>
               </>
             )}
@@ -224,8 +260,28 @@ export function BattleRecap({
   return (
     <div className="recap">
       <div className="recap-scroll fade-edges">
+        {/* The painted flagship, whole or wrecked. Only for a win or a loss:
+            a draw is neither, and a cancelled game did not finish, so claiming
+            either would be a lie told in 1024 pixels. The art already shouts
+            VICTORY or DEFEAT, so the eyebrow above the heading would only be
+            saying it again — the heading stays because it is the one line that
+            names who you played. */}
+        {(outcome === "won" || outcome === "lost") && (
+          <div className="recap-art">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={href(outcome === "won" ? "/art/fleet-dice-victory.png" : "/art/fleet-dice-defeat.png")}
+              alt=""
+              width={1024}
+              height={640}
+              decoding="async"
+            />
+          </div>
+        )}
         <div className="recap-head">
-          <p className="t-eyebrow">{cancelled ? "Game cancelled" : "Battle recap"}</p>
+          {outcome !== "won" && outcome !== "lost" && (
+            <p className="t-eyebrow">{cancelled ? "Game cancelled" : "Battle recap"}</p>
+          )}
           <h2 className={`t-display text-3xl recap-title-${outcome}`}>
             {cancelled
               ? youCancelled

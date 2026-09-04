@@ -360,6 +360,9 @@ export function createArena(canvas: HTMLCanvasElement, options: ArenaOptions = {
     );
   }
 
+  /** What `setFormations` last drew on each deck, for the screenshot harness. */
+  const lastFormations = new Map<string, { kind: string; cells: number[]; amount: number }[]>();
+
   /** Steady formation rails, straight bars and flagship matching markers. */
   function applyScoreMarks(
     deck: DeckState,
@@ -376,22 +379,36 @@ export function createArena(canvas: HTMLCanvasElement, options: ArenaOptions = {
       return;
     }
 
-    // The opponent's revealed fleet should not turn into a second HUD. Their
-    // orange/cyan score markers were easily mistaken for damage symbols.
+    // The opponent's revealed fleet should not turn into a second HUD: their
+    // orange run markers were easily mistaken for damage symbols, so the run
+    // stays ours alone.
+    //
+    // Formations are the exception, and deliberately so. A row or a column is
+    // where a big number on the damage report comes from — a column is +10
+    // Attack, which can be half a volley — and with no rail on their deck the
+    // only way to understand a 22 was to count their dice and know the rules.
+    // The rail is already the one mark for that meaning, in the same two
+    // colours on both decks, so reusing it explains their number the way it
+    // explains ours. Flagship rings were never gated either, which left their
+    // board explaining one of its bonuses and not the other.
+    //
+    // No information leaks: `show` for the enemy deck is `reveal`, so none of
+    // this is drawn until their dice are face up.
     const playerDeck = deck === decks.you;
     const run = showRun && playerDeck ? (tally?.run ?? null) : null;
     const runCells: number[] = [];
+    const lines = tally?.lines ?? [];
     const lineCells = new Map<number, "row" | "col">();
-    for (const line of playerDeck ? (tally?.lines ?? []) : []) {
+    for (const line of lines) {
       for (const cell of line.idx) lineCells.set(cell, line.kind);
     }
-    deck.board.setFormations(
-      (playerDeck ? (tally?.lines ?? []) : []).map((line) => ({
-        kind: line.kind,
-        cells: line.idx,
-        amount: line.kind === "row" ? line.energy : line.attack,
-      })),
-    );
+    const drawn = lines.map((line) => ({
+      kind: line.kind,
+      cells: line.idx,
+      amount: line.kind === "row" ? line.energy : line.attack,
+    }));
+    lastFormations.set(deck === decks.you ? "you" : "enemy", drawn);
+    deck.board.setFormations(drawn);
 
     const runMembers = run ? runMemberIds(player.dice, run) : new Set<string>();
     const face = player.flag.face;
@@ -533,6 +550,8 @@ export function createArena(canvas: HTMLCanvasElement, options: ArenaOptions = {
             ...die.stats(),
           }));
         }
+        // Rails are drawn in WebGL and are otherwise unreachable from the DOM.
+        out.formations = Object.fromEntries(lastFormations);
         return out;
       },
     };

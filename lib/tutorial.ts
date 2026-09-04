@@ -180,7 +180,7 @@ export const TUTORIAL_STEPS: TutorialStep[] = [
     id: "reroll1",
     eyebrow: "Reroll",
     title: "Send a die back, then Reroll",
-    body: "Tap any die you want to change (try the flagship or a mismatched ship), then tap Reroll. You get free rerolls each round; after that, each die costs 1 Energy.",
+    body: `Tap any die you want to change (try the flagship or a mismatched ship), then tap Reroll. You get ${TUNING.rollsPerRound} rolls free each round, then up to ${TUNING.paidRollsPerRound} more at 1 Energy for each die you send back.`,
     allow: { reroll: true },
   },
   {

@@ -26,7 +26,9 @@ const check = (name, pass) => {
 };
 
 const browser = await chromium.launch({
-  executablePath: process.env.CHROME || "/opt/pw-browsers/chromium",
+  // No default path: Playwright's own bundled Chromium is right on a dev Mac.
+  // Set CHROME only where a specific binary is needed (a CI image, say).
+  executablePath: process.env.CHROME || undefined,
   args: ["--use-gl=swiftshader", "--enable-webgl", "--ignore-gpu-blocklist", "--disable-gpu-sandbox"],
 });
 const seat = async () => {

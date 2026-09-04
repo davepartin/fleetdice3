@@ -9,6 +9,7 @@
  *   node sim/lab.mjs arena     [n]   fixed fleets, no shop, head to head
  *   node sim/lab.mjs ladder    [n]   is each upgrade step worth its Energy?
  *   node sim/lab.mjs budget    [n]   same Energy, spent differently
+ *   node sim/lab.mjs hulls     [n]   which hull goes in the cell you just opened
  *   node sim/lab.mjs purchases [n]   what the brains actually buy, and when
  *   node sim/lab.mjs straights [n]   how often each straight length lands
  *   node sim/lab.mjs formation [n]   formation rate by fleet shape
@@ -809,6 +810,50 @@ const chain = (...fns) => (p) => { for (const fn of fns) fn(p); };
 const openCell = () => (p) => { const slot = nextFreeSlot(p); if (slot !== null) p.open[slot] = true; };
 const flagTo = (lvl) => (p) => { p.flag.level = lvl; };
 
+/* ------------------------------------------------------------------ */
+/* Which hull goes in the cell you just opened?                        */
+/* ------------------------------------------------------------------ */
+
+/**
+ * The d10's 13 Energy is two prices in one. `upgradeCost` is
+ * `priceOf(next) - priceOf(sides)`, so 13 also sets the d8 -> d10 step at 4 —
+ * and the step is the only way a d10 ever enters an AI's fleet. In 960
+ * commanders across all four tiers, fresh d10 buys: zero. Fresh d8: four.
+ *
+ * That leaves the shop price of the big hulls untested by AI-vs-AI play, and a
+ * person can pay it. This mode asks the question a person actually faces: the
+ * cell is open, so which hull goes in it?
+ */
+function modeHulls(n) {
+  console.log(`\n=== WHICH HULL GOES IN THE CELL? ===\n`);
+  console.log(
+    `A cell costs ${TUNING.startSlots + 1 + TUNING.slotCostOffset}⚡ to open here. Side A is handed the cell and the hull;\n` +
+    `side B is handed the same Energy to spend freely. ${n} matches a row.\n`,
+  );
+  const cell = TUNING.startSlots + 1 + TUNING.slotCostOffset;
+  const rows = [];
+  for (const sides of [4, 6, 8, 10]) {
+    const spend = cell + priceOf(sides);
+    const r = duel(addShip(sides), cash(spend), n);
+    const verdict = r.rate - r.ci / 100 > 0.5 ? "bargain" : r.rate + r.ci / 100 < 0.5 ? "TRAP" : "fair";
+    rows.push([`cell + a fresh d${sides}`, spend, pct(r.rate), `±${r.ci.toFixed(1)}`,
+               (((r.rate - 0.5) * 100) / spend).toFixed(2), verdict]);
+  }
+  table(["thing A is handed", "⚡ B gets instead", "A wins", "95% ci", "win pts per ⚡", "verdict"], rows);
+
+  // The same Energy, spent two ways: one big hull, or a small hull and change.
+  console.log(`\nSame Energy, two shopping lists. A cell plus the big hull, against a cell`);
+  console.log(`plus the cheapest hull and the change left in the bank.\n`);
+  const rows2 = [];
+  for (const sides of [6, 8, 10]) {
+    const change = priceOf(sides) - priceOf(4);
+    const r = duel(addShip(sides), chain(addShip(4), cash(change)), n);
+    const verdict = r.rate - r.ci / 100 > 0.5 ? `the d${sides}` : r.rate + r.ci / 100 < 0.5 ? "the d4 + change" : "too close to call";
+    rows2.push([`cell + d${sides}`, `cell + d4 + ${change}⚡`, pct(r.rate), `±${r.ci.toFixed(1)}`, verdict]);
+  }
+  table(["side A", "side B", "A wins", "95% ci", "better buy"], rows2);
+}
+
 /** Packages of roughly equal Energy, so we can ask which list is the right list. */
 function packages() {
   const opened = TUNING.startSlots;
@@ -892,6 +937,7 @@ if (mode === "all" || mode === "flagship") modeFlagship(n);
 if (mode === "all" || mode === "reactor") modeReactor(n);
 if (mode === "all" || mode === "worth") modeWorth(n);
 if (mode === "all" || mode === "fair") modeFair(n);
+if (mode === "all" || mode === "hulls") modeHulls(n);
 if (mode === "all" || mode === "spend") modeSpend(n);
 if (mode === "all" || mode === "length") modeLength(n);
 console.log("");

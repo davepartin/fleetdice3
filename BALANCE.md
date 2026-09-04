@@ -615,10 +615,16 @@ picture, but I have not measured it and I am guessing.
 
 ## Measurements from the AAA polish pass
 
-Every number below is from a script in `sim/` that can be re-run. Caveat first:
-`lib/ai.ts` calls `Math.random()` in four places instead of the engine's seeded
-RNG, so runs involving any tier below Expert are **not** bit-for-bit
-reproducible. The confidence intervals still mean what they say.
+Every number below is from a script in `sim/` that can be re-run. Caveat, now
+historical: when these were measured, `lib/ai.ts` called `Math.random()` in four
+places instead of the engine's seeded RNG, so runs involving any tier below
+Expert were **not** bit-for-bit reproducible. The confidence intervals still
+mean what they say, and the Expert numbers were never affected — at `greed: 1`
+the coin flip short-circuits and was never reached. That is fixed (see
+"Reproducibility" at the end of this file), so anything measured from now on
+replays exactly; the Low and Medium numbers in the table below cannot be
+reproduced bit-for-bit and would have to be re-measured to get a replayable
+figure.
 
 ### Expert is a read plus ten health, and the read was not enough
 
@@ -699,3 +705,443 @@ other commander was still choosing blockers. Over 300 matches that stranded a
 player on **46.4% of resolved rounds** — the rounds where their own volley left
 them nothing to block. Both fleets roll at once; only the volley and the victory
 check need both players.
+
+---
+
+## Reproducibility — one bag of dice, not two
+
+*Fixed 1 September 2026. No balance number moved.*
+
+The engine's randomness has always been injectable — `setRng(makeRng(seed))` —
+so a simulation could be replayed exactly. It could not. `lib/ai.ts` called
+`Math.random()` in four places, which no seed can reach:
+
+| line | what the coin flip decides |
+| --- | --- |
+| `ai.ts:403` | whether a weaker tier takes the second-best reroll instead of the best |
+| `ai.ts:404` | which worse reroll it takes |
+| `ai.ts:661` | whether a weaker tier buys the second-best thing in the shipyard |
+| `ai.ts:699` | which of the five plans a fresh brain is given |
+
+So the dice repeated and the opponent's decisions did not. Demonstrated by
+running `node sim/straights.mjs 60` twice, same seeds both times:
+
+| tier | run 1 straights/cmdr | run 2 | agrees? |
+| --- | ---: | ---: | --- |
+| low | 0.63 | 0.63 | lines/cmdr 2.10 → 1.82, **no** |
+| medium | 1.40 | 1.26 | **no** |
+| hard | 1.42 | 1.42 | yes |
+| expert | 1.73 | 1.73 | yes |
+
+The split is the diagnosis. `greed` is 0.5 at Low and 0.85 at Medium, but
+exactly **1** at Hard and Expert — and at `greed: 1` both coin flips
+short-circuit before reaching `Math.random`. The two tiers that drifted are
+precisely the two that make deliberate mistakes.
+
+**The fix.** `lib/engine.ts` now exports `random()`, handing out numbers from
+the same seeded source as `roll()`. The four sites in `lib/ai.ts` call it. Same
+maths, same mistake rate, one bag instead of two. After the fix the identical
+command produced byte-identical output twice, and Hard and Expert kept the exact
+numbers they had before (1.42 / 2.98 / 5.28 / 11.6 and 1.73 / 3.19 / 5.47 /
+11.7) — which is the evidence that nothing about how the game plays changed.
+Low and Medium now draw from a different stream, so their figures moved the way
+any re-roll of luck moves a 60-match sample. That is new luck, not new balance.
+
+**Guarded by `tests/rng.test.mjs`**, which greps `lib/ai.ts` for `Math.random`
+*and* replays a full match on each of the four tiers, asserting the second
+playthrough matches the first. Putting the bug back deliberately fails the grep
+plus Low and Medium, and leaves Hard and Expert passing — the same fingerprint
+as the live symptom.
+
+### Why this was worth doing before touching the d10
+
+An A/B on a `TUNING` number used to mean two independent runs, each carrying
+about ±3.5 points at 800 matches. A five-point price effect was invisible in
+that. Now the same seeds can be played under both values, so both runs get
+identical luck and only the number under test differs. The noise largely
+cancels, and an effect worth a few points becomes readable in minutes rather
+than needing tens of thousands of matches.
+
+**Caveat that remains.** Every Low and Medium figure measured before this date —
+including the tier table above — was produced by the unseeded brain. Those
+numbers are still honest within their confidence intervals, but they cannot be
+replayed bit-for-bit, and re-running the script today will not reproduce them.
+Re-measure if you need a figure someone else can check. Expert and Hard numbers
+are unaffected and always were.
+
+---
+
+## The d10 is not mispriced — the question was about a price nobody pays
+
+*Measured 1 September 2026, on seeded paired runs. Nothing changed.*
+
+The open question was: "d10 looks mispriced. Expert ends ~6% d10 and the worst
+tier ends ~39%. Buying the biggest hull is what weak play looks like." It is a
+real pattern with an innocent cause, and the price is fine. Four findings.
+
+### 1. Nobody has ever bought a d10
+
+`node sim/d10.mjs` instruments every shop action. Across **960 commanders**, all
+four tiers, all five plans:
+
+| bought fresh into an empty cell | count |
+| --- | ---: |
+| d4 | 937 |
+| d6 | 223 |
+| d8 | 4 |
+| **d10** | **0** |
+
+Upgrades are 74.5% of everything bought. So the 13 in `TUNING.prices` is doing
+two different jobs, and only one of them is live:
+
+- the **shop price** of a d10 — never paid by an AI, at any tier;
+- the **step** from d8, because `upgradeCost` is `priceOf(next) - priceOf(sides)`
+  — 13 − 9 = **4 Energy**, and that step is how every d10 in the game arrives.
+
+Any conclusion about "the d10 at 13" is really a conclusion about a 4-Energy
+upgrade.
+
+### 2. That step is not a trap
+
+`node sim/d10-policy.mjs [n] [tier]`. Two identical brains, same tier, same
+seed, five plans; one is forbidden to step d8 → d10 and must spend the Energy
+elsewhere. 50% would mean the step is worth exactly its price.
+
+| tier | the commander **forbidden** the step wins | so taking it wins |
+| --- | ---: | ---: |
+| low | 46.4% ±3.5 (800) | 53.6% |
+| medium | 47.8% ±3.5 (800) | 52.2% |
+| hard | 47.0% ±4.9 (400) | 53.0% |
+| expert | 47.3% ±4.9 (400) | 52.7% |
+
+Four tiers, all on the same side of 50. Taking the step is mildly *good*, not a
+trap. One caveat that cuts the other way: the capped side finishes having spent
+about 3 Energy less per match, so some of what it was forbidden went unspent
+rather than redirected — which flatters the d10 slightly. Read it as "fair to
+mildly good", not as a bargain.
+
+### 3. The tier pattern is a spending pattern, not a pricing one
+
+Where each tier's Energy goes, per commander, 150 seeded matches:
+
+| tier | cells | fresh hulls | **upgrades** | flagship | total | ships | cells | d10% |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| low | 9.5 | 5.1 | **30.6** | 1.8 | 47.1 | 5.09 | 5.24 | 41% |
+| medium | 10.7 | 5.4 | 19.3 | 0.7 | 36.2 | 5.23 | 5.38 | 10% |
+| hard | 10.6 | 5.1 | 15.9 | 0.9 | 32.5 | 5.19 | 5.37 | 5% |
+| expert | 13.0 | 6.1 | 16.7 | 0.8 | 36.5 | 5.43 | 5.64 | 6% |
+
+Low pours **30.6 Energy into the upgrade ladder** against Expert's 16.7, and
+puts less into cells (9.5 against 13.0). It also plays longer matches — 13.4
+rounds against 11.5 — so it banks more to begin with. The d10 is simply the top
+rung, which is where a surplus spent on climbing ends up.
+
+So "the worst tier owns the most d10s" is a readout of *not buying cells*, and
+finding 6 already established that a cell plus a hull is the strongest purchase
+in the game. The d10 share is a symptom. Repricing it would treat the symptom.
+
+### 4. For a person, the big hull is a fine buy
+
+An AI never pays 13, but a human can, so it needed testing directly.
+`node sim/lab.mjs hulls 800` — side A is handed a cell with a hull in it, side B
+the same Energy to spend freely:
+
+| A is handed | ⚡ B gets instead | A wins | 95% ci | win pts per ⚡ | verdict |
+| --- | ---: | ---: | ---: | ---: | --- |
+| cell + a fresh d4 | 11 | 66.4% | ±3.3 | 1.49 | bargain |
+| cell + a fresh d6 | 13 | 60.1% | ±3.4 | 0.78 | bargain |
+| cell + a fresh d8 | 16 | 68.3% | ±3.2 | 1.14 | bargain |
+| cell + a fresh d10 | 20 | 67.9% | ±3.2 | 0.89 | bargain |
+
+Every hull is a bargain when it arrives with a cell — that is the cell effect
+from finding 6, and every size shares it. And spending the same Energy two
+ways, big hull against small hull plus the change:
+
+| side A | side B | A wins | 95% ci | better buy |
+| --- | --- | ---: | ---: | --- |
+| cell + d6 | cell + d4 + 2⚡ | 54.3% | ±3.4 | the d6 |
+| cell + d8 | cell + d4 + 5⚡ | 56.8% | ±3.4 | the d8 |
+| cell + d10 | cell + d4 + 9⚡ | 56.0% | ±3.4 | the d10 |
+
+At 400 matches this read 52.8% ±4.9 and I could not call it; at 800 it separates.
+The big hull is worth its price against keeping the change.
+
+### Verdict
+
+**`prices: { 4: 4, 6: 6, 8: 9, 10: 13 }` is unchanged.** The hypothesis is not
+supported from any of the four angles. The d10 is fairly priced as a step, fairly
+priced as a purchase, and its concentration in weak fleets is caused by those
+fleets under-buying cells and over-climbing the ladder.
+
+I did sweep the price anyway (`D10_PRICE=15 node sim/d10-policy.mjs 400 low`).
+Raising it to 15 makes the step 6 and pushes the forbidden side to 54.0% ±4.9 —
+i.e. it turns a mildly good buy into a mildly bad one. Lowering it to 11 is worse
+than it looks: at that price the brain starts buying d10s *fresh*, so the
+d8-cap leaks and the row cannot be read. If anyone revisits this, note that
+changing `prices[10]` moves the shop price and the upgrade step together, and
+only the step is load-bearing.
+
+---
+
+## Paid rerolls are capped at three a round
+
+*Changed 1 September 2026. `TUNING.paidRollsPerRound: 3`. Requested by the owner
+after a month of playing humans; measured before and after.*
+
+### The problem
+
+A paid reroll cost 1 Energy per die and **never got dearer**, so the number of
+rerolls a round was limited only by the bank. A wide board of d4s chasing 2s is
+the worst case: a 2 pays 2 Direct on every hull, and `settlePlayer` adds Direct
+*after* blocking, so no Shield and no blocking ship touches it. Nine d4s on 2
+with a level-3 flagship matching is ~22 unblockable a round against 60 HP.
+
+Measured with two identical Expert brains on the same seeds, one forbidden to
+pay for rerolls at all. 50% means paid rerolls are worth exactly their price:
+
+| starting bank | forbidden side wins | so paying wins |
+| --- | ---: | ---: |
+| normal | 49.8% ±4.9 | 50.2% — fair |
+| +30⚡ | 48.3% ±4.9 | 51.7% |
+| +60⚡ | **42.8% ±3.4** (800) | **57.2%** |
+
+The rule was fine at ordinary Energy and got stronger the richer you were.
+That is the shape of the bug: the price never rose, so a bank bought rounds.
+
+### What did not work
+
+The first proposal was a flat escalating price — the Nth paid reroll costs N,
+whatever it rerolls. It measures **worse**, and the arithmetic says why. A
+nine-die reroll cost 9⚡ under the old rule; under a flat price the first one
+costs 1⚡. With 60 Energy:
+
+| rule | full-board rerolls affordable |
+| --- | ---: |
+| 1⚡ per die | 60 ÷ 9 ≈ 6 |
+| flat 1, 2, 3… | 1+2+…+10 = 55⚡ → **10** |
+| flat 2, 4, 6… | 2+4+…+12 = 42⚡ → 7 |
+| N per die | 9 + 18 + 27 = 54⚡ → 3 |
+
+Making the wide reroll cheaper is the opposite of the fix. Measured at +60⚡,
+the forbidden side won 39.8% under flat 1,2,3 against 42.8% under the old rule.
+
+Sweeping the curves turned up one useful fact: **the load-bearing number is what
+the first paid reroll costs, not how steeply the price climbs.** Every curve
+starting at 1 failed (flat 1,2,3: 39.8%; doubling 1,2,4,8: 38.8%); every curve
+starting at 2 worked (flat 2,4,6: 53.5%; doubling 2,4,8: 53.8%). Most of the
+value is in the first reroll or two, so step five never gets reached. Those
+curves fixed the bank problem but overshot — at 800 matches, flat 2,4,6 put the
+forbidden side on 54.1% ±3.5, i.e. paying became a mildly *bad* buy.
+
+### What shipped
+
+**Cap the count, not the price.** Three free rolls, then at most three paid ones,
+each still 1 Energy per die. Energy stops being the limit; the rule is.
+
+| starting bank | old (uncapped) | **capped at 3** |
+| --- | ---: | ---: |
+| normal | 49.8% ±4.9 | **50.0% ±4.9** |
+| +30⚡ | 48.3% ±4.9 | **51.5% ±4.9** |
+| +60⚡ | 42.8% ±3.4 | **47.1% ±3.5** |
+
+The ordinary game is untouched — 50.0%, and the same 5.1⚡ a match goes into
+rerolls. The cap only binds when a commander is rich, which is exactly when the
+old rule broke. Tightening to two buys nothing measurable (47.6% ±3.5 at +60⚡,
+inside noise of three) and costs a player a choice, so **three is right**.
+
+Whole-game check, 120 matches per tier on identical seeds, uncapped against
+capped: Low and Medium are byte-identical; Hard and Expert move in the second
+decimal (straights 1.75 → 1.77, ships 5.41 → 5.44) where they occasionally reach
+the cap. Match length, lines, and fleet mix are unchanged. The hand-written
+2-chaser drops from 13.0% to 8.5% against Expert.
+
+### The screen, not just the engine
+
+The Reroll button was gated on affordability only, so under the cap it would
+have offered a move the engine refuses and thrown an error at the player.
+`MatchScreen` now reads `rollsLeft()` from the engine and shows **"No rerolls
+left"**. Verified in a real browser at 390×844 by `cap-playtest.mjs`, with 4⚡
+still in the bank so the cap was doing the stopping:
+
+| tap | button |
+| --- | --- |
+| 1, 2 | enabled — "Free" |
+| 3, 4, 5 | enabled — "Cost 1 Energy" |
+| 6 | **disabled — "No rerolls left"** |
+
+Zero console errors. Both help strings now interpolate `TUNING.rollsPerRound`
+and `TUNING.paidRollsPerRound`, and `tests/rng.test.mjs` fails if either goes
+back to hardcoding the sentence.
+
+---
+
+## Direct stays unblockable, and Repair is why
+
+*Asked and settled 1 September 2026. Nothing changed; the reasoning is written
+down so it is not re-argued from scratch.*
+
+The owner asked whether a blocking hull ought to be able to stand in front of
+Direct as well as Attack. It measured **safe** and was still declined, which is
+worth separating carefully.
+
+### What the numbers said
+
+`TUNING.blockStopsDirect` was added, measured, and removed again. Identical
+seeds, Hard against Hard, 150 matches:
+
+| rule | rounds | blocks/cmdr | hulls used | ships |
+| --- | ---: | ---: | ---: | ---: |
+| Direct unblockable (shipped) | 11.2 | 2.82 | 6.03 | 5.20 |
+| blocking stops Direct | 11.3 | 2.92 | 6.24 | 5.20 |
+
+Nearly invisible. The obvious worry — that blocking would answer everything and
+a commander could turtle behind a wall of hulls — does not happen. A commander
+who blocks with **everything, every round**, against Hard, 400 matches:
+
+| rule | the turtle wins |
+| --- | ---: |
+| Direct unblockable | 5.0% ±2.1 |
+| blocking stops Direct | 6.8% ±2.5 |
+
+Turtling loses badly either way, and for a reason that has nothing to do with
+Direct: **a blocked hull sits out the next round and stops dealing damage.**
+Blocking already punishes itself. So the change was safe to make.
+
+### Why it was not made
+
+Because the owner asked a second question — can Repair save a flagship the
+damage would otherwise destroy? — and answering it showed what Direct is for.
+
+`settlePlayer` computes `before - damage + repair` in one step, so it can, and
+`inescapableDeath` counts repair too. That means the game has a clean triangle:
+
+- **Shields** answer Attack.
+- **Ship blocking** answers what gets past Shields.
+- **Repair** answers Direct — and nothing else does.
+
+Let hulls block Direct and that third line disappears: Direct becomes ordinary
+damage with an extra step, and Repair is left with no job of its own. The
+purple chevron currently means *the damage you cannot defend against, only
+out-heal*, and that is worth more than the change was.
+
+**This is a design decision, not a measurement.** The measurement says either
+rule works. If anyone wants to revisit it, the knob is five lines
+(`damageAfterBlocking` is already the single place both the settle and the
+doomed-round check agree through) — but note that Direct being unstoppable is
+stated as a rule in the tutorial, the face legend, the help screen, the block
+screen and `lib/reference.ts` in seven places, all of which would have to change
+with it.
+
+### Now tested
+
+`tests/repair.test.mjs` pins both halves, and four of its cases fail if repair
+is moved after a death check:
+
+- repair carries a flagship the damage alone would kill (5 − 8 + 5 = 2)
+- repair answers Direct specifically (4 − 9 direct + 8 = 3)
+- exactly zero is dead; one more point of repair is one more point of life
+- healing past the starting maximum raises the maximum
+- the whole fleet blocking stops **none** of an incoming Direct
+- blocking still stops Attack, so that case cannot pass by accident
+
+---
+
+## The opponent's eye for Energy — the biggest single knob in the brain
+
+*Changed 2 September 2026. `energyWeight` per tier: Low 1.45, Medium 2.4,
+Hard 3.4, Expert 4.2. No `TUNING` number moved; this is all in `lib/ai.ts`.*
+
+### What was wrong
+
+`WEIGHTS.energy` was 1.45 for every tier. `nearFormation` — the function that
+decides which line the brain hunts — used it to price a row:
+
+```ts
+const prize = line.kind === "col" ? TUNING.lineDownAttack : TUNING.lineAcrossEnergy * WEIGHTS.energy;
+```
+
+A column pays 10 Attack. A row pays 5 Energy, which at 1.45 scored **7.25**. So
+the row never won that comparison, and **every brain on every tier chased
+columns and only columns**, whatever the board in front of it looked like.
+
+### What it is worth
+
+Paired seeds, same tier, all five plans, one side on the new weight:
+
+| energy weight | wins against 1.45 |
+| ---: | ---: |
+| 0.8 | 39.5% ±4.8 |
+| 1.0 | 42.3% ±4.8 |
+| 1.2 | 46.8% ±4.9 |
+| 1.7 | 50.5% ±4.9 |
+| 2.5 | 66.0% ±4.6 |
+| **4.2** | **74.3% ±3.5** |
+| 9 | 68.3% ±5.3 |
+| 30 | 48.3% ±5.7 |
+
+A real optimum around four, not a runaway — it climbs, peaks and falls away.
+Note the first three rows: BALANCE.md finding 3 guessed this number should be
+*lower*, "nearer 1.0". Measured, that is the wrong direction and costs about
+eight points.
+
+### The ladder, which is the point
+
+500 matches a rung:
+
+| rung | now | before |
+| --- | ---: | ---: |
+| Medium over Low | **72.0% ±3.9** | 59.9% |
+| Hard over Medium | **63.4% ±4.2** | 52.7% |
+| Expert over Hard | **58.4% ±4.3** | 54.9% |
+| Expert over Low | **87.2% ±2.9** | — |
+
+Every rung is a clear step now. **Low is deliberately untouched at 1.45**, so a
+beginner's first game plays exactly as it always did; the tiers above it got
+better rather than the bottom getting harder.
+
+150 matches a tier, both sides the same tier:
+
+| tier | straights/cmdr | lines/cmdr | ships | rows | cols | rounds |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| low | 0.66 | 2.00 | 5.09 | 0.90 | 1.11 | 13.4 |
+| medium | 1.70 | 2.30 | 5.51 | 1.28 | 0.98 | 11.2 |
+| hard | 2.43 | 3.04 | 6.06 | 1.74 | 1.34 | 11.1 |
+| expert | 2.82 | 3.36 | 6.32 | 1.98 | 1.35 | 11.5 |
+
+Straights at Expert go from 1.75 a commander to **2.82**, which is most of the
+"straights barely happen" open question answered from the other end: they were
+rare partly because nothing was hunting them. Fleets are bigger (5.43 → 6.32),
+and the board finally sees **both** kinds of formation instead of columns alone.
+
+### Two things that measured neutral and were not shipped
+
+**Saving up for a bay.** The obvious diagnosis — the brain never buys bays
+because `buyScore` divides by cost — is wrong. The arithmetic does not support
+it (a bay scores 7.5/11 = 0.68 against an upgrade's 1.3/2 = 0.65), and the real
+reason is simpler: instrumented, the brain arrives at the shipyard with **4.4
+Energy**, can afford a bay on 20% of visits, and buys one two thirds of the time
+it can. It was never undervaluing bays; it could never save up for one.
+
+So a `patience` knob was built, letting a tier hold Energy for a bay it could
+afford in a round or two. It works — bays per match went 1.45 → 1.88, ships 5.30
+→ 5.66 — and it is worth **nothing**: 50.2%, 49.3%, 50.0%, 47.0%, 50.2%, 50.2%
+across six paired runs at four tiers, before and after the energy fix. Two extra
+rounds of foregone upgrades exactly cancel the bay. It was removed rather than
+shipped. Finding 6 ("a bay plus a hull is the strongest purchase") still stands,
+but it was measured by *handing* a commander a bay at round one, which is not
+the same as spending two rounds earning one.
+
+### A measurement that lied, and how it was caught
+
+The energy-weight sweep above was first run by overriding the module-level
+`WEIGHTS.energy`. After the per-tier knob was added, the same comparison read
+**47.8%** instead of 74.3% — because `nearFormation` still read the global while
+everything else read the new knob. The knob was changing how a *roll* was
+valued and not which *line* was hunted, and the line is where almost all the
+value is: threading the weight into `valueOfTally` alone is worth 49.0%, and
+into `nearFormation` as well is worth 71.8%.
+
+Both experiments were internally valid and they disagreed by twenty-five points.
+The only reason it surfaced is that the numbers were re-measured after the
+refactor instead of being carried over. Re-measure after moving code, even when
+the change looks like plumbing.

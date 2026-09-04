@@ -30,8 +30,11 @@ import {
   FLEET_LINES,
   nextSlotCost,
   priceOf,
+  random,
   repairOf,
   roll,
+  rollCostFor,
+  rollsLeft,
   shipInSlot,
   slotForCell,
   tally,
@@ -107,6 +110,21 @@ export type DifficultyKnobs = {
   tokenThreshold: number;
   braceCaution: number;
   rerollReserve: number;
+  /**
+   * What a point of Energy is worth to this tier, in points of damage, when it
+   * decides which dice to throw back.
+   *
+   * The single strongest knob in the brain, and it was the most wrong. Shipped
+   * at 1.45 for every tier, with a note in BALANCE.md guessing it should be
+   * *lower*, nearer 1.0. Measured on paired seeds it is the opposite: 1.0 loses
+   * to 1.45 at 42.3%, and 4.2 beats 1.45 at 74.3%. The curve peaks around four
+   * and falls away by fifteen, so this is a real optimum rather than a runaway.
+   *
+   * It is the right thing to separate the tiers on, because it is the actual
+   * skill: Energy compounds into hulls and bays, and a beginner plays for
+   * damage they can see this round. Low keeps the old naive valuation.
+   */
+  energyWeight: number;
   /** Extra starting health on the Enemy flagship. 0 on every tier but Expert. */
   startHpBonus: number;
   /** Extra Energy in the Enemy bank at the start. 0 on every tier but Expert. */
@@ -130,6 +148,7 @@ export const DIFFICULTY: Record<Difficulty, DifficultyKnobs> = {
     tokenThreshold: 10,
     braceCaution: 0.7,
     rerollReserve: 0,
+    energyWeight: 1.45,
     startHpBonus: 0,
     startEnergyBonus: 0,
     readsOpponent: false,
@@ -144,6 +163,7 @@ export const DIFFICULTY: Record<Difficulty, DifficultyKnobs> = {
     tokenThreshold: 6,
     braceCaution: 0.45,
     rerollReserve: 2,
+    energyWeight: 2.4,
     startHpBonus: 0,
     startEnergyBonus: 0,
     readsOpponent: false,
@@ -158,6 +178,7 @@ export const DIFFICULTY: Record<Difficulty, DifficultyKnobs> = {
     tokenThreshold: 4,
     braceCaution: 0.28,
     rerollReserve: 4,
+    energyWeight: 3.4,
     startHpBonus: 0,
     startEnergyBonus: 0,
     readsOpponent: false,
@@ -172,6 +193,7 @@ export const DIFFICULTY: Record<Difficulty, DifficultyKnobs> = {
     tokenThreshold: 3,
     braceCaution: 0.22,
     rerollReserve: 5,
+    energyWeight: 4.2,
     startHpBonus: 10,
     startEnergyBonus: 0,
     readsOpponent: true,
@@ -211,11 +233,13 @@ export const WEIGHTS = {
   direct: 1.75,
 };
 
-export function valueOfTally(t: Tally, ctx: { hpRatio: number; pressure: number } = { hpRatio: 1, pressure: 0 }): number {
+export type ValueCtx = { hpRatio: number; pressure: number; energyWeight?: number };
+
+export function valueOfTally(t: Tally, ctx: ValueCtx = { hpRatio: 1, pressure: 0 }): number {
   // Low on health? Shields and repair are suddenly worth a great deal more.
   const panic = 1 + (1 - ctx.hpRatio) * 1.4;
   // Late-game Energy is worth less because there is less time to spend it.
-  const energyWorth = WEIGHTS.energy * (1 - ctx.pressure * 0.45);
+  const energyWorth = (ctx.energyWeight ?? WEIGHTS.energy) * (1 - ctx.pressure * 0.45);
   return (
     t.attack * WEIGHTS.attack +
     t.defense * WEIGHTS.defense * panic +
@@ -238,7 +262,7 @@ function expectedValue(
   dice: DieValue[],
   rerollIds: Set<string>,
   flagLevel: number,
-  ctx: { hpRatio: number; pressure: number },
+  ctx: ValueCtx,
   samples: number,
 ): number {
   if (!rerollIds.size) {
@@ -298,7 +322,10 @@ export type NearFormation = {
  * that line is the formation the brain should hunt. Prefers a column (Attack)
  * when two lines are equally close.
  */
-export function nearFormation(dice: DieValue[]): NearFormation | null {
+export function nearFormation(
+  dice: DieValue[],
+  energyWeight: number = WEIGHTS.energy,
+): NearFormation | null {
   let best: NearFormation | null = null;
   let bestPrize = -1;
   for (const line of FLEET_LINES) {
@@ -318,7 +345,12 @@ export function nearFormation(dice: DieValue[]): NearFormation | null {
       const rerollIds = seated.filter((die) => !keepIds.includes(die.id)).map((die) => die.id);
       // Two matching with the third cell empty is a shop problem, not a reroll.
       if (!rerollIds.length) continue;
-      const prize = line.kind === "col" ? TUNING.lineDownAttack : TUNING.lineAcrossEnergy * WEIGHTS.energy;
+      // Which line is worth hunting: a column pays Attack now, a row pays
+      // Energy that compounds. At the old flat 1.45 a row scored 7.25 against a
+      // column's 10, so the brain chased columns and only columns, whatever the
+      // board looked like.
+      const prize =
+        line.kind === "col" ? TUNING.lineDownAttack : TUNING.lineAcrossEnergy * energyWeight;
       if (prize > bestPrize) {
         bestPrize = prize;
         best = { kind: line.kind, cells: line.idx.slice(), value, keepIds, rerollIds };
@@ -344,16 +376,16 @@ export type RerollChoice = { reroll: string[]; gain: number };
  */
 export function chooseRerollDetailed(
   player: PlayerState,
-  options: { samples: number; candidates: number; greed: number; pressure: number },
+  options: { samples: number; candidates: number; greed: number; pressure: number; energyWeight?: number },
 ): RerollChoice {
   const dice = player.dice;
   if (!dice.length) return { reroll: [], gain: 0 };
-  const ctx = { hpRatio: player.hp / player.maxHp, pressure: options.pressure };
+  const ctx: ValueCtx = { hpRatio: player.hp / player.maxHp, pressure: options.pressure, energyWeight: options.energyWeight };
   const flagLevel = player.flag.level;
 
   const runKeep = runCandidates(dice);
   const lineKeep = lineCandidates(dice);
-  const near = nearFormation(dice);
+  const near = nearFormation(dice, options.energyWeight);
   const run = bestRun(dice);
   const inRun = new Set<string>();
   if (run) {
@@ -400,8 +432,8 @@ export function chooseRerollDetailed(
 
   // A weaker opponent sometimes takes the second-best line.
   const picked =
-    options.greed < 1 && Math.random() > options.greed
-      ? pool[Math.floor(Math.random() * pool.length)]!
+    options.greed < 1 && random() > options.greed
+      ? pool[Math.floor(random() * pool.length)]!
       : best.reroll;
   const pickedScore = picked === best.reroll ? best.score : expectedValue(dice, picked, flagLevel, ctx, options.samples);
   return { reroll: [...picked], gain: pickedScore - baseline };
@@ -638,6 +670,14 @@ function buyScore(
 }
 
 /** One shopping trip. Returns the actions to apply, in order. */
+/**
+ * Roughly what this fleet will bank next round.
+ *
+ * `baseEnergy` is the Reactor's standing income; the rest is what the dice pay.
+ * Every face of a d4 pays something and the bigger hulls pay less often, so
+ * this leans on ship count rather than size. Deliberately an estimate: it only
+ * has to be good enough to answer "can I afford the bay next round if I wait?"
+ */
 export function planShopping(
   player: PlayerState,
   plan: Plan,
@@ -658,7 +698,7 @@ export function planShopping(
       .map((buy) => ({ buy, score: buyScore(scratch, buy, plan, round, urgency) }))
       .sort((a, b) => b.score - a.score);
     const pick =
-      greed >= 1 || Math.random() < greed
+      greed >= 1 || random() < greed
         ? ranked[0]!
         : ranked[Math.min(ranked.length - 1, 1)]!;
     const buy = pick.buy;
@@ -696,7 +736,7 @@ export type Brain = {
 
 export function newBrain(plan?: Plan, difficulty: Difficulty = "medium"): Brain {
   return {
-    plan: plan ?? PLANS[Math.floor(Math.random() * PLANS.length)]!,
+    plan: plan ?? PLANS[Math.floor(random() * PLANS.length)]!,
     difficulty,
   };
 }
@@ -880,32 +920,39 @@ export function nextActions(state: MatchState, side: SideId, brain: Brain): Matc
     case "rolling": {
       const actions: MatchAction[] = [];
       const free = player.rolls < TUNING.rollsPerRound;
+      // Out of rolls entirely: the engine refuses one, so don't queue it. With
+      // nothing else queued the match would simply stop.
+      const canRoll = rollsLeft(player) > 0;
       const choice = chooseRerollDetailed(player, {
         samples: knobs.samples,
         candidates: knobs.candidates,
         greed: knobs.greed,
         pressure,
+        energyWeight: knobs.energyWeight,
       });
-      if (free) {
+      if (free && canRoll) {
         if (choice.reroll.length) return [{ type: "roll", dice: choice.reroll }];
-      } else if (choice.reroll.length) {
-        // A paid reroll costs one Energy per die. Asking for more dice than the
-        // bank covers makes the engine refuse the move, and with nothing else
-        // queued the match simply stops — so trim to what the bank can pay,
-        // preferring the odd die on a one-away line when that's the hunt.
+      } else if (canRoll && choice.reroll.length) {
+        // Ask the engine what this reroll costs — the rule is a `TUNING` knob
+        // and is not always one Energy per die. Asking for more than the bank
+        // covers makes the engine refuse the move, and with nothing else queued
+        // the match simply stops, so trim to what the bank can pay, preferring
+        // the odd die on a one-away line when that's the hunt. Under a flat
+        // price trimming cannot help, and the loop falls through to no reroll.
         let ids = choice.reroll;
-        if (ids.length > player.energy) {
-          const near = nearFormation(player.dice);
+        if (rollCostFor(player, ids.length) > player.energy) {
+          const near = nearFormation(player.dice, knobs.energyWeight);
           if (near) {
             const chase = near.rerollIds.filter((id) => ids.includes(id));
             const rest = ids.filter((id) => !chase.includes(id));
-            ids = [...chase, ...rest].slice(0, Math.max(0, player.energy));
-          } else {
-            ids = ids.slice(0, player.energy);
+            ids = [...chase, ...rest];
+          }
+          while (ids.length > 0 && rollCostFor(player, ids.length) > player.energy) {
+            ids = ids.slice(0, ids.length - 1);
           }
         }
-        const cost = ids.length;
-        const affordable = cost > 0 && cost <= player.energy;
+        const cost = rollCostFor(player, ids.length);
+        const affordable = ids.length > 0 && cost > 0 && cost <= player.energy;
         // Worth it when the expected value gained per Energy spent clears the
         // bar for this difficulty — not a flat "got 6 Energy?" gate, so a real
         // shot at a formation gets taken even on a tight bank, and a marginal
@@ -951,7 +998,10 @@ export function rollHint(state: MatchState, side: SideId): Hint | null {
   if (!you || you.phase !== "rolling") return null;
   const t = tally(you.dice, you.flag.level, you.straightTake);
   const run = bestRun(you.dice);
-  const rollsLeft = TUNING.rollsPerRound - you.rolls;
+  // Free rolls only: these hints suggest a chase while it costs nothing, and
+  // deliberately do not talk a commander into spending. `rollsLeft` from the
+  // engine counts paid rolls too — a different question.
+  const freeRollsLeft = TUNING.rollsPerRound - you.rolls;
 
   if (run && run.length >= 6) {
     return { text: `${run.length} in a row — worth ${run.reward.label}.`, tone: "good" };
@@ -969,7 +1019,7 @@ export function rollHint(state: MatchState, side: SideId): Hint | null {
     };
   }
   const near = nearFormation(you.dice);
-  if (near && rollsLeft > 0) {
+  if (near && freeRollsLeft > 0) {
     if (near.kind === "col") {
       return {
         text: `Two ${near.value}s down a column. Send the odd die back to chase +${TUNING.lineDownAttack} Attack.`,
@@ -985,10 +1035,10 @@ export function rollHint(state: MatchState, side: SideId): Hint | null {
   if (them && you.hp <= them.hp * 0.5 && t.heal < 3) {
     return { text: `You are behind on health. A 3 repairs ${repairOf(3)}.`, tone: "warn" };
   }
-  if (run && run.length === 4 && rollsLeft > 0) {
+  if (run && run.length === 4 && freeRollsLeft > 0) {
     return { text: "One number short of a straight. You need five in a row.", tone: "info" };
   }
-  if (you.energy < 4 && t.energy < 3 && rollsLeft > 0) {
+  if (you.energy < 4 && t.energy < 3 && freeRollsLeft > 0) {
     return {
       text: `Low on Energy — a 1 pays ${energyOf(1)}, a 4 pays ${energyOf(4)}.`,
       tone: "info",

@@ -23,6 +23,9 @@ import {
   flagBonusSize,
   fleetBlock,
   previewTally,
+  rollCostFor,
+  paidRollNumber,
+  rollsLeft as engineRollsLeft,
   runMemberIds,
   straightPrizeTakes,
   type MatchAction,
@@ -50,6 +53,26 @@ type Props = {
   subtitle?: string;
 };
 
+/**
+ * The end of a match, in beats.
+ *
+ * The killing volley is fired by the round's own effect on the same commit
+ * that finishes the match, so the break waits for the shot to land. Everything
+ * here is a hold on the *recap*, never on the rules: the match is already
+ * decided and written down before any of this runs.
+ */
+const FINISH_VOLLEY_MS = 1800;
+/** A beat on the wide shot, wreckage still drifting, before the recap. */
+const FINISH_SETTLE_MS = 1400;
+/**
+ * How much longer the break itself plays than its default. The end of a match
+ * is the one moment worth lingering on: at full speed the flagship broke, the
+ * dice scattered and the recap arrived before any of it registered.
+ */
+const FINISH_BREAK_STRETCH = 2;
+/** Backstop: never strand a player on a board with no way forward. */
+const FINISH_HOLD_MAX_MS = 14000;
+
 export function MatchScreen({ controller, onExit, title, subtitle }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const headerRef = useRef<HTMLDivElement>(null);
@@ -67,7 +90,7 @@ export function MatchScreen({ controller, onExit, title, subtitle }: Props) {
    * the instant both sides lock in, and the best moment in the game happens
    * behind a wall of text.
    */
-  const [cinematic, setCinematic] = useState<null | "reveal" | "volley">(null);
+  const [cinematic, setCinematic] = useState<null | "reveal" | "volley" | "finish">(null);
   const [leaveOpen, setLeaveOpen] = useState(false);
   /**
    * The straight's board lights stay off until the dice land, so the run
@@ -314,7 +337,23 @@ export function MatchScreen({ controller, onExit, title, subtitle }: Props) {
       const timer = window.setTimeout(() => setCinematic(null), hold);
       return () => window.clearTimeout(timer);
     }
-    if (phase !== "brace" && phase !== "report") setCinematic(null);
+    // The killing blow is the one volley nobody ever saw. Going straight from
+    // "submitted" to "over" put the recap over the board while the shot was
+    // still in the air, the flagship was breaking and the dice were scattering
+    // — all of it already built, all of it behind a wall of text. The recap
+    // waits; the victory effect below clears this when the dust settles. The
+    // long timer is a backstop only, in case that effect never runs.
+    // Any live phase can be the last one: locked in when the volley lands,
+    // still choosing blockers when it turns out nothing saves you, or reading
+    // the report when the other flagship goes. Only a fresh load of an
+    // already-finished match should skip straight to the recap, and that is
+    // the `previous === "over"` case.
+    if (previous !== "over" && phase === "over") {
+      setCinematic("finish");
+      const timer = window.setTimeout(() => setCinematic(null), FINISH_HOLD_MAX_MS);
+      return () => window.clearTimeout(timer);
+    }
+    if (phase !== "brace" && phase !== "report" && phase !== "over") setCinematic(null);
   }, [phase]);
 
   /* The volley — play it once per round, when the report appears ------ */
@@ -427,25 +466,44 @@ export function MatchScreen({ controller, onExit, title, subtitle }: Props) {
   useEffect(() => {
     if (state?.status !== "finished" || finishedRef.current) return;
     finishedRef.current = true;
-    if (state.cancelledBy) return;
+    // A cancelled room has no volley to watch, so nothing should be held back.
+    if (state.cancelledBy) {
+      setCinematic(null);
+      return;
+    }
     const arena = arenaRef.current;
     const won = state.winner === controller.side;
-    audio.play(won ? "victory" : "defeat");
-    if (arena) {
-      const loser = won ? "enemy" : "you";
-      // The default "over" framing is a wide establishing shot of both decks
-      // — fine for reading the result, wrong for watching a flagship break.
-      // Hold on the loser's own deck for the break, then widen once the
-      // dust has settled (~1.5s, per vfx.flagshipBreak's own timing).
-      arena.setFocus(loser === "you" ? "fleet" : "enemy", true);
-      void arena.vfx
-        .flagshipBreak(arena.flagshipWorld(loser), () => arena.scatterDice(loser))
-        .then(() => {
-          arena.setFocus("wide");
-        });
-      arena.stage.shake(1.3);
-      arena.stage.flash(won ? 0x45e08b : 0xff4d4d, 0.6);
+    if (!arena) {
+      // No 3D to wait for — show the result rather than holding an empty board.
+      audio.play(won ? "victory" : "defeat");
+      setCinematic(null);
+      return;
     }
+    const loser = won ? "enemy" : "you";
+    // The last volley is already in the air when this runs: the round's own
+    // effect fires on the same commit. Let it arrive before the flagship goes,
+    // or the break happens underneath its own incoming shot.
+    const timers = [
+      window.setTimeout(() => {
+        audio.play(won ? "victory" : "defeat");
+        // The default "over" framing is a wide establishing shot of both decks
+        // — fine for reading the result, wrong for watching a flagship break.
+        // Hold on the loser's own deck for the break, then widen once the
+        // dust has settled (~1.5s, per vfx.flagshipBreak's own timing).
+        arena.setFocus(loser === "you" ? "fleet" : "enemy", true);
+        arena.stage.shake(1.3);
+        arena.stage.flash(won ? 0x45e08b : 0xff4d4d, 0.6);
+        void arena.vfx
+          .flagshipBreak(arena.flagshipWorld(loser), () => arena.scatterDice(loser), FINISH_BREAK_STRETCH)
+          .then(() => {
+            arena.setFocus("wide");
+            // A beat on the wide shot with the wreckage still drifting, then
+            // the recap.
+            timers.push(window.setTimeout(() => setCinematic(null), FINISH_SETTLE_MS));
+          });
+      }, FINISH_VOLLEY_MS),
+    ];
+    return () => timers.forEach((timer) => window.clearTimeout(timer));
   }, [state?.status, state?.winner, state?.cancelledBy, controller.side]);
 
   /* --------------------------------------------------------------- */
@@ -520,7 +578,13 @@ export function MatchScreen({ controller, onExit, title, subtitle }: Props) {
 
   const enemyName = them?.name ?? "Enemy";
   const rollsLeft = TUNING.rollsPerRound - you.rolls;
-  const rerollCost = you.rolls >= TUNING.rollsPerRound ? selected.size : 0;
+  // Total rolls left, paid ones included — the engine refuses a roll past this,
+  // so the button has to know about it or it offers a move that throws.
+  const rollsRemaining = engineRollsLeft(you);
+  // 0 while the free rolls last, then 1, 2, 3 — so the button can say which
+  // paid reroll this is rather than just "Reroll".
+  const paidNumber = paidRollNumber(you);
+  const rerollCost = rollCostFor(you, selected.size);
 
   return (
     <>
@@ -666,6 +730,8 @@ export function MatchScreen({ controller, onExit, title, subtitle }: Props) {
               hint={hint}
               selected={selected}
               rollsLeft={rollsLeft}
+              rollsRemaining={rollsRemaining}
+              paidNumber={paidNumber}
               rerollCost={rerollCost}
               waiting={waitingOnEnemy}
               waitingName={enemyName}
@@ -842,6 +908,8 @@ function RollDock({
   hint,
   selected,
   rollsLeft,
+  rollsRemaining,
+  paidNumber,
   rerollCost,
   waiting,
   waitingName,
@@ -859,6 +927,8 @@ function RollDock({
   hint: ReturnType<typeof rollHint>;
   selected: Set<string>;
   rollsLeft: number;
+  rollsRemaining: number;
+  paidNumber: number;
   rerollCost: number;
   waiting: boolean;
   waitingName?: string;
@@ -877,6 +947,8 @@ function RollDock({
   const prizes = run ? straightPrizeTakes(run) : [];
   const chosenTake = you.straightTake ?? (prizes.length ? prizes[prizes.length - 1]! : 0);
   const canAffordReroll = rerollCost === 0 || you.energy >= rerollCost;
+  const outOfRolls = rollsRemaining <= 0;
+  const canReroll = canAffordReroll && !outOfRolls;
 
   return (
     <div className="roll-dock panel panel-you relative flex flex-col gap-2.5 p-3.5">
@@ -967,22 +1039,42 @@ function RollDock({
                 size="lg"
                 full
                 onClick={onReroll}
-                disabled={busy || !canAffordReroll}
-                className={`reroll-action ${rerollCost && !canAffordReroll ? "reroll-unaffordable" : ""}`}
+                disabled={busy || !canReroll}
+                className={`reroll-action ${!canReroll ? "reroll-unaffordable" : ""}`}
                 ariaLabel={
-                  rerollCost
-                    ? canAffordReroll
-                      ? `Reroll ${selected.size} dice for ${rerollCost} Energy`
-                      : `Reroll unavailable. Need ${rerollCost} Energy`
-                    : `Reroll ${selected.size} dice for free`
+                  outOfRolls
+                    ? "No rerolls left this round. Lock in your decision."
+                    : paidNumber > 0
+                      ? canAffordReroll
+                        ? `Energy reroll ${paidNumber} of ${TUNING.paidRollsPerRound}. ` +
+                          `${selected.size} dice for ${rerollCost} Energy`
+                        : `Energy reroll unavailable. Need ${rerollCost} Energy`
+                      : `Free reroll. ${selected.size} dice`
                 }
               >
-                <span>Reroll {selected.size}</span>
-                {rerollCost ? (
-                  <span className="reroll-cost">
-                    {canAffordReroll ? "Cost" : "Need"}
+                {/* A paid reroll says which of the three it is, because that is
+                    the thing a player is deciding about. The count of dice is
+                    already in the price beside it — a reroll costs one Energy
+                    per die — so printing both said the same number twice. */}
+                <span className="reroll-label">
+                  {paidNumber > 0 ? (
+                    <>
+                      Energy reroll
+                      <span className="reroll-of">
+                        {paidNumber} of {TUNING.paidRollsPerRound}
+                      </span>
+                    </>
+                  ) : (
+                    <>Reroll {selected.size}</>
+                  )}
+                </span>
+                {outOfRolls ? (
+                  <span className="reroll-cost">No rerolls left</span>
+                ) : paidNumber > 0 ? (
+                  <span className={`reroll-cost ${canAffordReroll ? "" : "reroll-cost-short"}`}>
+                    {!canAffordReroll && "Need "}
                     <EnergyBolt />
-                    {rerollCost} Energy
+                    {rerollCost}
                   </span>
                 ) : rollsLeft > 0 ? (
                   <span className="reroll-free">Free</span>
@@ -1221,22 +1313,33 @@ function RevealBanner({
   them,
   onSkip,
 }: {
-  kind: "reveal" | "volley";
+  kind: "reveal" | "volley" | "finish";
   you: PlayerState;
   them: PlayerState | null;
   onSkip(): void;
 }) {
   const incoming = you.incoming + you.directIncoming;
   const outgoing = (you.tally?.attack ?? 0) + (you.tally?.direct ?? 0);
+  const eyebrow =
+    kind === "reveal"
+      ? "Both fleets are showing"
+      : kind === "finish"
+        ? "The final volley"
+        : "Volley away";
 
   return (
     <button type="button" onClick={onSkip} className="block w-full text-left">
       <div className="panel anim-slam flex items-center justify-between gap-4 px-4 py-3">
-        <div>
-          <p className="t-eyebrow">{kind === "reveal" ? "Both fleets are showing" : "Volley away"}</p>
-          <p className="t-display text-xl text-white">
+        <div className="min-w-0">
+          <p className="t-eyebrow">{eyebrow}</p>
+          {/* The finish line stays short on purpose: both totals are about to
+            * be laid out properly in the recap, and at 390px the two-clause
+            * version wrapped and had its second line clipped by the dock. */}
+          <p className="t-display truncate text-xl text-white">
             You fired <span className="c-attack">{outgoing}</span>
-            {them && <span className="c-dim text-base"> · {them.name} fired {incoming}</span>}
+            {kind !== "finish" && them && (
+              <span className="c-dim text-base"> · {them.name} fired {incoming}</span>
+            )}
           </p>
         </div>
         <span className="t-eyebrow shrink-0 text-xs">Tap to skip</span>

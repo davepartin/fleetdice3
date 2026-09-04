@@ -43,9 +43,11 @@ jobs:
       - name: Build the site
         run: pnpm build
         env:
-          # The repo is called fleetdice3, so GitHub Pages serves it from
-          # /fleetdice3/. Every link in the game needs that prefix.
-          BASE_PATH: /fleetdice3
+          # The site has its own domain now, so it is served from the root and
+          # needs no path prefix. `public/CNAME` keeps the domain attached.
+          BASE_PATH: ""
+          # Open Graph has to name an absolute image URL.
+          SITE_URL: https://fleetdice.ministrybag.com
 
       - uses: actions/upload-pages-artifact@v3
         with:

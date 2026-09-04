@@ -253,12 +253,17 @@ export function createBoard(side: BoardSide, font: string): Board {
       }),
     );
     badge.rotation.x = -Math.PI / 2;
+    // The payoff sits just past the end of its rail — close enough to read as
+    // part of the line, not stranded at the rim of the deck. The outermost
+    // cell edge is at 1.5 cells from the middle, so this is a little beyond
+    // that; it used to sit at the very edge of the slab, about a cell and a
+    // half further out, which is what left "+5" hanging off the side of the
+    // board with nothing around it.
+    const badgeOut = CELL * 1.5 + 0.5;
     badge.position.set(
-      // The payoff anchors the far end of its rail, clear of the dice. The
-      // number remains screen-facing while the physical rail stays underneath.
-      row ? DECK_SIZE / 2 - 0.25 : first.x,
+      row ? badgeOut : first.x,
       0.14,
-      row ? first.z : DECK_SIZE / 2 - 0.42,
+      row ? first.z : badgeOut,
     );
     badge.renderOrder = 5;
     formationGroup.add(badge);

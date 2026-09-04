@@ -121,6 +121,19 @@ export type PlayerState = {
   tally: Tally | null;
   incoming: number;
   directIncoming: number;
+  /**
+   * What the other fleet actually rolled at this volley, copied the moment the
+   * volley resolved.
+   *
+   * The round report used to read the opponent's live `tally` when it was
+   * built. That is only safe when both commanders settle together, and they
+   * deliberately do not: a commander with nothing to block settles first and
+   * may walk on to the shipyard, and `prepareRound` clears their tally on the
+   * way. The slower commander's report then described a volley of zeroes —
+   * right hit points, no explanation. Both sides have submitted by the time
+   * `resolveSubmissions` runs, so that is where the copy is taken.
+   */
+  incomingVolley: { tally: Tally; dice: DieValue[] } | null;
   braceShips: string[];
   report: RoundReport | null;
   /** Running totals for the end-of-match battle recap. */
@@ -183,8 +196,20 @@ export const TUNING = {
   startSlots: 4,
   /** Energy in the bank at the start. */
   startEnergy: 0,
-  /** Free rolls a round; after that 1 Energy per die. */
+  /** Free rolls a round. */
   rollsPerRound: 3,
+  /**
+   * Paid rerolls a round, after the free ones. Each still costs 1 Energy per
+   * die sent back; this caps how many times you may do it, not the price.
+   *
+   * The cap is the load-bearing part. With no cap, a paid reroll never gets
+   * dearer, so a big bank buys an unbounded number of them and the round turns
+   * into a hunt: a board of d4s chasing 2s pays 2 Direct each, which no Shield
+   * and no block can stop. Measured, an Expert handed +60 Energy went from an
+   * even match to winning 59% purely on rerolls. Capping the count fixes that
+   * without touching a price players already know. See BALANCE.md.
+   */
+  paidRollsPerRound: 3,
   /** Ship prices, by measured value rather than by size. */
   prices: { 4: 4, 6: 6, 8: 9, 10: 13 } as Record<DieSize, number>,
   /**
@@ -365,8 +390,54 @@ export function makeRng(seed: number): Rng {
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
 }
+/**
+ * What the next reroll costs this player, for `dieCount` dice.
+ *
+ * Zero while free rolls remain. Never hardcode this anywhere else: the help
+ * screen, the AI's budgeting and the simulations all have to agree with the
+ * rule the match actually enforces.
+ */
+export function rollCostFor(player: { rolls: number }, dieCount: number): number {
+  if (player.rolls < TUNING.rollsPerRound) return 0;
+  return dieCount;
+}
+
+/** Rolls of any kind still allowed this round, free ones included. */
+export function rollsLeft(player: { rolls: number }): number {
+  return Math.max(0, TUNING.rollsPerRound + TUNING.paidRollsPerRound - player.rolls);
+}
+
+/**
+ * Which paid reroll the next one would be, counting from 1, or 0 while the free
+ * rolls last. The screen says "Energy reroll 2 of 3" from this, so the count
+ * comes from `TUNING` rather than a number typed into a button.
+ */
+export function paidRollNumber(player: { rolls: number }): number {
+  if (player.rolls < TUNING.rollsPerRound) return 0;
+  return Math.min(TUNING.paidRollsPerRound, player.rolls - TUNING.rollsPerRound + 1);
+}
+
+/** Paid rerolls still allowed this round. */
+export function paidRollsLeft(player: { rolls: number }): number {
+  if (player.rolls < TUNING.rollsPerRound) return TUNING.paidRollsPerRound;
+  return rollsLeft(player);
+}
+
 export function roll(sides: number): number {
   return Math.floor(RNG() * sides) + 1;
+}
+
+/**
+ * A raw random number in [0, 1), from the same seeded source as the dice.
+ *
+ * Anything outside the engine that needs a coin flip — the opponent brain
+ * deciding to take a worse line, say — must come through here rather than
+ * calling `Math.random()`. Two sources of randomness means a seeded
+ * simulation is only half seeded, and re-running it does not reproduce it.
+ * `tests/rng.test.mjs` fails if `lib/ai.ts` reaches for `Math.random` again.
+ */
+export function random(): number {
+  return RNG();
 }
 
 const ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789";
@@ -409,6 +480,7 @@ export function newPlayer(uid: string, name: string, phase: PlayerPhase): Player
     tally: null,
     incoming: 0,
     directIncoming: 0,
+    incomingVolley: null,
     braceShips: [],
     report: null,
     stats: {
@@ -798,6 +870,7 @@ function prepareRound(player: PlayerState) {
   player.dice = [];
   player.straightTake = null;
   player.tally = null;
+  player.incomingVolley = null;
   player.report = null;
 }
 
@@ -823,9 +896,13 @@ function handleRoll(player: PlayerState, chosen: string[]) {
   for (const id of unique) {
     if (!player.dice.some((die) => die.id === id)) throw new Error("That die is not in your fleet.");
   }
-  if (player.rolls >= TUNING.rollsPerRound) {
-    spend(player, unique.length);
-    player.stats.rerollEnergy += unique.length;
+  if (rollsLeft(player) <= 0) {
+    throw new Error("You are out of rerolls this round.");
+  }
+  const cost = rollCostFor(player, unique.length);
+  if (cost > 0) {
+    spend(player, cost);
+    player.stats.rerollEnergy += cost;
   }
 
   for (const die of player.dice) {
@@ -899,6 +976,15 @@ function resolveSubmissions(state: MatchState) {
     }
   }
 
+  for (const [player, enemy] of [
+    [host, guest],
+    [guest, host],
+  ] as const) {
+    // Copy the other fleet's roll now, while both are still on the table.
+    player.incomingVolley = enemy.tally
+      ? { tally: structuredClone(enemy.tally), dice: enemy.dice.map((die) => ({ ...die })) }
+      : null;
+  }
   for (const player of [host, guest]) {
     player.braceShips = [];
     if (player.incoming > 0 && activeShips(player, player.round).length > 0) {
@@ -922,6 +1008,29 @@ function handleBrace(state: MatchState, player: PlayerState, selected: string[])
   finishIfNeeded(state);
 }
 
+/**
+ * What actually lands, once blocking ships have stood in front of what they can.
+ *
+ * Shields have already come off `incoming` in `resolveSubmissions`. Blocking
+ * hulls come off what is left. **Direct is added afterwards and is deliberately
+ * outside all of it** — no Shield reduces it and no ship blocks it.
+ *
+ * That is the whole point of Direct, and it is what gives Repair a job nothing
+ * else can do: Shields answer Attack, ship blocking answers what gets past
+ * Shields, and Repair answers Direct — and nothing else does.
+ *
+ * It was measured both ways. Letting hulls block Direct is *safe* — a commander
+ * who blocks with everything every round still loses, 5.0% against 6.8%,
+ * because a blocked hull stops dealing damage — but it leaves Repair with
+ * nothing of its own. See BALANCE.md.
+ *
+ * One function so the settle and `inescapableDeath` can never disagree about
+ * what a round costs.
+ */
+export function damageAfterBlocking(incoming: number, direct: number, blocked: number): number {
+  return Math.max(0, incoming - blocked) + direct;
+}
+
 function settlePlayer(state: MatchState, player: PlayerState) {
   const before = player.hp;
   let blocked = 0;
@@ -932,7 +1041,7 @@ function settlePlayer(state: MatchState, player: PlayerState) {
     ship.disabledRound = player.round + 1;
     braced.push({ id: ship.id, sides: ship.sides });
   }
-  const damage = Math.max(0, player.incoming - blocked) + player.directIncoming;
+  const damage = damageAfterBlocking(player.incoming, player.directIncoming, blocked);
   const repair = player.tally?.heal ?? 0;
   const after = before - damage + repair;
   if (after > player.maxHp) player.maxHp = after;
@@ -954,7 +1063,10 @@ function settlePlayer(state: MatchState, player: PlayerState) {
     }
   }
 
+  // Deliberately the copy taken at `resolveSubmissions`, never the opponent's
+  // live tally: by now they may have moved on and cleared it.
   const enemy = state.players[player === state.players.host ? "guest" : "host"];
+  const volley = player.incomingVolley ?? (enemy?.tally ? { tally: enemy.tally, dice: enemy.dice } : null);
 
   player.report = {
     round: player.round,
@@ -970,8 +1082,8 @@ function settlePlayer(state: MatchState, player: PlayerState) {
     escalation: escalationFor(player.round),
     tally: player.tally!,
     dice: player.dice.map((die) => ({ ...die })),
-    enemyTally: enemy?.tally ? structuredClone(enemy.tally) : null,
-    enemyDice: enemy?.dice ? enemy.dice.map((die) => ({ ...die })) : [],
+    enemyTally: volley ? structuredClone(volley.tally) : null,
+    enemyDice: volley ? volley.dice.map((die) => ({ ...die })) : [],
   };
   player.phase = "report";
 }
@@ -980,7 +1092,7 @@ function settlePlayer(state: MatchState, player: PlayerState) {
 function inescapableDeath(player: PlayerState): boolean {
   if (player.phase !== "brace") return false;
   const maxBlock = activeShips(player, player.round).reduce((sum, ship) => sum + ship.sides, 0);
-  const damage = Math.max(0, player.incoming - maxBlock) + player.directIncoming;
+  const damage = damageAfterBlocking(player.incoming, player.directIncoming, maxBlock);
   const repair = player.tally?.heal ?? 0;
   return player.hp - damage + repair <= 0;
 }

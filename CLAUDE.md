@@ -8,24 +8,65 @@ The owner is not a developer. He thinks in how the game feels. Prefer plain
 words, and prefer showing him something he can open on a phone over explaining
 an approach.
 
+## Where it lives
+
+<https://fleetdice.ministrybag.com> — its own subdomain on the owner's domain,
+published by `.github/workflows/deploy.yml` on every push to `main`. There is
+**one copy of the game**, in this repo, and nothing is copied anywhere else.
+
+| address | what it is |
+| --- | --- |
+| `fleetdice.ministrybag.com` | the game |
+| `ministrybag.com/fleetdice` | a redirect, four small files in `davepartin/ministrybag1` |
+| `davepartin.github.io/fleetdice3/` | GitHub's own redirect to the custom domain |
+
+**`public/CNAME` is load-bearing.** It carries the domain into the build
+artifact; without it in the build, Pages drops the custom domain on the next
+deploy, the site moves back to `davepartin.github.io/fleetdice3/`, and every
+asset path breaks because `basePath` is empty.
+
+It briefly worked another way — the whole built site committed into a
+`fleetdice/` folder in the ministry repo, kept in step by a `publish:ministrybag`
+script. That meant two copies of one website to keep in step and about 5MB added
+to that repo's history on every deploy. **Do not put a copy back there**; the
+subdomain exists so there does not have to be one.
+
+`SITE_URL` is a build-time variable because Open Graph has to name an absolute
+image URL. The workflow sets `https://fleetdice.ministrybag.com`.
+
 ## Running it
 
 ```bash
 pnpm dev                 # localhost:3000, live reload — use this, not a build
-pnpm test                # 70 rule tests, ~2s
+pnpm test                # 111 tests, ~2s
 pnpm build               # static export to out/ (what GitHub Pages serves)
 pnpm lint
 ```
 
-Versus needs Firebase. Never test it against the real project — that puts junk
-rooms in front of real players:
+Versus needs Firebase. Prefer the emulator — testing against the real project
+puts junk rooms on the live board. (A real two-device match *was* played on
+1 September, deliberately and once, to close the last unknown; the room cleaned
+itself up on the win.)
 
 ```bash
-pnpm emulators           # local firestore + auth
+firebase emulators:start --only firestore,auth --project space-tribes
 pnpm build:emulator      # a build pointed at them
-pnpm serve
+pnpm serve               # the static build on :4321
 pnpm test:versus         # two browser clients, connection pulled mid-match
+node sim/versus-flow-emulator.mjs   # one plays on while the other sits still
 ```
+
+This needs a Java runtime and the Firebase CLI, neither of which ships with
+macOS. Installed on the owner's Mac as `~/.local/opt/jdk-21.*` (a plain Temurin
+tarball, no Homebrew, no sudo — delete the folder to remove it) and
+`firebase-tools` globally via npm. Export the JDK before starting:
+`export PATH="$HOME/.local/opt/jdk-21.0.12.1+1/Contents/Home/bin:$PATH"`.
+
+Use `firebase emulators:start` directly rather than `pnpm emulators`: the pnpm
+script runs a dependency check that fails on an unbuilt native module in
+`firebase-tools`. And `pnpm build:emulator` overwrites `out/` with a build
+pointed at 127.0.0.1 — run `pnpm build` afterwards so the deployable build is
+not left pointing at a local emulator.
 
 Balance and AI:
 
@@ -34,6 +75,9 @@ node sim/sweep.mjs difficulty 1500       # the tier ladder
 node sim/difficulty-source.mjs 1200      # WHY a tier is strong, knob by knob
 node sim/swarm-vs-ai.mjs 300 expert      # a strategy against the game's best
 node sim/straights.mjs 200               # what tiers build when left alone
+node sim/d10.mjs 150                     # what each tier buys, and with what
+node sim/d10-policy.mjs 800 low          # is a hull step worth its Energy
+node sim/lab.mjs hulls 800               # which hull goes in the cell you opened
 ```
 
 ## House rules
@@ -70,6 +114,13 @@ the shape the game uses for it.
 
 ## Verifying work
 
+**`pnpm build` poisons the `pnpm dev` cache.** Running a production build
+while the dev server is up leaves Turbopack serving stale CSS from `.next` —
+edits to `app/globals.css` simply do not appear, and restarting the dev server
+does not clear it. The fix is `rm -rf .next` and restart. This cost several
+rounds of debugging a change that was already correct in the file: the source
+said one thing, `getComputedStyle` said another, and neither was lying.
+
 **Measure; do not eyeball a screenshot.** Use real DOM numbers — `scrollWidth`
 vs `clientWidth`, bounding boxes. Several bugs this session were invisible in a
 screenshot and obvious in a measurement, and at least one was "fixed" twice
@@ -80,8 +131,16 @@ because a screenshot looked plausible.
 animation is running.
 
 **Playwright, in this repo:** scripts must sit in the project root to resolve
-modules, and Chromium wants
-`{executablePath:"/opt/pw-browsers/chromium", args:["--use-gl=swiftshader","--enable-webgl","--ignore-gpu-blocklist","--disable-gpu-sandbox"]}`.
+modules. Pass the GL args —
+`{args:["--use-gl=swiftshader","--enable-webgl","--ignore-gpu-blocklist","--disable-gpu-sandbox"]}`
+— but **do not set `executablePath`**: `/opt/pw-browsers/chromium` was a path on
+a previous machine and does not exist on the owner's Mac, where Playwright's own
+bundled Chromium works. `cap-playtest.mjs` is a short worked example: it drives
+solo from the tier picker, follows whatever "next" button each screen offers
+rather than hardcoding the sequence, and reads button state from the DOM.
+Energy is the `N IN THE BANK` readout on the shipyard screen — the `+16` beside
+each flagship is **not** Energy, both sides show it, and misreading it cost this
+session two runs.
 Check 390×844, 390×620 and 360×780 — the dock clips horizontal overflow, so a
 too-wide row disappears silently rather than scrolling.
 
@@ -91,12 +150,62 @@ wrong answer. See `sim/swarm-vs-capital.mjs`, which measures 90% for one side
 and carries a warning pointing at `sim/swarm-vs-ai.mjs`, where the same strategy
 loses. Either file alone misleads.
 
-**`lib/ai.ts` calls `Math.random()` in four places** rather than the engine's
-seeded RNG, so a "seeded" simulation involving any tier below Expert is not
-reproducible. Confidence intervals still mean what they say; identical re-runs
-do not. Worth fixing.
+**One bag of dice, not two.** Every coin flip that decides how a match goes —
+including the ones inside `lib/ai.ts` that make the weaker tiers take a worse
+line on purpose — comes from the engine's seeded RNG via `random()`. Never call
+`Math.random()` in `lib/engine.ts` or `lib/ai.ts`; `tests/rng.test.mjs` fails if
+you do, and also replays a whole match on each tier to prove the seed still
+holds. (Audio, `lib/three/` and room codes are exempt — they do not touch
+rules. So is `engine.ts:353`, the one `Math.random` that *is* the default bag
+when nothing has called `setRng`.) This is what makes a paired A/B possible:
+run the same matches under two values of a `TUNING` number and the luck
+cancels, so a three-point effect is visible where independent runs would bury
+it in ±3.5 points of noise.
 
 ## Settled with numbers — do not re-litigate without new measurements
+
+- **`energyWeight` per tier is the difficulty ladder.** Low 1.45 (the old value,
+  so a beginner's game is unchanged), Medium 2.4, Hard 3.4, Expert 4.2. It is
+  what `nearFormation` prices a row with — `lineAcrossEnergy x weight` against a
+  column's flat `lineDownAttack` — so below 2 the brain chases columns and only
+  columns. Worth 74.3% against the old brain, and it widened every rung:
+  Medium/Low 72.0%, Hard/Medium 63.4%, Expert/Hard 58.4%. The curve peaks near
+  four and falls away by fifteen. BALANCE.md's old guess that it should be
+  *lower* is measured wrong.
+- **Making the brain save up for a bay is worth nothing.** Six paired runs, all
+  ~50%. It buys more bays and ends with more ships and wins no more often. The
+  brain was never undervaluing bays — instrumented, it reaches the shipyard with
+  4.4 Energy and simply cannot afford one. Do not rebuild `patience`.
+
+- **Direct is unblockable, and that is what gives Repair a job.** Shields answer
+  Attack, ship blocking answers what gets past Shields, Repair answers Direct —
+  and nothing else does. Letting hulls block Direct measured *safe* (a commander
+  blocking with everything every round still loses, 5.0% vs 6.8%, because a
+  blocked hull stops dealing damage) and was declined anyway, because it leaves
+  Repair with nothing of its own. `settlePlayer` is `before - damage + repair`
+  in one step, so repair can save a flagship the damage alone would destroy,
+  and `inescapableDeath` counts it too. `tests/repair.test.mjs` fails if either
+  moves.
+
+- **Versus never holds a commander up except at the volley.** Freezing one side
+  and racing the other reaches `block -> report -> shop -> roll -> locked in`
+  in 796 of 796 situations, a full round ahead — the theoretical maximum, since
+  round 3 cannot precede round 2's volley. Confirmed through the real network
+  and UI by `sim/versus-flow-emulator.mjs` (6/6). Guarded by
+  `tests/versus-flow.test.mjs`, which fails if any control is disabled on the
+  other commander's phase; `waitingOnEnemy` may only mean "you locked in and
+  they have not".
+
+- **Paid rerolls are capped at three a round** (`paidRollsPerRound`), each still
+  1 Energy per die. The old rule never got dearer, so a bank bought rounds: an
+  Expert handed +60⚡ went from an even match to 57.2%. Capping the count fixes
+  it (47.1% ±3.5 at +60⚡) and leaves the ordinary game exactly where it was
+  (50.0%, same 5.1⚡ a match). Raising the *price* instead measured worse — a
+  flat price makes the wide reroll cheaper, which is the reroll being abused.
+  Two is no better than three and costs a choice.
+- **A blocking ship absorbs damage equal to its die size** (`blocked +=
+  ship.sides`), so a d10 blocks 10 and a d4 blocks 4. Direct damage is added
+  *after* blocking and cannot be blocked at all.
 
 - **Expert reads the other fleet and carries +10 starting health.** The read
   alone did not carry the tier: 47.8% ±4.0 against Hard through Energy and
@@ -117,7 +226,12 @@ do not. Worth fixing.
 
 ## Open, unmeasured
 
-- **d10 looks mispriced.** Expert ends ~56% d6 and ~6% d10; the *worst* tier
-  ends ~39% d10. Buying the biggest hull is what weak play looks like.
+- **The d10 is fairly priced; the tier pattern is a spending pattern.** No AI
+  has ever bought a d10 fresh (0 in 960 commanders), so `prices[10]` only bites
+  as the d8 step, `13 - 9 = 4`. Taking that step wins 52–54% on all four tiers,
+  and for a person a cell + d10 beats a cell + d4 + the change 56.0% ±3.4. Weak
+  tiers hold d10s because they spend 30.6⚡ on the upgrade ladder against
+  Expert's 16.7 and less on cells — the d10 is where a surplus spent climbing
+  ends up. Changing `prices[10]` moves the shop price and the step together.
 - **Straights barely happen** — 1.76 per match at Expert level, needing five
   consecutive numbers from a ~5-dice fleet, for a prominent chunk of How to Play.

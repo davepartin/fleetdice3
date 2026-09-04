@@ -1,8 +1,9 @@
 # Where this stopped, and what is left
 
-Written at the end of the first build session and updated after the first live
-solo-polish pass. If you hand this project to an assistant again, give it this
-file and `README.md` first.
+Updated 2 September 2026, after two sessions of playing the game on a phone and
+fixing what that turned up. If you hand this project to an assistant again, give
+it `CLAUDE.md` and `HANDOFF.md` first; this file is the running list of what is
+loose.
 
 ---
 
@@ -11,42 +12,47 @@ file and `README.md` first.
 - **Solo plays start to finish.** Shipyard, roll, reroll, straights, formations,
   bracing, the round report, victory and defeat. Verified by a script that
   plays the real game in a real browser and screenshots every screen.
-- **The rules are tested.** 17 tests, including "every ledger row sums to its
-  total" checked on every round of a real match, and "a match always ends".
+- **The rules are tested.** 111 tests, including "every ledger row sums to its
+  total" checked on every round of a real match, "a match always ends", the
+  reroll cap, repair landing in the same breath as damage, and a set of guards
+  that fail if a fix regresses.
 - **The numbers are measured.** `sim/` plays thousands of matches. See
   `BALANCE.md`.
 - **The 3D is real.** Actual polyhedra, not pictures of dice — including a
   correctly proportioned pentagonal trapezohedron for the d10.
 - **The help screen cannot go stale.** It is generated from the engine.
 
-## What is written but never tested against a live server
+## Two-player, which used to be the big unknown
 
-**Two-player rooms.** All of `lib/rooms.ts`, the create / join / invite screens
-and the security rules are written, and they are a close port of the Fleet Dice
-2 code that already works. But the machine that built them had no route to
-Firebase, so not one of those code paths has ever spoken to Firestore.
+**It works, and it has been played.** Two browser clients against a local
+Firebase emulator (5/5 and 6/6 on the two harnesses), and then a whole match on
+two real devices against real Firebase — room code, join, shipyard, blocking,
+the flagship token, a straight, and a victory screen.
 
-**This is the first thing to do.** The site is online; deploy the rules, then:
+That test earned its keep immediately: it found a bug no local run could have.
+The round report read the *opponent's* live tally when it was built, and a
+commander who finished blocking first would walk on to the shipyard, which
+clears that tally — so the slower player's report said "0 attack, 0 shields"
+with hit points that were right. It needed one human slower than a machine.
+Fixed, and `tests/versus-flow.test.mjs` fails if it comes back.
 
-1. On your phone, open the site and tap **Play a friend**. You should get four
-   numbers.
-2. On a different device (not another tab on the same phone — that counts as a
-   different person), type those four numbers on the home page.
-3. The host's screen should turn into the battle on its own.
-4. Play a round on both. Both sides must lock in before the volley resolves.
-5. Try starting a second room while the first is still going.
-
-If something breaks, the message on screen is meant to be readable. Send it
-along with which step it happened on.
+Worth keeping in mind when testing it: two tabs on one machine, driven by the
+same script at the same speed, will not find that class of bug.
 
 ---
 
 ## Known rough edges
 
-- **Victory and defeat are quiet.** The result card appears and the losing
-  flagship breaks, but it does not feel like the end of a battle yet.
 - **Sound has never been heard.** Every cue is generated in the browser and none
-  of it has been listened to by a human. Levels and pitches are guesses.
+  of it has been listened to by a human. Levels and pitches are guesses. This is
+  now the largest untested thing in the project.
+- **The hero dice are still mostly behind the buttons.** They were lifted 40px
+  and it helped, but the gap between the key art and the first card is only
+  about 50px tall on a 390×844 screen, and the cluster is taller than that.
+  `HERO_LIFT` in `components/HeroStage.tsx` moves them; one world unit is 22px.
+- **Audio, victory and defeat used to share this bullet.** Victory and defeat
+  are done: the flagship breaks, the dice scatter, the camera pushes in, and the
+  recap waits ~5.9 seconds before it slides up.
 - **The straight tier chooser only appears when the run is longer than five.**
   That is correct, but it means most players will never see it, and may not know
   it exists.
@@ -59,9 +65,15 @@ along with which step it happened on.
 
 ## Balance questions still open
 
-- **The Enemy still under-buys cells on most plans.** Capital still opens about
-  0.1 a match. Formation opens about 1.7. A person who wants the corner lines
-  will open more than Capital ever will.
+*Several of the entries below are superseded — `BALANCE.md` is the authority and
+has the measurements. Kept here because the reasoning is still worth reading.*
+
+- **The Enemy under-buys bays, and it is not what it looks like.** *Measured
+  and settled.* The brain reaches the shipyard with 4.4 Energy, can afford a bay
+  on 20% of visits, and buys one two thirds of the time it can. It was never
+  undervaluing bays; it could not save for one. A `patience` knob that let it
+  save works exactly as designed and is worth nothing — six paired runs, all
+  about 50%. Do not rebuild it. See `BALANCE.md`.
 - **The Enemy now hunts live lines.** It spots a row or column that is one face
   away, spends spare Energy sending the odd die back, and parks a new hull on
   the bay that already has ships on its line. Formation and Wolfpack shop for
@@ -69,8 +81,12 @@ along with which step it happened on.
   Measured at Medium, Formation, 80 matches: a column paid in 11% of rounds,
   and 72% of commanders saw at least one. The roll screen now also tells *you*
   when you are one face away, using the same prize the engine pays.
-- **Difficulty is now Low / Medium / Hard / Expert.** Most people only need
-  those four words. Expert is not a cheater: same dice, same prizes, no peeking.
+- **Difficulty is Low / Medium / Hard / Expert**, and the rungs are real now.
+  *Superseded:* the ladder is `energyWeight` per tier — how highly a tier values
+  Energy when choosing dice, which is also what `nearFormation` prices a row
+  with. Medium over Low 72.0%, Hard over Medium 63.4%, Expert over Hard 58.4%.
+  Low is deliberately unchanged so a first game plays as it always did. The
+  older paragraph below describes the previous scheme. Expert is not a cheater: same dice, same prizes, no peeking.
   It thinks as well as Hard, then starts with a tougher flagship (more health
   and a little Energy) that you can see on the bar. Extra health without a
   brain still dies in a long fight, so the two are stacked. Blocking looks at
@@ -79,8 +95,10 @@ along with which step it happened on.
   seven times in ten. Hard beat Low about three times in four. Medium and
   Hard are close when they start with the same flagship — that is why Expert
   gets the extra health.
-- **Straights are now a mid-game reward.** At four cells they fire in about 10%
-  of rounds, rising as you buy cells, because a straight needs five different
+- **Straights.** *Partly answered.* They were rare partly because nothing was
+  hunting them: Expert now lands 2.82 a commander against 1.75 before. The How
+  to Play chart may now be about the right size rather than oversized. At four
+  cells they fire in about 10% of rounds, rising as you buy cells, because a straight needs five different
   numbers and four ships plus a flagship is exactly five dice. That feels right
   on paper — a run should get easier as your fleet grows — but it has not been
   played.
@@ -91,11 +109,13 @@ along with which step it happened on.
   an opponent whose shopping logic was broken, and drew a confident conclusion
   from it. If a finding surprises you, check what produced it before you act.
 
-## The three things to do next, in order
+## What to do next
 
-1. **Test two-player for real.** The game is online, but the Firestore rules
-   still need the guarded deployment described in `FIREBASE.md` first.
-2. **Play four or five matches yourself and write down what felt off.** Not what
-   looked wrong — what *felt* wrong. That list is worth more than any amount of
-   polish chosen from a screenshot.
-3. **Then polish**, in whatever order that list says.
+1. **Play, and write down what felt off.** Not what looked wrong — what *felt*
+   wrong. Every good change in the last two sessions came from exactly that: the
+   reroll cap, the enemy formation rails, the round report bug, the difficulty
+   ladder, the reroll button. None came from reading code.
+2. **Listen to the audio.** It is the last part of this game no human has ever
+   experienced, and it is entirely guesses.
+3. **`lib/ai.ts` if you want more difficulty.** `sim/ladder.mjs` measures every
+   rung in one command, and `sim/weights.mjs` sweeps the knob that moved them.
