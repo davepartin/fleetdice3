@@ -174,6 +174,7 @@ test("the coach is a minimize/maximize overlay, not a card that relocates itself
   assert.match(coach, /setMaximized\(true\)/, "a fresh step must open maximized so the tip gets read");
   assert.match(coach, /setMaximized\(false\)/, "there must be an explicit way to minimize");
   assert.match(coach, /tutorial-coach-bar/, "the minimized state renders as its own slim bar");
+  assert.match(coach, /tutorial-coach-bar-error/, "a refused tap must still be readable when the tip is tucked away");
   assert.match(coach, /Minimize/, "the maximize->minimize control must be labeled, not just an icon");
   assert.match(coach, /Show tip/, "the minimize->maximize control must be labeled, not just an icon");
 
@@ -265,6 +266,14 @@ test("the blocking lesson refuses an empty confirm, and the yard asks for a d4",
     tutorialActionAllowed(buy.allow, { type: "shop", operation: "buy", sides: 4, slotIndex: 0 }),
     true,
   );
+});
+
+test("the column tip does not name its Next button Lock in", () => {
+  // The dock's own button is "Lock in". If the coach uses the same words,
+  // a player taps the glowing dock control and the gate refuses them.
+  const col = TUTORIAL_STEPS.find((step) => step.id === "col_done");
+  assert.notEqual(col.nextLabel, "Lock in");
+  assert.match(col.nextLabel, /volley/i);
 });
 
 test("a commander who follows the coach finishes the flight", () => {

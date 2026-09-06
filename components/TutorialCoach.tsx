@@ -176,7 +176,11 @@ export function TutorialCoach({
         >
           <span className="tutorial-coach-bar-text">
             <span className="tutorial-coach-bar-title">{step.title}</span>
-            {hint && <span className="tutorial-coach-bar-hint">↓ {hint}</span>}
+            {error ? (
+              <span className="tutorial-coach-bar-hint tutorial-coach-bar-error">{error}</span>
+            ) : (
+              hint && <span className="tutorial-coach-bar-hint">↓ {hint}</span>
+            )}
           </span>
           <span className="tutorial-coach-bar-cta">Show tip</span>
         </button>

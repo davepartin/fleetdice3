@@ -261,7 +261,7 @@ export const TUTORIAL_STEPS: TutorialStep[] = [
     eyebrow: "Formation",
     title: `Three down — +${TUNING.lineDownAttack} Attack`,
     body: `We lined the middle column on 2s for you after that throw. Three matching down pays ${TUNING.lineDownAttack} Attack — a real bite out of their flagship. Rows pay money; columns pay damage.`,
-    nextLabel: "Lock in",
+    nextLabel: "Lock this volley in",
     allow: { coachNext: true },
     script: {
       kind: "board",
