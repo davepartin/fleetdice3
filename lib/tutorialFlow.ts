@@ -344,60 +344,60 @@ export function walkFirstFlight(): { stepId: TutorialStepId; match: MatchState }
   const match = startTutorialMatch();
   let stepId: TutorialStepId = "intro";
 
-  const coach = () => {
+  const coach = (): TutorialStepId => {
     const next = applyTutorialCoachNext(match, stepId);
     if (next === null || next === "finished") {
       throw new Error(`coach next stuck on ${stepId}`);
     }
-    stepId = next;
+    return next;
   };
 
-  const act = (action: MatchAction) => {
+  const act = (action: MatchAction): TutorialStepId => {
     const result = applyTutorialAction(match, stepId, action);
     if (!result.ok) throw new Error(`${stepId}: ${result.error}`);
-    stepId = result.stepId;
+    return result.stepId;
   };
 
-  coach(); // faces
-  coach(); // marks
-  coach(); // roll1
-  act({ type: "roll", dice: [] }); // tour_hp
-  coach(); // tour_board
-  coach(); // read1
-  coach(); // reroll1
+  stepId = coach(); // faces
+  stepId = coach(); // marks
+  stepId = coach(); // roll1
+  stepId = act({ type: "roll", dice: [] }); // tour_hp
+  stepId = coach(); // tour_board
+  stepId = coach(); // read1
+  stepId = coach(); // reroll1
   const reroll = match.players.host.dice.find((die) => !die.flag) ?? match.players.host.dice[0];
   if (!reroll) throw new Error("reroll1: no die to send back");
-  act({ type: "roll", dice: [reroll.id] }); // row_done
-  coach(); // lock1
-  act({ type: "submit" }); // report1
-  act({ type: "continue" }); // shop_intro
-  coach(); // shop_slot
+  stepId = act({ type: "roll", dice: [reroll.id] }); // row_done
+  stepId = coach(); // lock1
+  stepId = act({ type: "submit" }); // report1
+  stepId = act({ type: "continue" }); // shop_intro
+  stepId = coach(); // shop_slot
   const locked = match.players.host.open.findIndex((open) => !open);
   if (locked < 0) throw new Error("shop_slot: no locked bay");
-  act({ type: "shop", operation: "slot", slotIndex: locked }); // shop_buy
-  act({ type: "shop", operation: "buy", sides: 4, slotIndex: locked }); // shop_upgrade
+  stepId = act({ type: "shop", operation: "slot", slotIndex: locked }); // shop_buy
+  stepId = act({ type: "shop", operation: "buy", sides: 4, slotIndex: locked }); // shop_upgrade
   const d4 = match.players.host.ships.find((ship) => ship.sides === 4);
   if (!d4) throw new Error("shop_upgrade: no d4");
-  act({ type: "shop", operation: "upgrade", shipId: d4.id }); // shop_done
-  act({ type: "ready" }); // roll2
-  act({ type: "roll", dice: [] }); // col_done
-  coach(); // lock2
-  act({ type: "submit" }); // brace_teach
+  stepId = act({ type: "shop", operation: "upgrade", shipId: d4.id }); // shop_done
+  stepId = act({ type: "ready" }); // roll2
+  stepId = act({ type: "roll", dice: [] }); // col_done
+  stepId = coach(); // lock2
+  stepId = act({ type: "submit" }); // brace_teach
   if (match.players.host.phase !== "brace") {
     throw new Error(`lock2 should teach blocking, phase is ${match.players.host.phase}`);
   }
   const blocker = match.players.host.ships[0];
   if (!blocker) throw new Error("brace_teach: no ship");
-  act({ type: "brace", ships: [blocker.id] }); // report2
-  act({ type: "continue" }); // shop_leave
+  stepId = act({ type: "brace", ships: [blocker.id] }); // report2
+  stepId = act({ type: "continue" }); // shop_leave
   if (stepId !== "shop_leave") {
     throw new Error(`report2 should open the yard, landed on ${stepId}`);
   }
-  act({ type: "ready" }); // roll3
-  act({ type: "roll", dice: [] }); // token_teach
-  act({ type: "flag-token", direction: 1 }); // straight_done
-  coach(); // lock3
-  act({ type: "submit" }); // finale
+  stepId = act({ type: "ready" }); // roll3
+  stepId = act({ type: "roll", dice: [] }); // token_teach
+  stepId = act({ type: "flag-token", direction: 1 }); // straight_done
+  stepId = coach(); // lock3
+  stepId = act({ type: "submit" }); // finale
 
   return { stepId, match };
 }
