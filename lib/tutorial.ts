@@ -6,7 +6,7 @@
  * rule once. Copy lives here; the controller in useTutorialMatch drives it.
  */
 
-import { TUNING } from "./engine";
+import { TUNING, attackOf, defenseOf, energyOf, repairOf, directOf, upgradeTarget } from "./engine";
 
 export type TutorialStepId =
   | "intro"
@@ -30,6 +30,7 @@ export type TutorialStepId =
   | "lock2"
   | "brace_teach"
   | "report2"
+  | "shop_leave"
   | "roll3"
   | "token_teach"
   | "straight_done"
@@ -125,7 +126,7 @@ export const TUTORIAL_STEPS: TutorialStep[] = [
     id: "faces",
     eyebrow: "The faces",
     title: "Even attacks. Odd shields.",
-    body: `Every number on every ship does two jobs. Evens roll Attack — they hurt the enemy flagship. Odds roll Shields — they cancel Attack before it lands. The number itself is the amount: a 6 rolls 6 Attack, a 5 rolls 5 Shields.`,
+    body: `Every number on every ship does two jobs. Evens roll Attack — they hurt the enemy flagship. Odds roll Shields — they cancel Attack before it lands. The number itself is the amount: a 6 rolls ${attackOf(6)} Attack, a 5 rolls ${defenseOf(5)} Shields.`,
     nextLabel: "What about the marks?",
     allow: { coachNext: true },
   },
@@ -133,15 +134,15 @@ export const TUTORIAL_STEPS: TutorialStep[] = [
     id: "marks",
     eyebrow: "The marks",
     title: "1 Energy · 2 Direct · 3 Repair",
-    body: `Some faces also pay a mark under the number. The lightning bolt is Energy — a 1 pays 2. The chevron is Direct, damage no Shield and no block can stop — a 2 fires 2. The plus is Repair — a 3 repairs 3. Energy is the purse for the shipyard and for extra rerolls.`,
+    body: `Some faces also pay a mark under the number. The lightning bolt is Energy — a 1 pays ${energyOf(1)}. The chevron is Direct, damage no Shield and no block can stop — a 2 fires ${directOf(2)}. The plus is Repair — a 3 repairs ${repairOf(3)}. Energy is the purse for the shipyard and for extra rerolls.`,
     nextLabel: "Show me my fleet",
     allow: { coachNext: true },
   },
   {
     id: "roll1",
     eyebrow: "Round 1",
-    title: "Tap Roll fleet",
-    body: "Your four d4s sit around the flagship. The first throw is free — send the whole fleet.",
+    title: "Tap Roll Fleet",
+    body: `Your ${TUNING.startSlots} d4s sit around the flagship. The first throw is free — send the whole fleet.`,
     allow: { rollAll: true },
   },
   {
@@ -237,15 +238,15 @@ export const TUTORIAL_STEPS: TutorialStep[] = [
   {
     id: "shop_upgrade",
     eyebrow: "Upgrade",
-    title: "Tap a d4, upgrade it toward a d6",
-    body: "Bigger hulls roll more Attack and can show higher faces — but they match threes less often. A d6 is the bridge: still useful for lines, better for straights. Bigger ships also block more damage when you send them in.",
+    title: `Tap a d4, upgrade it toward a d${upgradeTarget(4) ?? 6}`,
+    body: `Bigger hulls roll more Attack and can show higher faces — but they match threes less often. A d${upgradeTarget(4) ?? 6} is the bridge: still useful for lines, better for straights. Bigger ships also block more damage when you send them in.`,
     allow: { shopUpgrade: true },
   },
   {
     id: "shop_done",
     eyebrow: "Shipyard",
-    title: "Tap Leave shipyard",
-    body: "You can always spend nothing and leave. Round one skipped the yard because you started at 0 Energy — from now on it opens between every volley.",
+    title: "Tap Return to battle",
+    body: "You can always spend nothing and leave. The yard opens after every volley — keep a little Energy if you want extra rerolls later.",
     allow: { ready: true },
   },
   {
@@ -260,7 +261,7 @@ export const TUTORIAL_STEPS: TutorialStep[] = [
     eyebrow: "Formation",
     title: `Three down — +${TUNING.lineDownAttack} Attack`,
     body: `We lined the middle column on 2s for you after that throw. Three matching down pays ${TUNING.lineDownAttack} Attack — a real bite out of their flagship. Rows pay money; columns pay damage.`,
-    nextLabel: "Lock in",
+    nextLabel: "Lock this volley in",
     allow: { coachNext: true },
     script: {
       kind: "board",
@@ -271,7 +272,7 @@ export const TUTORIAL_STEPS: TutorialStep[] = [
     id: "lock2",
     eyebrow: "Commit",
     title: "Tap Lock in",
-    body: "The enemy is throwing a harder volley this time so you can practice bracing.",
+    body: "The enemy is throwing a harder volley this time so you can practice blocking.",
     allow: { submit: true },
     script: { kind: "guestWeak" },
   },
@@ -288,6 +289,13 @@ export const TUTORIAL_STEPS: TutorialStep[] = [
     title: "Damage, then repair",
     body: "Shields cancel Attack first. Direct ignores Shields. Blocking ships take what is left. Then Repair lands. Tap through when you have read the line.",
     allow: { continue: true },
+  },
+  {
+    id: "shop_leave",
+    eyebrow: "Shipyard",
+    title: "Tap Return to battle",
+    body: "The yard opens after every volley, just like last time. This round we are hunting a straight — leave the purse and roll.",
+    allow: { ready: true },
   },
   {
     id: "roll3",
@@ -312,7 +320,7 @@ export const TUTORIAL_STEPS: TutorialStep[] = [
     id: "straight_done",
     eyebrow: "Straight",
     title: "Five in a row pays",
-    body: "The run is real. Five in a row pays Energy scaled by your biggest ship in the line; six or seven flip to Attack. You can sometimes cash a long run short if you would rather have the money.",
+    body: `The run is real. ${TUNING.runMin} in a row pays Energy scaled by your biggest ship in the line. A longer run can flip to Attack — you will see that choice in a real fight.`,
     nextLabel: "Lock in the finale",
     allow: { coachNext: true, straightTake: true },
   },
@@ -320,7 +328,7 @@ export const TUTORIAL_STEPS: TutorialStep[] = [
     id: "lock3",
     eyebrow: "Finale",
     title: "Tap Lock in",
-    body: "One last volley. You have now seen rows, columns, the shipyard, bracing, a straight, and the flagship token.",
+    body: "One last volley. You have now seen rows, columns, the shipyard, blocking, a straight, and the flagship token.",
     allow: { submit: true },
     script: { kind: "guestWeak" },
   },

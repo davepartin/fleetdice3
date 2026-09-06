@@ -32,6 +32,7 @@ test("the game never says brace, soak or absorb — only shields and blocking", 
     "../components/ui.tsx",
     "../lib/reference.ts",
     "../lib/tutorial.ts",
+    "../components/TutorialCoach.tsx",
   ];
   // Comment lines are skipped: this is about words a player can read, and
   // the note explaining the rule has to be able to name the words it bans.

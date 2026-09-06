@@ -2730,6 +2730,10 @@ button {
   text-overflow: ellipsis;
 }
 
+.tutorial-coach-bar-error {
+  color: var(--color-attack);
+}
+
 .tutorial-coach-bar-cta {
   flex: 0 0 auto;
   border: 1px solid rgb(255 210 61 / 0.4);

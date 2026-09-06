@@ -56,7 +56,7 @@ const AWAIT_HINT: Record<string, string> = {
   roll: "Tap Roll Fleet below",
   reroll: "Tap a die on the board, then Reroll",
   submit: "Tap Lock in below",
-  continue: "Tap the button below to continue",
+  continue: "Tap To the shipyard below",
   brace: "Tap a ship, then confirm below",
   ready: "Tap Return to battle below",
   shopSlot: "Tap a glowing locked bay",
@@ -85,11 +85,11 @@ function FaceStrip({ stepId }: { stepId: TutorialStepId }) {
       <div className="tutorial-face-strip" aria-hidden>
         <figure className="tutorial-face-card">
           <HelpShipFace value={6} size={68} />
-          <figcaption className="c-attack">Even · hits</figcaption>
+          <figcaption className="c-attack">Even · Attack</figcaption>
         </figure>
         <figure className="tutorial-face-card">
           <HelpShipFace value={5} size={68} />
-          <figcaption className="c-shield">Odd · blocks</figcaption>
+          <figcaption className="c-shield">Odd · Shields</figcaption>
         </figure>
       </div>
     );
@@ -176,7 +176,11 @@ export function TutorialCoach({
         >
           <span className="tutorial-coach-bar-text">
             <span className="tutorial-coach-bar-title">{step.title}</span>
-            {hint && <span className="tutorial-coach-bar-hint">↓ {hint}</span>}
+            {error ? (
+              <span className="tutorial-coach-bar-hint tutorial-coach-bar-error">{error}</span>
+            ) : (
+              hint && <span className="tutorial-coach-bar-hint">↓ {hint}</span>
+            )}
           </span>
           <span className="tutorial-coach-bar-cta">Show tip</span>
         </button>

@@ -15,7 +15,26 @@ const G = await import(bundlePath);
 // structure, plus a runtime harness that mirrors useTutorialMatch's helpers.
 
 import { readFileSync } from "node:fs";
-const { findLines, bestRun, newMatch, newPlayer, applyAction, tally, TUNING } = G;
+const {
+  findLines,
+  bestRun,
+  newMatch,
+  newPlayer,
+  applyAction,
+  tally,
+  TUNING,
+  TUTORIAL_STEPS,
+  walkFirstFlight,
+  tutorialActionAllowed,
+  applyTutorialAction,
+  startTutorialMatch,
+  applyTutorialCoachNext,
+  energyOf,
+  repairOf,
+  directOf,
+  attackOf,
+  defenseOf,
+} = G;
 
 test("tutorial route and homepage button exist", () => {
   const home = readFileSync(new URL("../components/HomeScreen.tsx", import.meta.url), "utf8");
@@ -33,6 +52,35 @@ test("tutorial route and homepage button exist", () => {
   // roll, blocking is what a ship does. Never "hits", never "brace".
   assert.match(script, /Even attacks\. Odd shields/);
   assert.doesNotMatch(script, /\bsoak|\babsorb/i);
+  // The button on the yard is "Return to battle". "Leave shipyard" was a
+  // ghost label — a player on a phone would hunt for a button that is not there.
+  assert.match(script, /Tap Return to battle/);
+  assert.doesNotMatch(script, /Leave shipyard/);
+});
+
+test("player-facing tutorial copy never says brace, hits, soak or absorb", () => {
+  const coach = readFileSync(new URL("../components/TutorialCoach.tsx", import.meta.url), "utf8");
+  for (const step of TUTORIAL_STEPS) {
+    for (const text of [step.eyebrow, step.title, step.body, step.nextLabel ?? ""]) {
+      assert.doesNotMatch(text, /\bbrac(e|ing|ed)\b/i, `${step.id}: ${text}`);
+      assert.doesNotMatch(text, /\bhits\b/i, `${step.id}: ${text}`);
+      assert.doesNotMatch(text, /\b(soak|absorb)/i, `${step.id}: ${text}`);
+    }
+  }
+  assert.match(coach, /Even · Attack/);
+  assert.match(coach, /Odd · Shields/);
+  assert.doesNotMatch(coach, /Even · hits/);
+  assert.doesNotMatch(coach, /Odd · blocks/);
+});
+
+test("face and mark tips interpolate from the engine", () => {
+  const faces = TUTORIAL_STEPS.find((step) => step.id === "faces");
+  const marks = TUTORIAL_STEPS.find((step) => step.id === "marks");
+  assert.match(faces.body, new RegExp(`a 6 rolls ${attackOf(6)} Attack`));
+  assert.match(faces.body, new RegExp(`a 5 rolls ${defenseOf(5)} Shields`));
+  assert.match(marks.body, new RegExp(`a 1 pays ${energyOf(1)}`));
+  assert.match(marks.body, new RegExp(`a 2 fires ${directOf(2)}`));
+  assert.match(marks.body, new RegExp(`a 3 repairs ${repairOf(3)}`));
 });
 
 test("scripted middle row of 4s is a real formation", () => {
@@ -126,6 +174,7 @@ test("the coach is a minimize/maximize overlay, not a card that relocates itself
   assert.match(coach, /setMaximized\(true\)/, "a fresh step must open maximized so the tip gets read");
   assert.match(coach, /setMaximized\(false\)/, "there must be an explicit way to minimize");
   assert.match(coach, /tutorial-coach-bar/, "the minimized state renders as its own slim bar");
+  assert.match(coach, /tutorial-coach-bar-error/, "a refused tap must still be readable when the tip is tucked away");
   assert.match(coach, /Minimize/, "the maximize->minimize control must be labeled, not just an icon");
   assert.match(coach, /Show tip/, "the minimize->maximize control must be labeled, not just an icon");
 
@@ -201,4 +250,50 @@ test("action steps spotlight the control they name", () => {
     );
   }
   assert.match(css, /@keyframes tutorial-spotlight/);
+});
+
+test("the blocking lesson refuses an empty confirm, and the yard asks for a d4", () => {
+  const brace = TUTORIAL_STEPS.find((step) => step.id === "brace_teach");
+  assert.equal(tutorialActionAllowed(brace.allow, { type: "brace", ships: [] }), false);
+  assert.equal(tutorialActionAllowed(brace.allow, { type: "brace", ships: ["s0"] }), true);
+
+  const buy = TUTORIAL_STEPS.find((step) => step.id === "shop_buy");
+  assert.equal(
+    tutorialActionAllowed(buy.allow, { type: "shop", operation: "buy", sides: 6, slotIndex: 0 }),
+    false,
+  );
+  assert.equal(
+    tutorialActionAllowed(buy.allow, { type: "shop", operation: "buy", sides: 4, slotIndex: 0 }),
+    true,
+  );
+});
+
+test("the column tip does not name its Next button Lock in", () => {
+  // The dock's own button is "Lock in". If the coach uses the same words,
+  // a player taps the glowing dock control and the gate refuses them.
+  const col = TUTORIAL_STEPS.find((step) => step.id === "col_done");
+  assert.notEqual(col.nextLabel, "Lock in");
+  assert.match(col.nextLabel, /volley/i);
+});
+
+test("a commander who follows the coach finishes the flight", () => {
+  const { stepId, match } = walkFirstFlight();
+  assert.equal(stepId, "finale");
+  assert.ok(match.players.host.ships.some((ship) => ship.sides === 6), "the upgrade lesson bought a d6");
+  assert.ok(
+    match.players.host.open.filter(Boolean).length > TUNING.startSlots,
+    "the bay lesson opened a cell",
+  );
+  assert.equal(match.players.host.flag.token, false, "the token lesson spent the nudge");
+});
+
+test("wrong taps on a gated step do not advance the flight", () => {
+  const match = startTutorialMatch();
+  let stepId = "intro";
+  const next = applyTutorialCoachNext(match, stepId);
+  assert.equal(next, "faces");
+  stepId = next;
+  const refused = applyTutorialAction(match, stepId, { type: "roll", dice: [] });
+  assert.equal(refused.ok, false);
+  assert.equal(stepId, "faces");
 });
