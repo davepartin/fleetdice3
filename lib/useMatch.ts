@@ -35,6 +35,7 @@ import {
 } from "./rooms";
 import { commanderName } from "./firebase";
 import { reconnectDelay } from "./backoff";
+import { newTapLock, pickLiveRoom } from "./versusSync";
 
 export type MatchStatus = "loading" | "ready" | "error";
 
@@ -93,7 +94,7 @@ export function useSoloMatch(settings: SoloSettings): MatchController {
   const brainRef = useRef<Brain | null>(null);
   const stateRef = useRef<MatchState | null>(null);
   const timerRef = useRef<number>(0);
-  const rollLockRef = useRef(false);
+  const lockRef = useRef(newTapLock());
 
   const start = useCallback(() => {
     const match = newMatch(`solo-${randomId(8)}`, "0000", "you", settings.name ?? commanderName(), "solo");
@@ -141,20 +142,18 @@ export function useSoloMatch(settings: SoloSettings): MatchController {
     (action: MatchAction) => {
       const match = stateRef.current;
       if (!match) return;
-      if (action.type === "roll") {
-        if (rollLockRef.current) return;
-        rollLockRef.current = true;
-      }
+      // Same lock as versus: a double-tap must not fire two actions.
+      if (!lockRef.current.tryBegin()) return;
       try {
         applyAction(match, "host", action);
         setError(null);
       } catch (reason) {
-        rollLockRef.current = false;
+        lockRef.current.release();
         setError(reason instanceof Error ? reason.message : String(reason));
         return;
       }
       setState(structuredClone(match));
-      rollLockRef.current = false;
+      lockRef.current.release();
       pumpEnemy();
     },
     [pumpEnemy],
@@ -200,9 +199,24 @@ export function useRoomMatch(matchId: string | null): MatchController {
   const [busy, setBusy] = useState(false);
   const [reconnecting, setReconnecting] = useState(false);
   const queueRef = useRef<Promise<unknown>>(Promise.resolve());
-  const busyRef = useRef(false);
+  const lockRef = useRef(newTapLock());
+  const roomRef = useRef<LiveRoom | null>(null);
+
+  /**
+   * Put a room on the screen only if it is not older than what we already
+   * have. `playAction` and `watchRoom` both call this; without the check,
+   * a late snapshot of an earlier version walks the board backwards.
+   */
+  const showRoom = useCallback((incoming: LiveRoom) => {
+    const next = pickLiveRoom(roomRef.current, incoming);
+    if (next === roomRef.current) return;
+    roomRef.current = next;
+    setRoom(next);
+  }, []);
 
   useEffect(() => {
+    roomRef.current = null;
+    lockRef.current.release();
     if (!matchId) {
       setStatus("error");
       setError("This link is missing its room number.");
@@ -257,7 +271,7 @@ export function useRoomMatch(matchId: string | null): MatchController {
             // own refusals ("You need 4 Energy for that"), which a routine
             // update from the other commander must not wipe off the screen.
             attempt = 0;
-            setRoom(room);
+            showRoom(room);
             setStatus("ready");
             setReconnecting(false);
           },
@@ -299,7 +313,7 @@ export function useRoomMatch(matchId: string | null): MatchController {
         const first = await enterRoom(matchId);
         if (cancelled) return;
         attempt = 0;
-        setRoom(first);
+        showRoom(first);
         setStatus("ready");
         setReconnecting(false);
         await subscribe();
@@ -349,41 +363,41 @@ export function useRoomMatch(matchId: string | null): MatchController {
       stop?.();
       stopBeat?.();
     };
-  }, [matchId]);
+  }, [matchId, showRoom]);
 
   /**
    * Actions are queued rather than fired in parallel. Two shop taps in the same
    * second against the same document would otherwise race, and one would be
    * silently thrown away by the transaction retry.
+   *
+   * The tap lock sits in front of that queue: a second tap while the first is
+   * still on the wire is dropped, not lined up. Roll already did this; buy,
+   * leave the shipyard, lock-in, block, and Continue now do too.
    */
   const act = useCallback(
     (action: MatchAction) => {
       if (!matchId) return;
-      // Two taps in the same moment both see busy=false. Same lock as solo.
-      // A second roll would either error or write a second set of faces.
-      if (action.type === "roll" && busyRef.current) return;
-      busyRef.current = true;
+      if (!lockRef.current.tryBegin()) return;
       setBusy(true);
       queueRef.current = queueRef.current
         .then(() => playAction(matchId, action))
         .then((next) => {
-          setRoom(next as LiveRoom);
+          showRoom(next as LiveRoom);
           setError(null);
         })
         .catch((reason: unknown) => {
           setError(reason instanceof Error ? reason.message : String(reason));
         })
         .finally(() => {
-          busyRef.current = false;
+          lockRef.current.release();
           setBusy(false);
         });
     },
-    [matchId],
+    [matchId, showRoom],
   );
 
   const cancel = useCallback(() => {
     if (!matchId) return;
-    busyRef.current = true;
     setBusy(true);
     queueRef.current = queueRef.current
       .then(() => cancelRoom(matchId))
@@ -391,7 +405,7 @@ export function useRoomMatch(matchId: string | null): MatchController {
         setError(reason instanceof Error ? reason.message : String(reason));
       })
       .finally(() => {
-        busyRef.current = false;
+        lockRef.current.release();
         setBusy(false);
       });
   }, [matchId]);
