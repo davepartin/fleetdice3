@@ -346,6 +346,11 @@ export function stepIndex(id: TutorialStepId): number {
   return TUTORIAL_STEPS.findIndex((step) => step.id === id);
 }
 
+/** Dense teaching beats with no board to look at — the tip may fill the phone. */
+export function isLessonStep(id: TutorialStepId): boolean {
+  return id === "intro" || id === "faces" || id === "marks";
+}
+
 export function stepById(id: TutorialStepId): TutorialStep {
   const step = TUTORIAL_STEPS.find((entry) => entry.id === id);
   if (!step) throw new Error(`Unknown tutorial step ${id}`);

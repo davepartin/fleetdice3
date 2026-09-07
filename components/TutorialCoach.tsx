@@ -1,18 +1,11 @@
 "use client";
 
 /**
- * Tutorial coach — a minimize/maximize card, not a card that repositions.
+ * Tutorial coach — docked at the bottom so the board stays visible above.
  *
- * Two earlier versions of this tried to dodge the board by relocating the
- * card — top-anchored, then bottom-anchored above the action button — and
- * each time the board (or, at the bottom, the flagship weapon control) was
- * one step's layout away from getting covered again. The game's own layout
- * never moves for the tutorial now; the card is a fixed-position overlay
- * that the player controls directly. Every new step opens maximized so the
- * tip gets read, with an explicit Minimize button. Minimized, it is a slim
- * bar — small enough to never meaningfully cover anything — with an equally
- * explicit way back in. Read the tip, minimize it, look at the board, act;
- * tap the bar again if you forget what it said.
+ * A centred or top-anchored card covered the dice the tip was pointing at.
+ * The card sits above the action dock and grows upward. Minimize tucks it
+ * to a slim bar when you want more of the fleet.
  */
 
 import { useEffect, useState } from "react";
@@ -145,8 +138,8 @@ export function TutorialCoach({
   const showNext = !!step.allow.coachNext && !!step.nextLabel;
   const hint = awaiting ? (AWAIT_HINT[awaiting] ?? "Take your turn on the board") : null;
 
-  // Every new step opens maximized — the player should read a fresh tip
-  // before deciding to tuck it away.
+  // Every new step opens maximized so the tip gets read. The board stays
+  // visible above the card; Minimize is how you take even more of it back.
   const [maximized, setMaximized] = useState(true);
   useEffect(() => setMaximized(true), [stepId]);
 
@@ -182,6 +175,16 @@ export function TutorialCoach({
               hint && <span className="tutorial-coach-bar-hint">↓ {hint}</span>
             )}
           </span>
+          {showNext ? (
+            <span
+              className="tutorial-coach-bar-next-wrap"
+              onClick={(event) => event.stopPropagation()}
+            >
+              <Button tone="primary" size="sm" onClick={onNext}>
+                {step.nextLabel}
+              </Button>
+            </span>
+          ) : null}
           <span className="tutorial-coach-bar-cta">Show tip</span>
         </button>
       </div>

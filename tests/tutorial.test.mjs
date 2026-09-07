@@ -158,21 +158,20 @@ test("the coach is a minimize/maximize overlay, not a card that relocates itself
   const screen = readFileSync(new URL("../components/TutorialScreen.tsx", import.meta.url), "utf8");
   const css = readFileSync(new URL("../app/globals.css", import.meta.url), "utf8");
 
-  // Two earlier designs tried to dodge the board (and, once, the flagship
-  // weapon control) by repositioning the card based on which screen or
-  // phase was live. The game's own layout has to stay put now, so the coach
-  // is a single, stable, always-top-anchored overlay — no per-phase override.
+  // The board stays above the tip. A top-anchored or centred card covered
+  // the dice the player was told to tap. One bottom anchor, always — no
+  // per-phase hopping.
   const block = css.match(/\.tutorial-coach \{[^}]*\}/);
   assert.ok(block, "the coach needs a positioning block");
-  assert.match(block[0], /top:/, "the coach anchors to a fixed top position");
+  assert.match(block[0], /bottom:/, "the coach docks at the bottom so the board stays above");
+  assert.doesNotMatch(block[0], /^\s*top:\s*calc/m, "do not pin the card to the top of the phone");
   assert.doesNotMatch(css, /data-phase/, "positioning must not depend on which phase is live");
   assert.doesNotMatch(coach, /tutorial-action-clear/, "no measured clearance — the anchor no longer moves");
 
-  // The player decides whether to see the full tip or the board — a real
-  // minimize/maximize toggle, not an automatic reposition.
   assert.match(coach, /useState/, "maximized/minimized needs real component state");
   assert.match(coach, /setMaximized\(true\)/, "a fresh step must open maximized so the tip gets read");
   assert.match(coach, /setMaximized\(false\)/, "there must be an explicit way to minimize");
+  assert.match(coach, /tutorial-coach-bar-next-wrap/, "a minimized coach still offers Next");
   assert.match(coach, /tutorial-coach-bar/, "the minimized state renders as its own slim bar");
   assert.match(coach, /tutorial-coach-bar-error/, "a refused tap must still be readable when the tip is tucked away");
   assert.match(coach, /Minimize/, "the maximize->minimize control must be labeled, not just an icon");
@@ -204,6 +203,7 @@ test("the coach is a minimize/maximize overlay, not a card that relocates itself
 
 test("the coach and theme buttons live outside their own scroll region", () => {
   const coach = readFileSync(new URL("../components/TutorialCoach.tsx", import.meta.url), "utf8");
+  const screen = readFileSync(new URL("../components/TutorialScreen.tsx", import.meta.url), "utf8");
   const css = readFileSync(new URL("../app/globals.css", import.meta.url), "utf8");
 
   // A long tip or a long theme paragraph must scroll *inside* the card, but
@@ -229,23 +229,30 @@ test("the coach and theme buttons live outside their own scroll region", () => {
   assert.ok(cardBlock && !/overflow/.test(cardBlock[0]), "coach card itself must not scroll");
   assert.ok(themeCardBlock && !/overflow/.test(themeCardBlock[0]), "theme card itself must not scroll");
 
-  // The tip has to fill most of a phone. A short vh/rem cap clipped The Marks
-  // mid-sentence and made the player scroll inside the card.
+  // Faces/Marks may grow taller (still from the bottom). Spotlight tips stay
+  // shorter so HP / board / totals are not eaten. Neither fills the phone.
   assert.doesNotMatch(
     cardBlock[0],
-    /max-height:\s*min\(/,
-    "the old short min(vh, rem) cap must stay gone",
-  );
-  assert.match(
-    cardBlock[0],
     /height:\s*calc\(var\(--vv-height/,
-    "the card fills most of the phone, not just as much as the copy needs",
+    "the card grows up from the bottom — it is not a full-screen sheet",
   );
-  assert.match(
-    cardBlock[0],
-    /max-height:\s*calc\(var\(--vv-height/,
-    "the card still cannot run off the bottom past Skip",
+  assert.match(cardBlock[0], /max-height:\s*min\(/, "the default tip has a cap so the board stays above");
+  const lessonCard = css.match(/\.tutorial-shell\[data-lesson\] \.tutorial-coach-card \{[^}]*\}/);
+  const spotCard = css.match(/\.tutorial-shell\[data-spotlight\] \.tutorial-coach-card \{[^}]*\}/);
+  assert.ok(lessonCard, "Faces/Marks need a taller-card rule");
+  assert.ok(spotCard, "spotlight tips need a compact-card rule");
+  assert.match(lessonCard[0], /max-height:\s*min\(/, "lesson tips grow up, they do not fill the screen");
+  assert.match(spotCard[0], /max-height:\s*min\(/, "spotlight tips stay short");
+  assert.match(screen, /data-lesson/, "the shell publishes which tips may grow taller");
+
+  // The old pulse faded the ring to nothing, which is why Dave could not
+  // see the five-totals highlight. The ring has to stay a real yellow line.
+  assert.doesNotMatch(
+    css,
+    /0 0 0 6px rgb\(255 210 61 \/ 0\)/,
+    "the spotlight ring must not vanish mid-pulse",
   );
+  assert.match(css, /@keyframes tutorial-spotlight[^}]*var\(--color-energy\)/);
 
   const coachScrollBlock = css.match(/\.tutorial-coach-scroll \{[^}]*\}/);
   const themeScrollBlock = css.match(/\.tutorial-theme-scroll \{[^}]*\}/);
