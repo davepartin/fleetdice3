@@ -325,6 +325,10 @@ test("Return to battle stays off the grid until the yard lesson asks for it", ()
   assert.ok(drawer, "the buy drawer must sit above the slim tip once the foot is gone");
   assert.match(drawer[0], /5\.6rem/, "drawer clearance matches the dock, not the missing button");
 
+  const drawerBase = css.match(/^\.yard-drawer-wrap \{[^}]*\}/m);
+  assert.ok(drawerBase, "the floating drawer needs a stacking rule");
+  assert.match(drawerBase[0], /z-index:\s*4/, "the confirm drawer must sit above the 3×3 on a short phone");
+
   assert.match(yard, /yard-foot yard-done/, "Return to battle is still the ready-step target");
   assert.match(
     css,

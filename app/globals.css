@@ -1445,6 +1445,9 @@ button {
   flex-direction: column;
   justify-content: flex-end;
   pointer-events: none;
+  /* Above .yard-main. Overflow on the board makes a stacking context, and
+     without this the confirm button lands under a cell on a short phone. */
+  z-index: 4;
 }
 .yard-drawer-wrap > * {
   pointer-events: auto;
