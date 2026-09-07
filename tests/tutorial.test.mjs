@@ -165,6 +165,11 @@ test("the coach is a minimize/maximize overlay, not a card that relocates itself
   assert.ok(block, "the coach needs a positioning block");
   assert.match(block[0], /bottom:/, "the coach docks at the bottom so the board stays above");
   assert.doesNotMatch(block[0], /^\s*top:\s*calc/m, "do not pin the card to the top of the phone");
+  assert.match(
+    css,
+    /\[data-awaiting="reroll"\] \.tutorial-coach/,
+    "a die-tap tip sits lower so the middle row stays visible",
+  );
   assert.doesNotMatch(css, /data-phase/, "positioning must not depend on which phase is live");
   assert.doesNotMatch(coach, /tutorial-action-clear/, "no measured clearance — the anchor no longer moves");
 

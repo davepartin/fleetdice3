@@ -2710,6 +2710,15 @@ button {
   top: auto;
   bottom: calc(16.4rem + var(--hud-safe-bottom));
 }
+/* A die-tap or "look at the board" tip has to leave the middle row clear.
+   Sit lower — over the dock header, not over the dice. Totals stay on the
+   default (higher) shelf so the five-totals ring is not covered. */
+.tutorial-shell[data-awaiting="reroll"] .tutorial-coach,
+.tutorial-shell[data-awaiting="token"] .tutorial-coach,
+.tutorial-shell[data-awaiting="brace"] .tutorial-coach,
+.tutorial-shell[data-spotlight="board"] .tutorial-coach {
+  bottom: calc(8.6rem + var(--hud-safe-bottom));
+}
 
 .tutorial-coach-bar {
   pointer-events: auto;
