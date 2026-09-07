@@ -191,6 +191,7 @@ export const TUTORIAL_STEPS: TutorialStep[] = [
     body: `Matching numbers across a row pays ${TUNING.lineAcrossEnergy} Energy into your purse. The flagship counts as the middle of the row. This is how a board of small dice punches above its weight.`,
     nextLabel: "Lock this volley in",
     allow: { coachNext: true },
+    spotlight: "board",
     script: {
       kind: "board",
       // Complete middle row of 4s through the flagship.
@@ -263,6 +264,7 @@ export const TUTORIAL_STEPS: TutorialStep[] = [
     body: `We lined the middle column on 2s for you after that throw. Three matching down pays ${TUNING.lineDownAttack} Attack — a real bite out of their flagship. Rows pay money; columns pay damage.`,
     nextLabel: "Lock this volley in",
     allow: { coachNext: true },
+    spotlight: "board",
     script: {
       kind: "board",
       faces: { north: 2, west: 1, east: 3, south: 2, flag: 2 },
@@ -323,6 +325,7 @@ export const TUTORIAL_STEPS: TutorialStep[] = [
     body: `The run is real. ${TUNING.runMin} in a row pays Energy scaled by your biggest ship in the line. A longer run can flip to Attack — you will see that choice in a real fight.`,
     nextLabel: "Lock in the finale",
     allow: { coachNext: true, straightTake: true },
+    spotlight: "board",
   },
   {
     id: "lock3",
@@ -344,6 +347,11 @@ export const TUTORIAL_STEPS: TutorialStep[] = [
 
 export function stepIndex(id: TutorialStepId): number {
   return TUTORIAL_STEPS.findIndex((step) => step.id === id);
+}
+
+/** Dense teaching beats with no board to look at — the tip may fill the phone. */
+export function isLessonStep(id: TutorialStepId): boolean {
+  return id === "intro" || id === "faces" || id === "marks";
 }
 
 export function stepById(id: TutorialStepId): TutorialStep {
