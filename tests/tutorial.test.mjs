@@ -223,6 +223,19 @@ test("the coach and theme buttons live outside their own scroll region", () => {
   assert.ok(cardBlock && !/overflow/.test(cardBlock[0]), "coach card itself must not scroll");
   assert.ok(themeCardBlock && !/overflow/.test(themeCardBlock[0]), "theme card itself must not scroll");
 
+  // The tip has to fill most of a phone. A short vh/rem cap clipped The Marks
+  // mid-sentence and made the player scroll inside the card.
+  assert.doesNotMatch(
+    cardBlock[0],
+    /max-height:\s*min\(/,
+    "the old short min(vh, rem) cap must stay gone",
+  );
+  assert.match(
+    cardBlock[0],
+    /max-height:\s*calc\(var\(--vv-height/,
+    "the card grows with the visible screen, minus the header it already clears",
+  );
+
   const coachScrollBlock = css.match(/\.tutorial-coach-scroll \{[^}]*\}/);
   const themeScrollBlock = css.match(/\.tutorial-theme-scroll \{[^}]*\}/);
   assert.ok(coachScrollBlock && /overflow-y:\s*auto/.test(coachScrollBlock[0]));
