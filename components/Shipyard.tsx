@@ -245,7 +245,7 @@ export function Shipyard({ player, enemyName, enemyHp, onAction, onDone, busy }:
       </div>
 
       {/* ---------------- out ---------------- */}
-      <div className="yard-foot">
+      <div className="yard-foot yard-done">
         <Button tone="primary" size="lg" full onClick={onDone} disabled={busy}>
           Return to battle
         </Button>
