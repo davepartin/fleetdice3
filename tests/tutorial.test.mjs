@@ -178,6 +178,12 @@ test("the coach is a minimize/maximize overlay, not a card that relocates itself
   assert.match(coach, /Minimize/, "the maximize->minimize control must be labeled, not just an icon");
   assert.match(coach, /Show tip/, "the minimize->maximize control must be labeled, not just an icon");
 
+  const minBlock = css.match(/\.tutorial-coach-minimize \{[^}]*\}/);
+  assert.ok(minBlock, "Minimize needs its own style");
+  assert.match(minBlock[0], /background:\s*var\(--color-energy\)/, "Minimize is a solid Energy yellow fill");
+  assert.match(minBlock[0], /color:\s*var\(--color-primary-ink\)/, "Minimize words are black on that yellow");
+  assert.doesNotMatch(minBlock[0], /transparent/, "Minimize is not a ghost outline");
+
   // The bar has to be a real, small, fixed-height affordance — not another
   // measured-and-guessed height like the two designs before it.
   const barBlock = css.match(/\.tutorial-coach-bar \{[^}]*\}/);
@@ -232,8 +238,13 @@ test("the coach and theme buttons live outside their own scroll region", () => {
   );
   assert.match(
     cardBlock[0],
+    /height:\s*calc\(var\(--vv-height/,
+    "the card fills most of the phone, not just as much as the copy needs",
+  );
+  assert.match(
+    cardBlock[0],
     /max-height:\s*calc\(var\(--vv-height/,
-    "the card grows with the visible screen, minus the header it already clears",
+    "the card still cannot run off the bottom past Skip",
   );
 
   const coachScrollBlock = css.match(/\.tutorial-coach-scroll \{[^}]*\}/);

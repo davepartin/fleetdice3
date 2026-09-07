@@ -2775,8 +2775,9 @@ button {
   pointer-events: auto;
   width: min(100%, 28rem);
   /* Most of the phone. A short cap clipped The Marks mid-sentence and forced
-     a scroll inside the tip. This leaves the header clear (the coach already
-     sits under it) and keeps Skip on screen. */
+     a scroll inside the tip. Height, not just max-height: the box stays this
+     big even when the copy is short. Header stays clear; Skip stays on screen. */
+  height: calc(var(--vv-height, 100dvh) - var(--hud-safe-top) - 7.4rem);
   max-height: calc(var(--vv-height, 100dvh) - var(--hud-safe-top) - 7.4rem);
   display: flex;
   flex-direction: column;
@@ -2898,11 +2899,11 @@ button {
 }
 
 .tutorial-coach-minimize {
-  border: 1px solid rgb(255 210 61 / 0.35);
+  border: 0;
   border-radius: 10px;
-  padding: 0.3rem 0.6rem;
-  background: transparent;
-  color: var(--color-energy);
+  padding: 0.38rem 0.72rem;
+  background: var(--color-energy);
+  color: var(--color-primary-ink);
   font-size: var(--text-xs);
   font-weight: 800;
   letter-spacing: 0.04em;
