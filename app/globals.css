@@ -2758,15 +2758,15 @@ button {
   text-overflow: ellipsis;
 }
 
-/* Board-teach strip: title + two lines of the tip + Next. Tall enough to
-   teach, short enough that the 3×3 stays in the open space above it. */
+/* Board-teach / yard strip: title + two lines + Next. The text column
+   shrinks so Next cannot paint over the words. */
 .tutorial-coach-bar-board {
-  align-items: flex-start;
-  padding: 0.55rem 0.8rem;
+  align-items: center;
+  padding: 0.5rem 0.75rem;
 }
-.tutorial-coach-bar-board .tutorial-coach-bar-next-wrap,
-.tutorial-coach-bar-board .tutorial-coach-bar-cta {
-  align-self: center;
+.tutorial-coach-bar-board .tutorial-coach-bar-text {
+  flex: 1 1 0;
+  min-width: 0;
 }
 .tutorial-coach-bar-body {
   color: var(--color-hull-100);
@@ -3057,7 +3057,7 @@ button {
  */
 .tutorial-shell .yard {
   padding-top: calc(var(--hud-safe-top) + 0.75rem);
-  padding-bottom: calc(var(--hud-safe-bottom) + 4.8rem);
+  padding-bottom: calc(var(--hud-safe-bottom) + 6.5rem);
 }
 /* Pushing the yard down costs vertical room, which can put the bottom row of
    bays past the fold. Let the board scroll so every cell stays reachable —

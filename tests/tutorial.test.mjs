@@ -189,6 +189,11 @@ test("the coach is a minimize/maximize overlay, not a card that relocates itself
   assert.match(coach, /setMaximized\(false\)/, "there must be an explicit way to minimize");
   assert.match(coach, /tutorial-coach-bar-next-wrap/, "a minimized coach still offers Next");
   assert.match(coach, /tutorial-coach-bar/, "the minimized state renders as its own slim bar");
+  assert.doesNotMatch(
+    coach,
+    /<button[^>]*tutorial-coach-bar/,
+    "the slim bar is a div — a button wrapping Next is invalid HTML and nested on the phone",
+  );
   assert.match(coach, /tutorial-coach-bar-error/, "a refused tap must still be readable when the tip is tucked away");
   assert.match(coach, /tutorial-coach-bar-body/, "the board strip still carries two lines of the tip");
   assert.match(coach, /tutorial-coach-bar-board/, "the board strip has its own class so it can stay short");
@@ -213,7 +218,7 @@ test("the coach is a minimize/maximize overlay, not a card that relocates itself
   const yardBlock = css.match(/\.tutorial-shell \.yard \{[^}]*\}/);
   assert.ok(yardBlock, "the shipyard needs its own push-down rule");
   assert.doesNotMatch(yardBlock[0], /var\(--tutorial/, "the push-down must be a fixed constant, not measured");
-  assert.match(yardBlock[0], /4\.8rem/, "yard padding matches the slim dock");
+  assert.match(yardBlock[0], /6\.5rem/, "yard padding matches the slim dock plus a little air");
   assert.doesNotMatch(yardBlock[0], /8\.5rem/, "8.5rem is the reservation that left the black gap");
 
   // The board is never veiled — the dice are the subject of the lesson.

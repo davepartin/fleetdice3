@@ -170,8 +170,7 @@ export function TutorialCoach({
   if (!maximized) {
     return (
       <div className="tutorial-coach" role="dialog" aria-label="Tutorial coach, minimized">
-        <button
-          type="button"
+        <div
           className={`tutorial-coach-bar panel${compact ? " tutorial-coach-bar-board" : ""}`}
           onClick={() => setMaximized(true)}
         >
@@ -196,7 +195,7 @@ export function TutorialCoach({
             </span>
           ) : null}
           <span className="tutorial-coach-bar-cta">Show tip</span>
-        </button>
+        </div>
       </div>
     );
   }
