@@ -313,6 +313,12 @@ test("Return to battle stays off the grid until the yard lesson asks for it", ()
   assert.match(hideFoot[0], /display:\s*none/, "do not leave Return to battle covering the grid");
   assert.match(hideFoot[0], /pointer-events:\s*none/, "a hidden leave button must not steal taps");
 
+  const hidePad = css.match(
+    /\.tutorial-shell\[data-shop\]:not\(\[data-awaiting="ready"\]\) \.yard \{[^}]*\}/,
+  );
+  assert.ok(hidePad, "hiding the leave button must also drop the pad sized for it");
+  assert.match(hidePad[0], /4\.8rem/, "yard pad matches the slim dock once the button is gone");
+
   const drawer = css.match(
     /\.tutorial-shell\[data-shop\]:not\(\[data-awaiting="ready"\]\) \.yard-drawer-wrap \{[^}]*\}/,
   );

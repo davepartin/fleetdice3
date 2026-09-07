@@ -3128,6 +3128,12 @@ button {
   pointer-events: none;
 }
 
+/* The 6.5rem yard pad was sized for the leave button plus the dock. With
+ * the button gone, that leftover padding is a black band under the grid. */
+.tutorial-shell[data-shop]:not([data-awaiting="ready"]) .yard {
+  padding-bottom: calc(var(--hud-safe-bottom) + 4.8rem);
+}
+
 /* The confirm drawer used to sit above Return to battle. With that button
  * gone, park it above the slim tip instead, or Open this bay / buy a d4
  * land under the dock. */
