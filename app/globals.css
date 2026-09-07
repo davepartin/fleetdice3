@@ -2758,6 +2758,26 @@ button {
   text-overflow: ellipsis;
 }
 
+/* Board-teach / yard strip: title + two lines + Next. The text column
+   shrinks so Next cannot paint over the words. */
+.tutorial-coach-bar-board {
+  align-items: center;
+  padding: 0.5rem 0.75rem;
+}
+.tutorial-coach-bar-board .tutorial-coach-bar-text {
+  flex: 1 1 0;
+  min-width: 0;
+}
+.tutorial-coach-bar-body {
+  color: var(--color-hull-100);
+  font-weight: 600;
+  letter-spacing: 0;
+  white-space: normal;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
 .tutorial-coach-bar-error {
   color: var(--color-attack);
 }
@@ -2814,6 +2834,27 @@ button {
 .tutorial-shell[data-spotlight] .tutorial-coach-card {
   max-height: min(32dvh, 15.5rem);
 }
+/* Board-teach steps open as the slim strip. If someone taps Show tip, this
+   cap keeps the expanded card from growing back over the 3×3. */
+.tutorial-shell[data-spotlight="board"] .tutorial-coach-card {
+  max-height: min(20dvh, 8.5rem);
+  padding: 0.5rem 0.75rem 0.45rem;
+}
+.tutorial-shell[data-spotlight="board"] .tutorial-coach-title {
+  font-size: var(--text-sm);
+}
+.tutorial-shell[data-spotlight="board"] .tutorial-coach-body {
+  margin-top: 0.25rem;
+  font-size: var(--text-xs);
+  line-height: 1.3;
+}
+.tutorial-shell[data-spotlight="board"] .tutorial-coach-foot {
+  margin-top: 0.4rem;
+  padding-top: 0.35rem;
+}
+.tutorial-shell[data-spotlight="board"] .tutorial-face-strip {
+  display: none;
+}
 
 /* Everything that can grow with the step's copy scrolls in here. The foot
    below is a sibling, not a child of this box — it can never be pushed or
@@ -2827,6 +2868,10 @@ button {
      last line. Overflow still fades as "more below" if a future step runs long. */
   padding-bottom: 1.2rem;
   mask-image: linear-gradient(to bottom, black calc(100% - 1.1rem), transparent 100%);
+}
+.tutorial-shell[data-spotlight="board"] .tutorial-coach-scroll {
+  padding-bottom: 0.35rem;
+  mask-image: none;
 }
 
 .tutorial-coach-title {
@@ -3006,12 +3051,13 @@ button {
 }
 
 /*
- * The shipyard is a full-screen overlay. The coach now sits at the bottom,
- * so the grid needs room under it — a bay you cannot tap is a dead end.
+ * The shipyard is a full-screen overlay. The coach sits at the bottom as a
+ * slim strip, so the grid only needs room for that strip — 8.5rem was a
+ * tall-card reservation and left a black band under Return to battle.
  */
 .tutorial-shell .yard {
   padding-top: calc(var(--hud-safe-top) + 0.75rem);
-  padding-bottom: calc(var(--hud-safe-bottom) + 8.5rem);
+  padding-bottom: calc(var(--hud-safe-bottom) + 6.5rem);
 }
 /* Pushing the yard down costs vertical room, which can put the bottom row of
    bays past the fold. Let the board scroll so every cell stays reachable —

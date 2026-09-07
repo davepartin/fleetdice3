@@ -4,15 +4,16 @@
  * Tutorial coach — docked at the bottom so the board stays visible above.
  *
  * A centred or top-anchored card covered the dice the tip was pointing at.
- * The card sits just above Lock in / Roll Fleet and grows upward, so the
- * fleet stays visible. Minimize tucks it to a slim bar for even more board.
+ * The card sits just above Lock in / Roll Fleet and grows upward. Board-teach
+ * and shipyard steps open as a slim strip — title, two lines, Next — so the
+ * fleet stays visible and Return to battle sits tight above the dock.
  */
 
 import { useEffect, useState } from "react";
 import { Button } from "./ui";
 import { HelpFlagFace, HelpShipFace } from "./HelpArt";
 import { HullShape } from "./HullShape";
-import type { TutorialStep, TutorialStepId } from "@/lib/tutorial";
+import { isBoardTeachStep, type TutorialStep, type TutorialStepId } from "@/lib/tutorial";
 
 type Props = {
   step: TutorialStep;
@@ -20,6 +21,8 @@ type Props = {
   stepNumber: number;
   stepCount: number;
   error?: string | null;
+  /** Shipyard: open as the slim strip so Return to battle sits on the dock. */
+  inShop?: boolean;
   onNext(): void;
   onSkip(): void;
 };
@@ -131,17 +134,22 @@ export function TutorialCoach({
   stepNumber,
   stepCount,
   error,
+  inShop = false,
   onNext,
   onSkip,
 }: Props) {
   const awaiting = awaitedAction(step);
   const showNext = !!step.allow.coachNext && !!step.nextLabel;
   const hint = awaiting ? (AWAIT_HINT[awaiting] ?? "Take your turn on the board") : null;
+  const boardTeach = isBoardTeachStep(step);
+  const compact = boardTeach || inShop;
 
-  // Every new step opens maximized so the tip gets read. The board stays
-  // visible above the card; Minimize is how you take even more of it back.
-  const [maximized, setMaximized] = useState(true);
-  useEffect(() => setMaximized(true), [stepId]);
+  // Lesson and HUD tips open maximized so the copy gets read. Board-teach
+  // and shipyard steps open as the slim strip — a tall card covers the 3×3
+  // or leaves a black band under Return to battle. Show tip still expands
+  // it; Next stays on the bar.
+  const [maximized, setMaximized] = useState(!compact);
+  useEffect(() => setMaximized(!compact), [stepId, compact]);
 
   /*
    * Bring whatever this step lit up into view. Mostly a no-op — the dock is
@@ -162,18 +170,19 @@ export function TutorialCoach({
   if (!maximized) {
     return (
       <div className="tutorial-coach" role="dialog" aria-label="Tutorial coach, minimized">
-        <button
-          type="button"
-          className="tutorial-coach-bar panel"
+        <div
+          className={`tutorial-coach-bar panel${compact ? " tutorial-coach-bar-board" : ""}`}
           onClick={() => setMaximized(true)}
         >
           <span className="tutorial-coach-bar-text">
             <span className="tutorial-coach-bar-title">{step.title}</span>
             {error ? (
               <span className="tutorial-coach-bar-hint tutorial-coach-bar-error">{error}</span>
-            ) : (
-              hint && <span className="tutorial-coach-bar-hint">↓ {hint}</span>
-            )}
+            ) : hint ? (
+              <span className="tutorial-coach-bar-hint">↓ {hint}</span>
+            ) : compact ? (
+              <span className="tutorial-coach-bar-hint tutorial-coach-bar-body">{step.body}</span>
+            ) : null}
           </span>
           {showNext ? (
             <span
@@ -186,7 +195,7 @@ export function TutorialCoach({
             </span>
           ) : null}
           <span className="tutorial-coach-bar-cta">Show tip</span>
-        </button>
+        </div>
       </div>
     );
   }
@@ -208,7 +217,7 @@ export function TutorialCoach({
           </div>
 
           <h2 className="t-display tutorial-coach-title">{step.title}</h2>
-          <FaceStrip stepId={stepId} />
+          {!boardTeach && <FaceStrip stepId={stepId} />}
           <p className="tutorial-coach-body">{step.body}</p>
 
           {error && (
