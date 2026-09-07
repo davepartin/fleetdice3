@@ -4,8 +4,8 @@
  * Tutorial coach — docked at the bottom so the board stays visible above.
  *
  * A centred or top-anchored card covered the dice the tip was pointing at.
- * The card sits above the action dock and grows upward. Minimize tucks it
- * to a slim bar when you want more of the fleet.
+ * The card sits just above Lock in / Roll Fleet and grows upward, so the
+ * fleet stays visible. Minimize tucks it to a slim bar for even more board.
  */
 
 import { useEffect, useState } from "react";

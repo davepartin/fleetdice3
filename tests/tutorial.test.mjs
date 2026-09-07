@@ -46,6 +46,11 @@ test("tutorial route and homepage button exist", () => {
   assert.match(script, /TUTORIAL_INTRO/);
   assert.match(script, /Three across/);
   assert.match(script, /Three down/);
+  assert.equal(
+    [...script.matchAll(/spotlight:\s*"board"/g)].length,
+    4,
+    "tour + both formations + the straight must ring the board, not a floating card",
+  );
   assert.match(script, /Flagship weapon/);
   assert.match(script, /Happy fleet battles/);
   // The game keeps two words strictly apart: Shields are what odd faces
@@ -165,10 +170,14 @@ test("the coach is a minimize/maximize overlay, not a card that relocates itself
   assert.ok(block, "the coach needs a positioning block");
   assert.match(block[0], /bottom:/, "the coach docks at the bottom so the board stays above");
   assert.doesNotMatch(block[0], /^\s*top:\s*calc/m, "do not pin the card to the top of the phone");
+  const matchShelf = css.match(/\.tutorial-shell:not\(\[data-shop\]\) \.tutorial-coach \{[^}]*\}/);
+  assert.ok(matchShelf, "the match coach needs a bottom shelf");
+  assert.match(matchShelf[0], /8\.6rem/, "the default shelf sits just above Lock in / Roll Fleet");
+  assert.doesNotMatch(matchShelf[0], /16\.4rem/, "do not park the default tip above the whole dock — that covers the dice");
   assert.match(
     css,
-    /\[data-awaiting="reroll"\] \.tutorial-coach/,
-    "a die-tap tip sits lower so the middle row stays visible",
+    /\[data-spotlight="tally"\] \.tutorial-coach/,
+    "the five-totals tip is the one that sits above the dock",
   );
   assert.doesNotMatch(css, /data-phase/, "positioning must not depend on which phase is live");
   assert.doesNotMatch(coach, /tutorial-action-clear/, "no measured clearance — the anchor no longer moves");

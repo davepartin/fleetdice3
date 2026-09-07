@@ -2703,21 +2703,18 @@ button {
   padding: 0 0.65rem;
   pointer-events: none;
 }
-/* Sit on top of the action dock, not over it — Roll Fleet, the five totals,
-   and Lock in have to stay visible and tappable under the tip. 16.4rem is
-   the phone dock's own cap (250px plus a little padding). */
+/* Sit just above the dock's action row — Roll Fleet / Reroll / Lock in
+   stay tappable under the tip, and the fleet stays in the open space
+   above it. 8.6rem is that action row plus a little padding. A higher
+   shelf (the whole 250px dock) put the card over the dice. */
 .tutorial-shell:not([data-shop]) .tutorial-coach {
   top: auto;
-  bottom: calc(16.4rem + var(--hud-safe-bottom));
-}
-/* A die-tap or "look at the board" tip has to leave the middle row clear.
-   Sit lower — over the dock header, not over the dice. Totals stay on the
-   default (higher) shelf so the five-totals ring is not covered. */
-.tutorial-shell[data-awaiting="reroll"] .tutorial-coach,
-.tutorial-shell[data-awaiting="token"] .tutorial-coach,
-.tutorial-shell[data-awaiting="brace"] .tutorial-coach,
-.tutorial-shell[data-spotlight="board"] .tutorial-coach {
   bottom: calc(8.6rem + var(--hud-safe-bottom));
+}
+/* The five-totals lesson has to sit above the whole dock or the yellow
+   ring is hidden under the card. */
+.tutorial-shell[data-spotlight="tally"] .tutorial-coach {
+  bottom: calc(16.4rem + var(--hud-safe-bottom));
 }
 
 .tutorial-coach-bar {
