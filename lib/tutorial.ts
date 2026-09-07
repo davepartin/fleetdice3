@@ -354,6 +354,14 @@ export function isLessonStep(id: TutorialStepId): boolean {
   return id === "intro" || id === "faces" || id === "marks";
 }
 
+/**
+ * Steps that ring the 3×3 and ask you to look at it. The tip stays a slim
+ * strip so the fleet is visible without tapping Minimize first.
+ */
+export function isBoardTeachStep(step: Pick<TutorialStep, "spotlight">): boolean {
+  return step.spotlight === "board";
+}
+
 export function stepById(id: TutorialStepId): TutorialStep {
   const step = TUTORIAL_STEPS.find((entry) => entry.id === id);
   if (!step) throw new Error(`Unknown tutorial step ${id}`);

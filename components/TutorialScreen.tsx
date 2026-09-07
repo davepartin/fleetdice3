@@ -9,7 +9,7 @@ import { useRouter } from "next/navigation";
 import { MatchScreen } from "./MatchScreen";
 import { TutorialCoach, TutorialTheme, awaitedAction } from "./TutorialCoach";
 import { useTutorialMatch } from "@/lib/useTutorialMatch";
-import { TUTORIAL_INTRO, isLessonStep } from "@/lib/tutorial";
+import { TUTORIAL_INTRO, isBoardTeachStep, isLessonStep } from "@/lib/tutorial";
 import type { MatchAction } from "@/lib/engine";
 import type { MatchController } from "@/lib/useMatch";
 
@@ -67,6 +67,7 @@ export function TutorialScreen() {
       data-awaiting={awaiting ?? undefined}
       data-spotlight={tutorial.step.spotlight ?? undefined}
       data-lesson={isLessonStep(tutorial.stepId) ? "" : undefined}
+      data-board-teach={isBoardTeachStep(tutorial.step) ? "" : undefined}
       data-shop={inShop ? "" : undefined}
     >
       {/* The board is never veiled. You are being taught about these dice —

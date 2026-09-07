@@ -4,15 +4,16 @@
  * Tutorial coach — docked at the bottom so the board stays visible above.
  *
  * A centred or top-anchored card covered the dice the tip was pointing at.
- * The card sits just above Lock in / Roll Fleet and grows upward, so the
- * fleet stays visible. Minimize tucks it to a slim bar for even more board.
+ * The card sits just above Lock in / Roll Fleet and grows upward. Board-teach
+ * steps (the ones that ring the 3×3) open as a slim strip — title, two lines,
+ * Next — so the fleet is visible without tapping Minimize first.
  */
 
 import { useEffect, useState } from "react";
 import { Button } from "./ui";
 import { HelpFlagFace, HelpShipFace } from "./HelpArt";
 import { HullShape } from "./HullShape";
-import type { TutorialStep, TutorialStepId } from "@/lib/tutorial";
+import { isBoardTeachStep, type TutorialStep, type TutorialStepId } from "@/lib/tutorial";
 
 type Props = {
   step: TutorialStep;
@@ -137,11 +138,13 @@ export function TutorialCoach({
   const awaiting = awaitedAction(step);
   const showNext = !!step.allow.coachNext && !!step.nextLabel;
   const hint = awaiting ? (AWAIT_HINT[awaiting] ?? "Take your turn on the board") : null;
+  const boardTeach = isBoardTeachStep(step);
 
-  // Every new step opens maximized so the tip gets read. The board stays
-  // visible above the card; Minimize is how you take even more of it back.
-  const [maximized, setMaximized] = useState(true);
-  useEffect(() => setMaximized(true), [stepId]);
+  // Lesson and HUD tips open maximized so the copy gets read. Board-teach
+  // steps open as the slim strip — a tall card here covers the 3×3 the
+  // spotlight is pointing at. Show tip still expands it; Next stays on the bar.
+  const [maximized, setMaximized] = useState(!boardTeach);
+  useEffect(() => setMaximized(!boardTeach), [stepId, boardTeach]);
 
   /*
    * Bring whatever this step lit up into view. Mostly a no-op — the dock is
@@ -164,16 +167,18 @@ export function TutorialCoach({
       <div className="tutorial-coach" role="dialog" aria-label="Tutorial coach, minimized">
         <button
           type="button"
-          className="tutorial-coach-bar panel"
+          className={`tutorial-coach-bar panel${boardTeach ? " tutorial-coach-bar-board" : ""}`}
           onClick={() => setMaximized(true)}
         >
           <span className="tutorial-coach-bar-text">
             <span className="tutorial-coach-bar-title">{step.title}</span>
             {error ? (
               <span className="tutorial-coach-bar-hint tutorial-coach-bar-error">{error}</span>
-            ) : (
-              hint && <span className="tutorial-coach-bar-hint">↓ {hint}</span>
-            )}
+            ) : hint ? (
+              <span className="tutorial-coach-bar-hint">↓ {hint}</span>
+            ) : boardTeach ? (
+              <span className="tutorial-coach-bar-hint tutorial-coach-bar-body">{step.body}</span>
+            ) : null}
           </span>
           {showNext ? (
             <span
@@ -208,7 +213,7 @@ export function TutorialCoach({
           </div>
 
           <h2 className="t-display tutorial-coach-title">{step.title}</h2>
-          <FaceStrip stepId={stepId} />
+          {!boardTeach && <FaceStrip stepId={stepId} />}
           <p className="tutorial-coach-body">{step.body}</p>
 
           {error && (

@@ -183,11 +183,14 @@ test("the coach is a minimize/maximize overlay, not a card that relocates itself
   assert.doesNotMatch(coach, /tutorial-action-clear/, "no measured clearance — the anchor no longer moves");
 
   assert.match(coach, /useState/, "maximized/minimized needs real component state");
-  assert.match(coach, /setMaximized\(true\)/, "a fresh step must open maximized so the tip gets read");
+  assert.match(coach, /isBoardTeachStep/, "board-teach steps come from the spotlight, not a parallel list");
+  assert.match(coach, /setMaximized\(!boardTeach\)/, "board-teach opens as the slim strip so the 3×3 stays visible");
   assert.match(coach, /setMaximized\(false\)/, "there must be an explicit way to minimize");
   assert.match(coach, /tutorial-coach-bar-next-wrap/, "a minimized coach still offers Next");
   assert.match(coach, /tutorial-coach-bar/, "the minimized state renders as its own slim bar");
   assert.match(coach, /tutorial-coach-bar-error/, "a refused tap must still be readable when the tip is tucked away");
+  assert.match(coach, /tutorial-coach-bar-body/, "the board strip still carries two lines of the tip");
+  assert.match(coach, /tutorial-coach-bar-board/, "the board strip has its own class so it can stay short");
   assert.match(coach, /Minimize/, "the maximize->minimize control must be labeled, not just an icon");
   assert.match(coach, /Show tip/, "the minimize->maximize control must be labeled, not just an icon");
 
@@ -253,11 +256,24 @@ test("the coach and theme buttons live outside their own scroll region", () => {
   assert.match(cardBlock[0], /max-height:\s*min\(/, "the default tip has a cap so the board stays above");
   const lessonCard = css.match(/\.tutorial-shell\[data-lesson\] \.tutorial-coach-card \{[^}]*\}/);
   const spotCard = css.match(/\.tutorial-shell\[data-spotlight\] \.tutorial-coach-card \{[^}]*\}/);
+  const boardCard = css.match(/\.tutorial-shell\[data-spotlight="board"\] \.tutorial-coach-card \{[^}]*\}/);
   assert.ok(lessonCard, "Faces/Marks need a taller-card rule");
   assert.ok(spotCard, "spotlight tips need a compact-card rule");
+  assert.ok(boardCard, "board-teach tips need a still-shorter card than other spotlights");
   assert.match(lessonCard[0], /max-height:\s*min\(/, "lesson tips grow up, they do not fill the screen");
   assert.match(spotCard[0], /max-height:\s*min\(/, "spotlight tips stay short");
+  assert.match(boardCard[0], /max-height:\s*min\(20dvh,\s*8\.5rem\)/, "Show tip on a board lesson must stay a strip, not half the phone");
   assert.match(screen, /data-lesson/, "the shell publishes which tips may grow taller");
+  assert.match(screen, /data-board-teach/, "the shell publishes which tips must leave the 3×3 open");
+  assert.match(css, /tutorial-coach-bar-body/, "the board strip clamps the tip to two lines");
+  assert.match(css, /-webkit-line-clamp:\s*2/, "two lines of the tip, not the whole paragraph");
+
+  const boardSteps = TUTORIAL_STEPS.filter((step) => step.spotlight === "board");
+  assert.equal(boardSteps.length, 4, "tour + both formations + the straight ring the board");
+  for (const step of boardSteps) {
+    assert.equal(!!step.allow.coachNext, true, `${step.id} keeps Next on the slim bar`);
+    assert.ok(step.nextLabel, `${step.id} names the Next button`);
+  }
 
   // The old pulse faded the ring to nothing, which is why Dave could not
   // see the five-totals highlight. The ring has to stay a real yellow line.
