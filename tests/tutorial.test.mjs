@@ -299,6 +299,34 @@ test("the coach and theme buttons live outside their own scroll region", () => {
   assert.ok(themeScrollBlock && /overflow-y:\s*auto/.test(themeScrollBlock[0]));
 });
 
+test("Return to battle stays off the grid until the yard lesson asks for it", () => {
+  const css = readFileSync(new URL("../app/globals.css", import.meta.url), "utf8");
+  const yard = readFileSync(new URL("../components/Shipyard.tsx", import.meta.url), "utf8");
+
+  // A full-width primary over the 3×3 ate the glowing-bay tap. Hide the
+  // foot on every shop step that is not `ready`, then bring it back when
+  // the tip actually says "Tap Return to battle".
+  const hideFoot = css.match(
+    /\.tutorial-shell\[data-shop\]:not\(\[data-awaiting="ready"\]\) \.yard-foot \{[^}]*\}/,
+  );
+  assert.ok(hideFoot, "the yard foot needs a hide rule while bays are the lesson");
+  assert.match(hideFoot[0], /display:\s*none/, "do not leave Return to battle covering the grid");
+  assert.match(hideFoot[0], /pointer-events:\s*none/, "a hidden leave button must not steal taps");
+
+  const drawer = css.match(
+    /\.tutorial-shell\[data-shop\]:not\(\[data-awaiting="ready"\]\) \.yard-drawer-wrap \{[^}]*\}/,
+  );
+  assert.ok(drawer, "the buy drawer must sit above the slim tip once the foot is gone");
+  assert.match(drawer[0], /5\.6rem/, "drawer clearance matches the dock, not the missing button");
+
+  assert.match(yard, /yard-foot yard-done/, "Return to battle is still the ready-step target");
+  assert.match(
+    css,
+    /\[data-awaiting="ready"\] \.yard-done \.btn-primary/,
+    "the leave button still lights up when the tip asks for it",
+  );
+});
+
 test("action steps spotlight the control they name", () => {
   const coach = readFileSync(new URL("../components/TutorialCoach.tsx", import.meta.url), "utf8");
   const screen = readFileSync(new URL("../components/TutorialScreen.tsx", import.meta.url), "utf8");

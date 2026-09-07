@@ -3108,11 +3108,31 @@ button {
 }
 
 /* Shipyard steps point at cells, not a button — and each step points at one
-   *kind* of cell (locked / empty / a ship to upgrade), never all nine. */
+ *kind* of cell (locked / empty / a ship to upgrade), never all nine. */
 .tutorial-shell[data-awaiting="shopSlot"] .yard-cell-locked[data-affordable],
 .tutorial-shell[data-awaiting="shopBuy"] .yard-cell-empty[data-affordable],
 .tutorial-shell[data-awaiting="shopUpgrade"] .yard-cell-ship[data-affordable] {
+  position: relative;
+  z-index: 3;
   animation: tutorial-spotlight 1.6s ease-in-out infinite;
+}
+
+/*
+ * Return to battle stays off the yard until the tip actually names it.
+ * shopSlot / shopBuy / shopUpgrade (and the intro that leads into them)
+ * left a full-width primary sitting across the 3×3, so the glowing bay
+ * the coach asked for could not be tapped. It comes back on `ready`.
+ */
+.tutorial-shell[data-shop]:not([data-awaiting="ready"]) .yard-foot {
+  display: none;
+  pointer-events: none;
+}
+
+/* The confirm drawer used to sit above Return to battle. With that button
+ * gone, park it above the slim tip instead, or Open this bay / buy a d4
+ * land under the dock. */
+.tutorial-shell[data-shop]:not([data-awaiting="ready"]) .yard-drawer-wrap {
+  bottom: calc(var(--hud-safe-bottom) + 5.6rem);
 }
 
 /* The screen tour — a coach-only step naming a HUD region rather than a
