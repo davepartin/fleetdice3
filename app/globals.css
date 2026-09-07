@@ -3051,12 +3051,13 @@ button {
 }
 
 /*
- * The shipyard is a full-screen overlay. The coach now sits at the bottom,
- * so the grid needs room under it — a bay you cannot tap is a dead end.
+ * The shipyard is a full-screen overlay. The coach sits at the bottom as a
+ * slim strip, so the grid only needs room for that strip — 8.5rem was a
+ * tall-card reservation and left a black band under Return to battle.
  */
 .tutorial-shell .yard {
   padding-top: calc(var(--hud-safe-top) + 0.75rem);
-  padding-bottom: calc(var(--hud-safe-bottom) + 8.5rem);
+  padding-bottom: calc(var(--hud-safe-bottom) + 4.8rem);
 }
 /* Pushing the yard down costs vertical room, which can put the bottom row of
    bays past the fold. Let the board scroll so every cell stays reachable —

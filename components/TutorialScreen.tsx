@@ -79,6 +79,7 @@ export function TutorialScreen() {
         stepNumber={tutorial.stepNumber}
         stepCount={tutorial.stepCount}
         error={tutorial.error}
+        inShop={inShop}
         onNext={() => {
           if (tutorial.stepId === "finale") tutorial.finish();
           else tutorial.coachNext();

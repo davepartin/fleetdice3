@@ -184,7 +184,8 @@ test("the coach is a minimize/maximize overlay, not a card that relocates itself
 
   assert.match(coach, /useState/, "maximized/minimized needs real component state");
   assert.match(coach, /isBoardTeachStep/, "board-teach steps come from the spotlight, not a parallel list");
-  assert.match(coach, /setMaximized\(!boardTeach\)/, "board-teach opens as the slim strip so the 3×3 stays visible");
+  assert.match(coach, /setMaximized\(!compact\)/, "board-teach and the yard open as the slim strip");
+  assert.match(coach, /inShop/, "the yard tells the coach it is covering Return to battle");
   assert.match(coach, /setMaximized\(false\)/, "there must be an explicit way to minimize");
   assert.match(coach, /tutorial-coach-bar-next-wrap/, "a minimized coach still offers Next");
   assert.match(coach, /tutorial-coach-bar/, "the minimized state renders as its own slim bar");
@@ -207,10 +208,13 @@ test("the coach is a minimize/maximize overlay, not a card that relocates itself
   assert.doesNotMatch(barBlock[0], /max-height|height:/, "the bar's height comes from its content, not a guess");
 
   // The shipyard still needs its grid pushed clear, but now against the
-  // bar's fixed height, not a value read off the current card.
+  // slim dock, not a tall-card guess. 8.5rem left a black band under
+  // Return to battle once the tip tucked itself away.
   const yardBlock = css.match(/\.tutorial-shell \.yard \{[^}]*\}/);
   assert.ok(yardBlock, "the shipyard needs its own push-down rule");
   assert.doesNotMatch(yardBlock[0], /var\(--tutorial/, "the push-down must be a fixed constant, not measured");
+  assert.match(yardBlock[0], /4\.8rem/, "yard padding matches the slim dock");
+  assert.doesNotMatch(yardBlock[0], /8\.5rem/, "8.5rem is the reservation that left the black gap");
 
   // The board is never veiled — the dice are the subject of the lesson.
   assert.doesNotMatch(css, /\.tutorial-preface-scrim/);

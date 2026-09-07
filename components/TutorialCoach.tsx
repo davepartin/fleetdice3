@@ -5,8 +5,8 @@
  *
  * A centred or top-anchored card covered the dice the tip was pointing at.
  * The card sits just above Lock in / Roll Fleet and grows upward. Board-teach
- * steps (the ones that ring the 3×3) open as a slim strip — title, two lines,
- * Next — so the fleet is visible without tapping Minimize first.
+ * and shipyard steps open as a slim strip — title, two lines, Next — so the
+ * fleet stays visible and Return to battle sits tight above the dock.
  */
 
 import { useEffect, useState } from "react";
@@ -21,6 +21,8 @@ type Props = {
   stepNumber: number;
   stepCount: number;
   error?: string | null;
+  /** Shipyard: open as the slim strip so Return to battle sits on the dock. */
+  inShop?: boolean;
   onNext(): void;
   onSkip(): void;
 };
@@ -132,6 +134,7 @@ export function TutorialCoach({
   stepNumber,
   stepCount,
   error,
+  inShop = false,
   onNext,
   onSkip,
 }: Props) {
@@ -139,12 +142,14 @@ export function TutorialCoach({
   const showNext = !!step.allow.coachNext && !!step.nextLabel;
   const hint = awaiting ? (AWAIT_HINT[awaiting] ?? "Take your turn on the board") : null;
   const boardTeach = isBoardTeachStep(step);
+  const compact = boardTeach || inShop;
 
   // Lesson and HUD tips open maximized so the copy gets read. Board-teach
-  // steps open as the slim strip — a tall card here covers the 3×3 the
-  // spotlight is pointing at. Show tip still expands it; Next stays on the bar.
-  const [maximized, setMaximized] = useState(!boardTeach);
-  useEffect(() => setMaximized(!boardTeach), [stepId, boardTeach]);
+  // and shipyard steps open as the slim strip — a tall card covers the 3×3
+  // or leaves a black band under Return to battle. Show tip still expands
+  // it; Next stays on the bar.
+  const [maximized, setMaximized] = useState(!compact);
+  useEffect(() => setMaximized(!compact), [stepId, compact]);
 
   /*
    * Bring whatever this step lit up into view. Mostly a no-op — the dock is
@@ -167,7 +172,7 @@ export function TutorialCoach({
       <div className="tutorial-coach" role="dialog" aria-label="Tutorial coach, minimized">
         <button
           type="button"
-          className={`tutorial-coach-bar panel${boardTeach ? " tutorial-coach-bar-board" : ""}`}
+          className={`tutorial-coach-bar panel${compact ? " tutorial-coach-bar-board" : ""}`}
           onClick={() => setMaximized(true)}
         >
           <span className="tutorial-coach-bar-text">
@@ -176,7 +181,7 @@ export function TutorialCoach({
               <span className="tutorial-coach-bar-hint tutorial-coach-bar-error">{error}</span>
             ) : hint ? (
               <span className="tutorial-coach-bar-hint">↓ {hint}</span>
-            ) : boardTeach ? (
+            ) : compact ? (
               <span className="tutorial-coach-bar-hint tutorial-coach-bar-body">{step.body}</span>
             ) : null}
           </span>
