@@ -1,5 +1,12 @@
 # Where this stopped, and what is left
 
+**September 8:** The first playtester upgrade is implemented on
+`codex/playtest-recovery-and-dice`; see `PLAYTEST-UPGRADE-2026-09-08.md`.
+Next acceptance: human phone sound/d8 review and two-device seat return, then
+coordinated frontend/rules rollout. Reactor balance is unchanged. Flagship
+recharge is simulation-only. The AI shop planner's hypothetical ship IDs are a
+separate follow-up, documented with counted rejected actions.
+
 Updated 2 September 2026, after two sessions of playing the game on a phone and
 fixing what that turned up. If you hand this project to an assistant again, give
 it `CLAUDE.md` and `HANDOFF.md` first; this file is the running list of what is

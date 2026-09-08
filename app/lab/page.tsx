@@ -39,7 +39,15 @@ export default function Lab() {
       stage = createStage(canvas, quality);
       const font = displayFontFamily();
 
-      if (view === "faces") {
+      if (view === "hulls") {
+        stage.setFrame({ pitch: 88, fitWidth: 8.5, fitDepth: 12, target: new THREE.Vector3(0, 0, 0), parallax: 0 }, true);
+        [4, 8, 4, 8].forEach((kind, index) => {
+          const die = createDie(kind as DieKind, font, 1.5, 3, true);
+          const home = new THREE.Vector3(index % 2 === 0 ? -2 : 2, die.seatHeight, index < 2 ? -2.5 : 2.5);
+          die.setHome(home); die.object.position.copy(home); die.setFace(index < 2 ? 3 : 4);
+          stage!.world.add(die.object); dice.push(die);
+        });
+      } else if (view === "faces") {
         // Every face of every hull, dead-on and static. If a die is showing the
         // wrong number or sitting at the wrong angle, it is obvious here.
         stage.setFrame(

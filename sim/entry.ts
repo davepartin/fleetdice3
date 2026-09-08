@@ -7,3 +7,6 @@ export * from "../lib/throwSync";
 export * from "../lib/versusSync";
 export * from "../lib/tutorial";
 export * from "../lib/tutorialFlow";
+
+export * from "../lib/moveReceipt";
+export * from "../lib/soloSave";

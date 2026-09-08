@@ -1,5 +1,10 @@
 # Handing Fleet Dice to another assistant
 
+**September 8 update:** Read `PLAYTEST-UPGRADE-2026-09-08.md` first for the current
+unreleased recovery/feedback/dice pass and its evidence. Current suite: 145 tests.
+The older completion and sound statements below describe the earlier baseline.
+New seat return requires both frontend and Firestore rules deployment.
+
 *The game is called **Fleet Dice**. The repo is still `fleetdice3` and the
 Firestore collections are still `fd3*` — the 3 was the development name and
 only survives where renaming would break a live URL or live data.*

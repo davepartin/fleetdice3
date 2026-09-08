@@ -51,7 +51,8 @@ function MatchInner() {
       <div className="hud">
         <div className="mx-auto flex w-full max-w-[30rem] flex-col gap-4 px-4 pt-8">
           <Notice tone="warn">{controller.error ?? "That room could not be opened."}</Notice>
-          <Button tone="primary" full onClick={home}>
+          {id && <Button tone="primary" full onClick={() => router.push(`/join/?id=${encodeURIComponent(id)}`)}>Return to this battle</Button>}
+          <Button tone="ghost" full onClick={home}>
             Back to {NOUN.home}
           </Button>
         </div>

@@ -13,7 +13,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Button, Notice, Panel, RoomCode, Spinner } from "@/components/ui";
 import { HowToPlaySheet } from "@/components/HowToPlay";
 import { commanderName, ensurePlayerIdentity, rememberCommanderName } from "@/lib/firebase";
-import { joinRoomByCode, joinRoomById, reclaimGuestSeat } from "@/lib/rooms";
+import { joinRoomByCode, joinRoomById } from "@/lib/rooms";
+import { requestSeatReturn, watchMySeatRequest } from "@/lib/seatRecovery";
 import { NOUN } from "@/lib/reference";
 
 export default function JoinPage() {
@@ -42,6 +43,7 @@ function JoinInner() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [seatTaken, setSeatTaken] = useState(false);
+  const [requestedRoom, setRequestedRoom] = useState<string | null>(null);
   const [helpOpen, setHelpOpen] = useState(false);
 
   useEffect(() => {
@@ -68,18 +70,28 @@ function JoinInner() {
   }, [id, code, name, router]);
 
   const reclaim = useCallback(async () => {
-    if (!id) return;
     setBusy(true);
     setError(null);
     try {
       rememberCommanderName(name);
-      await reclaimGuestSeat(id, name);
-      router.push(`/match/?id=${id}`);
+      const roomId = await requestSeatReturn(id, code, name);
+      setRequestedRoom(roomId);
+      setBusy(false);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : String(reason));
       setBusy(false);
     }
-  }, [id, name, router]);
+  }, [id, code, name]);
+
+  useEffect(() => {
+    if (!requestedRoom) return;
+    let stopped = false;
+    let stop: (() => void) | undefined;
+    void watchMySeatRequest(requestedRoom, () => router.push(`/match/?id=${requestedRoom}`), setError)
+      .then(unsubscribe => { if (stopped) unsubscribe(); else stop = unsubscribe; })
+      .catch(() => setError("Could not check your request. Try again when connected."));
+    return () => { stopped = true; stop?.(); };
+  }, [requestedRoom, router]);
 
   if (!id && code.length !== 4) {
     return (
@@ -137,20 +149,20 @@ function JoinInner() {
 
           {error && <Notice tone="warn">{error}</Notice>}
 
-          {seatTaken && id && (
+          {seatTaken && (
             <Panel className="flex flex-col gap-2 p-4">
               <p className="t-eyebrow">Were you already in this game?</p>
               <p className="text-sm leading-snug c-dim-bright">
-                If that second seat is yours and this browser has forgotten it, you can take it
-                back. It only works once the other device has been quiet for a minute, so nobody
-                can be pushed out of a game they are still playing.
+                If this browser forgot your seat, ask the friend still in the battle to approve
+                your return. Your fleet, Energy and progress stay exactly where you left them.
               </p>
               <Button tone="ghost" size="lg" full onClick={reclaim} disabled={busy}>
-                {busy ? "Taking the seat…" : "Take my seat back"}
+                {busy ? "Asking your friend…" : requestedRoom ? "Send request again" : "Ask my friend to reconnect me"}
               </Button>
             </Panel>
           )}
 
+          {requestedRoom && <Notice>Waiting for your friend to approve your return on their battle screen.</Notice>}
           <Button tone="primary" size="lg" full onClick={join} disabled={busy}>
             {busy ? "Sitting down…" : "Join the game"}
           </Button>

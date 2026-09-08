@@ -15,6 +15,8 @@ import { createDie, type Die, type DieKind } from "./die";
 import { FLAG_FACE_PALETTE } from "./faceArt";
 import { createVfx, type Vfx } from "./vfx";
 import { displayFontFamily } from "./fonts";
+import { audio } from "../audio";
+import { reducedMotion } from "../presentation";
 import { isPhoneLayout } from "../viewport";
 
 /** Where each deck sits in the world. */
@@ -329,9 +331,12 @@ export function createArena(canvas: HTMLCanvasElement, options: ArenaOptions = {
           if (tokenTurn) die.nudge(0.9);
         } else {
           die.throwTo(spec.value, {
-            delay: Math.random() * 0.12,
-            duration: 0.72 + Math.random() * 0.16,
-            onLand: () => decks[deckKey].board.impact(spec.cell, 0.55),
+            delay: reducedMotion() ? 0 : Math.random() * 0.1,
+            duration: reducedMotion() ? 0.12 : 0.62 + die.sides * 0.017 + Math.random() * 0.035,
+            onLand: () => {
+              decks[deckKey].board.impact(spec.cell, reducedMotion() ? 0.15 : 0.4);
+              audio.play("dice-land", { pitch: 1.25 - die!.sides * 0.035 + Math.random() * 0.06, gain: deckKey === "you" ? 0.3 : 0.18 });
+            },
           });
         }
       }

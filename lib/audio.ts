@@ -81,6 +81,8 @@ export type PlayOptions = {
 
 const STORE_MUTED = "fd3.audio.muted";
 const STORE_VOLUME = "fd3.audio.volume";
+const STORE_EFFECTS = "fd3.audio.effects";
+const STORE_AMBIENCE = "fd3.audio.ambience";
 
 /** Headroom below the limiter so a stacked round never clips. */
 const OUTPUT_TRIM = 0.85;
@@ -130,7 +132,7 @@ function clamp(value: number, min: number, max: number): number {
  * panel renders long before the first gesture.
  * ------------------------------------------------------------------ */
 
-type Prefs = { muted: boolean; volume: number };
+type Prefs = { muted: boolean; volume: number; effects: number; ambience: number };
 
 let prefs: Prefs | null = null;
 
@@ -147,7 +149,10 @@ function readPrefs(): Prefs {
   } catch {
     // Private browsing throws on access. Defaults are fine.
   }
-  prefs = { muted, volume };
+  const channel = (key: string) => {
+    try { const v = parseFloat(localStorage.getItem(key) ?? ""); return Number.isFinite(v) ? clamp(v, 0, 1) : 1; } catch { return 1; }
+  };
+  prefs = { muted, volume, effects: channel(STORE_EFFECTS), ambience: channel(STORE_AMBIENCE) };
   return prefs;
 }
 
@@ -157,6 +162,8 @@ function writePrefs(): void {
     if (typeof localStorage !== "undefined") {
       localStorage.setItem(STORE_MUTED, p.muted ? "1" : "0");
       localStorage.setItem(STORE_VOLUME, p.volume.toFixed(3));
+      localStorage.setItem(STORE_EFFECTS, String(p.effects));
+      localStorage.setItem(STORE_AMBIENCE, String(p.ambience));
     }
   } catch {
     // Not being able to remember the setting is not worth an exception.
@@ -1664,7 +1671,7 @@ function play(name: CueName, options: PlayOptions = {}): void {
 
   // Never schedule in the past: a late start is a click.
   const at = ctx.currentTime + 0.008 + Math.max(0, options.delay ?? 0);
-  let level = clamp(options.gain ?? 1, 0, 1.5);
+  let level = clamp(options.gain ?? 1, 0, 1.5) * readPrefs().effects;
   if (reducedMotion && JARRING.has(name)) level *= 0.55;
   cue(e, at, options, level);
 }
@@ -1707,7 +1714,7 @@ let heartTimer: number | null = null;
 let fading: FadingBed[] = [];
 
 function bedTarget(): number {
-  return AMBIENT_QUIET + (AMBIENT_LOUD - AMBIENT_QUIET) * bedIntensity;
+  return (AMBIENT_QUIET + (AMBIENT_LOUD - AMBIENT_QUIET) * bedIntensity) * readPrefs().ambience;
 }
 
 function clearTimer(id: number | null): null {
@@ -1996,6 +2003,14 @@ export const audio = {
     p.volume = clamp(Number.isFinite(value) ? value : 0, 0, 1);
     writePrefs();
     if (engine) engine.master.gain.setTargetAtTime(masterLevel(), engine.ctx.currentTime, 0.03);
+  },
+
+  get effectsVolume() { return readPrefs().effects; },
+  get ambienceVolume() { return readPrefs().ambience; },
+  setEffectsVolume(value: number) { readPrefs().effects = clamp(value, 0, 1); writePrefs(); },
+  setAmbienceVolume(value: number) {
+    readPrefs().ambience = clamp(value, 0, 1); writePrefs();
+    const e = live(); if (e) e.bed.gain.setTargetAtTime(bedTarget(), e.ctx.currentTime, 0.1);
   },
 
   /** Fire a cue. Silently does nothing before unlock. */
