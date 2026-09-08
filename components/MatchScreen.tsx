@@ -36,7 +36,7 @@ import { rollHint } from "@/lib/ai";
 import { FLAGSHIP_FACES, NOUN, STAT_LABEL } from "@/lib/reference";
 import { isPhoneLayout } from "@/lib/viewport";
 import type { MatchController } from "@/lib/useMatch";
-import { pendingThrow, pendingThrowReady, type PendingThrow } from "@/lib/throwSync";
+import { pendingThrow, pendingThrowReady, selectionAfterFlagToken, type PendingThrow } from "@/lib/throwSync";
 import { createArena, type Arena, type Focus, braceCandidates } from "@/lib/three/arena";
 import { waitForFonts } from "@/lib/three/fonts";
 import { audio } from "@/lib/audio";
@@ -746,6 +746,10 @@ export function MatchScreen({ controller, onExit, title, subtitle }: Props) {
               onTake={(take) => send({ type: "straight-take", take })}
               onToken={(direction) => {
                 audio.play("flagship-ring");
+                // The weapon is not a roll. Leaving the reroll set armed made
+                // the primary button still say Reroll, and the next tap threw
+                // the flagship the player had just turned.
+                setSelected(selectionAfterFlagToken());
                 send({ type: "flag-token", direction });
               }}
               onClearSelection={() => setSelected(new Set())}
@@ -1031,7 +1035,7 @@ function RollDock({
         <div className="flex gap-2">
           {selected.size > 0 ? (
             <>
-              <Button tone="ghost" size="lg" onClick={onClearSelection} disabled={busy}>
+              <Button tone="ghost" size="lg" onClick={onClearSelection} disabled={busy || tokenOpen}>
                 Clear
               </Button>
               <Button
@@ -1039,7 +1043,7 @@ function RollDock({
                 size="lg"
                 full
                 onClick={onReroll}
-                disabled={busy || !canReroll}
+                disabled={busy || !canReroll || tokenOpen}
                 className={`reroll-action ${!canReroll ? "reroll-unaffordable" : ""}`}
                 ariaLabel={
                   outOfRolls
@@ -1083,7 +1087,7 @@ function RollDock({
             </>
           ) : (
             <>
-              <Button tone="primary" size="lg" full onClick={onSubmit} disabled={busy}>
+              <Button tone="primary" size="lg" full onClick={onSubmit} disabled={busy || tokenOpen}>
                 Lock in
               </Button>
             </>

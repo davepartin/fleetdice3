@@ -42,3 +42,14 @@ export function pendingThrowReady(
   if (!pending || !player) return false;
   return player.rolls > pending.rolls || diceSignature(player) !== pending.signature;
 }
+
+/**
+ * Reroll picks after the flagship weapon is used.
+ *
+ * The weapon is not a roll, so the selected set used to survive it. The
+ * primary button then still said Reroll, and the next tap threw the flagship
+ * the player had just turned. Always drop the selection so that tap is Lock in.
+ */
+export function selectionAfterFlagToken(): Set<string> {
+  return new Set();
+}

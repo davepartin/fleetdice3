@@ -52,3 +52,21 @@ test("nothing is drawn on the enemy deck until their dice are revealed", () => {
   assert.match(arena, /if \(!show\) \{[\s\S]{0,240}setFormations\(\[\]\)/,
     "applyScoreMarks must clear formations when the deck is not revealed");
 });
+
+test("the flagship weapon turns the centre die in place instead of throwing it", () => {
+  assert.match(
+    arena,
+    /tokenTurn/,
+    "a flagship-weapon face change must be named, not treated as a roll",
+  );
+  assert.match(
+    arena,
+    /id === "flag" && changed && !asked/,
+    "only your flag, and only when it was not sent back as a reroll",
+  );
+  assert.match(
+    arena,
+    /if \(opts\.instant \|\| tokenTurn\)/,
+    "the weapon must set the face, not throwTo",
+  );
+});

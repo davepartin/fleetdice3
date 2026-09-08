@@ -318,9 +318,16 @@ export function createArena(canvas: HTMLCanvasElement, options: ArenaOptions = {
       // "changed" and keep re-throwing it to face 1, fighting the flattened
       // pose it is meant to settle into. It just keeps showing whatever it
       // last rolled.
+      // The flagship weapon turns one face; it is not a roll. Throwing the
+      // centre die made the selection marker vanish mid-flight, so the next
+      // tap looked like Lock in while it was still Reroll.
+      const tokenTurn =
+        deckKey === "you" && id === "flag" && changed && !asked && !opts.instant && !facedown;
       if (!facedown && !spec.disabled && !alreadyFlyingThere && (changed || asked)) {
-        if (opts.instant) die.setFace(spec.value);
-        else {
+        if (opts.instant || tokenTurn) {
+          die.setFace(spec.value);
+          if (tokenTurn) die.nudge(0.9);
+        } else {
           die.throwTo(spec.value, {
             delay: Math.random() * 0.12,
             duration: 0.72 + Math.random() * 0.16,
