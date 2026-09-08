@@ -39,8 +39,8 @@ rerolls, and all shipped balance numbers remain unchanged.
 
 - After Dave’s visual feedback, the d8’s actual octahedron rests with two
   adjacent triangles forming a solid diamond. The added gray frame was removed.
-  The lower facet shares the rolled face’s color, with darker shading and no
-  extra number. D4, d6 and d10 geometry is unchanged. Dice remain 3D in flight.
+  One large centered number and its symbols span both facets, using the full
+  diamond face; facet lighting supplies depth without an empty lower half. D4, d6 and d10 geometry is unchanged. Dice remain 3D in flight.
 - Different hull sizes have different throw timing/spin and landing pitches.
   Landing sounds follow actual landings; impacts/direct hits use distinct cues.
 - Effects and ambience have separate saved volume controls and audition buttons.
@@ -101,3 +101,7 @@ Do not mark the full AAA roadmap complete from this pass.
 Production build and lint passed after removing the separate diamond frame.
 The browser preview restored Dave’s round 4 (29 HP, 3 Energy, 22 Attack) with
 the new solid diamond and its existing formation highlights intact.
+
+D8 artwork follow-up: projected one inscription across the actual diamond
+facets so the number and payoff symbols use the full silhouette. Production
+build and browser shader rendering verified; no added border or backing shape.

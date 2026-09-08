@@ -491,6 +491,7 @@ export function buildAtlas(
   cell: number,
   numeralFont: string,
   captionFont: string,
+  layout?: FaceLayout,
 ): Atlas {
   const { columns, rows } = atlasLayout(sides);
   const width = columns * cell;
@@ -511,7 +512,7 @@ export function buildAtlas(
       ctx.beginPath();
       ctx.rect(0, 0, cell, cell);
       ctx.clip();
-      paintFace(ctx, spec, sides, cell, mode, numeralFont, captionFont);
+      paintFace(ctx, spec, sides, cell, mode, numeralFont, captionFont, layout);
       ctx.restore();
     });
     const texture = new THREE.CanvasTexture(canvas);
