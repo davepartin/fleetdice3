@@ -93,8 +93,7 @@ function sharedFor(kind: DieKind, font: string): Shared {
   // numeral gets its own face — Archivo Black, plain and heavy enough to
   // survive at ~40px, tilted, on a saturated field — while `font` (Oxanium)
   // still sets the flagship's small word caption.
-  const atlas = buildAtlas(specs, sides, 384, numeralFontFamily(), font,
-    kind === 8 ? { numberY: 0.40, numberSize: 0.50, markY: 0.69 } : undefined);
+  const atlas = buildAtlas(specs, sides, 384, numeralFontFamily(), font);
   const built = buildDie(sides, 1, atlas.columns, atlas.rows);
 
   const material = new THREE.MeshPhysicalMaterial({
@@ -249,40 +248,10 @@ export function createDie(kind: DieKind, font: string, scale = 1, cellSize = 0, 
 
   const material = shared.material.clone();
   let activeFaceUniform: { value: number } | null = null;
-  const diamondProjection = { value: new THREE.Matrix3() };
-  const diamondBounds = { value: new THREE.Vector4() };
-  const diamondCell = { value: new THREE.Vector2() };
-  function updateDiamondArt(faceValue: number) {
-    if (kind !== 8) return;
-    const pose = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), -Math.atan(1 / Math.sqrt(2)));
-    pose.multiply(shared.built.frames[faceValue - 1]!.quaternion);
-    diamondProjection.value.setFromMatrix4(new THREE.Matrix4().makeRotationFromQuaternion(pose));
-    const bounds = new THREE.Box3();
-    const positions = shared.built.geometry.getAttribute("position");
-    for (let i = 0; i < positions.count; i++) bounds.expandByPoint(new THREE.Vector3().fromBufferAttribute(positions, i).applyQuaternion(pose));
-    diamondBounds.value.set(bounds.min.x, bounds.min.y, bounds.max.x - bounds.min.x, bounds.max.y - bounds.min.y);
-    diamondCell.value.set((faceValue - 1) % shared.atlas.columns, shared.atlas.rows - 1 - Math.floor((faceValue - 1) / shared.atlas.columns));
-  }
-  material.customProgramCacheKey = () => kind === 8 ? "fleet-diamond-facets" : "fleet-neutral-facets";
   material.onBeforeCompile = (shader) => {
     // onBeforeCompile fires lazily, on this die's first real draw call — by
     // then `value` (declared below) already holds whatever face was set
     // before anything was ever rendered, so read it rather than assuming 1.
-    if (kind === 8) {
-      // One readable inscription spans both real facets. Projection is fixed
-      // to the rolled pose, so it tumbles with the die rather than the camera.
-      shader.uniforms.uDiamondProjection = diamondProjection;
-      shader.uniforms.uDiamondBounds = diamondBounds;
-      shader.uniforms.uDiamondCell = diamondCell;
-      shader.vertexShader = shader.vertexShader.replace("#include <common>",
-        "#include <common>\nuniform mat3 uDiamondProjection;\nuniform vec4 uDiamondBounds;\nuniform vec2 uDiamondCell;")
-        .replace("#include <begin_vertex>", `#include <begin_vertex>
-          vec2 diamondUv = ((uDiamondProjection * position).xy - uDiamondBounds.xy) / uDiamondBounds.zw;
-          vMapUv = (uDiamondCell + diamondUv) / vec2(${shared.atlas.columns}.0, ${shared.atlas.rows}.0);
-          vEmissiveMapUv = vMapUv;
-        `);
-      return;
-    }
     shader.uniforms.uActiveFace = { value: value - 1 };
     activeFaceUniform = shader.uniforms.uActiveFace;
     shader.vertexShader = shader.vertexShader
@@ -313,7 +282,6 @@ export function createDie(kind: DieKind, font: string, scale = 1, cellSize = 0, 
       );
   };
   const mesh = new THREE.Mesh(shared.built.geometry, material);
-  if (kind === 8) mesh.scale.setScalar(0.78);
   mesh.castShadow = true;
   mesh.receiveShadow = false;
   pivot.add(mesh);
@@ -546,13 +514,7 @@ export function createDie(kind: DieKind, font: string, scale = 1, cellSize = 0, 
   function frameFor(faceValue: number): THREE.Quaternion {
     const frame = shared.built.frames[(faceValue - 1) % shared.built.frames.length];
     const base = frame ? frame.quaternion.clone() : new THREE.Quaternion();
-    // Show the two adjacent triangles equally: the actual octahedron reads
-    // as a solid diamond; the inscription spans both facets.
-    const pose = lean.clone();
-    if (kind === 8) pose.multiply(new THREE.Quaternion().setFromAxisAngle(
-      new THREE.Vector3(1, 0, 0), -Math.atan(1 / Math.sqrt(2)),
-    ));
-    return pose.multiply(base);
+    return lean.clone().multiply(base);
   }
 
   function applyStateColours() {
@@ -599,7 +561,7 @@ export function createDie(kind: DieKind, font: string, scale = 1, cellSize = 0, 
       outline.scale.setScalar(1.055);
     } else {
       outlineMaterial.color.setHex(0x020409);
-      outline.scale.setScalar(kind === 8 ? 1.012 * 0.78 : 1.012);
+      outline.scale.setScalar(1.012);
     }
     contactMaterial.opacity = state.disabled ? 0.28 : 0.5;
     if (state.facedown) {
@@ -729,7 +691,6 @@ export function createDie(kind: DieKind, font: string, scale = 1, cellSize = 0, 
     },
     setFace(next) {
       value = clampFace(next, sides);
-      updateDiamondArt(value);
       if (activeFaceUniform) activeFaceUniform.value = value - 1;
       pivot.quaternion.copy(frameFor(value));
       rolling = false;
@@ -737,7 +698,6 @@ export function createDie(kind: DieKind, font: string, scale = 1, cellSize = 0, 
     },
     throwTo(next, options = {}) {
       value = clampFace(next, sides);
-      updateDiamondArt(value);
       if (activeFaceUniform) activeFaceUniform.value = value - 1;
       targetQuaternion = frameFor(value);
       flightDelay = options.delay ?? 0;
@@ -905,7 +865,6 @@ export function createDie(kind: DieKind, font: string, scale = 1, cellSize = 0, 
     },
     stats() {
       return {
-        hullShape: kind === 8 ? "diamond" : kind === 4 ? "triangle" : "other",
         throwCount, frameCount, flightTime, flightDelay, flightDuration, rolling,
         // The block-screen pulse is invisible to the DOM, so the harness needs
         // a way to prove it is actually breathing.
