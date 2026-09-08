@@ -9,7 +9,8 @@ export const HULL_PATHS: Record<DieSize, string> = {
   4: "M32 8 L57 52 L7 52 Z",
   // A true 42x42 square, not the 48x40 rectangle this drifted into.
   6: "M13 11 h38 a2 2 0 0 1 2 2 v38 a2 2 0 0 1 -2 2 h-38 a2 2 0 0 1 -2 -2 v-38 a2 2 0 0 1 2 -2 z",
-  8: "M32 6 L56 32 L32 58 L8 32 Z",
+  // A square on its point — same width and height — matching the board d8.
+  8: "M32 8 L56 32 L32 56 L8 32 Z",
   10: "M32 6 L57 24 L47 55 L17 55 L7 24 Z",
 };
 
@@ -24,9 +25,9 @@ export function addHullPath(ctx: CanvasRenderingContext2D, sides: DieSize, size:
     // A true square, matching HULL_PATHS[6] above.
     ctx.roundRect(x(11), x(11), x(42), x(42), x(2));
   } else if (sides === 8) {
-    ctx.moveTo(x(32), x(6));
+    ctx.moveTo(x(32), x(8));
     ctx.lineTo(x(56), x(32));
-    ctx.lineTo(x(32), x(58));
+    ctx.lineTo(x(32), x(56));
     ctx.lineTo(x(8), x(32));
   } else {
     ctx.moveTo(x(32), x(6));

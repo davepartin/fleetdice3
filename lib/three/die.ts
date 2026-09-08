@@ -8,7 +8,7 @@
  */
 
 import * as THREE from "three";
-import { buildDie, type BuiltDie } from "./polyhedron";
+import { buildDie, d8DiamondTip, type BuiltDie } from "./polyhedron";
 import {
   buildAtlas,
   buildFacedownAtlas,
@@ -254,7 +254,7 @@ export function createDie(kind: DieKind, font: string, scale = 1, cellSize = 0, 
   const diamondCell = { value: new THREE.Vector2() };
   function updateDiamondArt(faceValue: number) {
     if (kind !== 8) return;
-    const pose = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), -Math.atan(1 / Math.sqrt(2)));
+    const pose = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), -d8DiamondTip());
     pose.multiply(shared.built.frames[faceValue - 1]!.quaternion);
     diamondProjection.value.setFromMatrix4(new THREE.Matrix4().makeRotationFromQuaternion(pose));
     const bounds = new THREE.Box3();
@@ -546,11 +546,11 @@ export function createDie(kind: DieKind, font: string, scale = 1, cellSize = 0, 
   function frameFor(faceValue: number): THREE.Quaternion {
     const frame = shared.built.frames[(faceValue - 1) % shared.built.frames.length];
     const base = frame ? frame.quaternion.clone() : new THREE.Quaternion();
-    // Show the two adjacent triangles equally: the actual octahedron reads
-    // as a solid diamond; the inscription spans both facets.
+    // Show the two adjacent triangles equally: the octahedron reads as a
+    // square-on-point diamond; the inscription spans both facets.
     const pose = lean.clone();
     if (kind === 8) pose.multiply(new THREE.Quaternion().setFromAxisAngle(
-      new THREE.Vector3(1, 0, 0), -Math.atan(1 / Math.sqrt(2)),
+      new THREE.Vector3(1, 0, 0), -d8DiamondTip(),
     ));
     return pose.multiply(base);
   }

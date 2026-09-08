@@ -82,6 +82,17 @@ const D6: DieShape = {
   displayScale: 0.95,
 };
 
+/**
+ * A regular octahedron sitting on an edge shows two equilateral triangles as
+ * a 60°/120° rhombus — √2 times taller than it is wide, a skinny needle next
+ * to the d4 triangles. Shorten the poles so the real rest pose (face turned
+ * to camera, then tipped to show two facets) reads as a square on its point.
+ * 1/√2 squares the two front faces in an edge-bisector view; the full solid's
+ * outline still reads tall there (h/w ≈ 1.27). 0.47 brings every face to a
+ * square silhouette. Still eight triangular faces; the solid is just not regular.
+ */
+const D8_POLE = 0.47;
+
 /** An octahedron. Eight triangles. */
 const D8: DieShape = {
   vertices: [
@@ -89,8 +100,8 @@ const D8: DieShape = {
     [-1, 0, 0],
     [0, 1, 0],
     [0, -1, 0],
-    [0, 0, 1],
-    [0, 0, -1],
+    [0, 0, D8_POLE],
+    [0, 0, -D8_POLE],
   ],
   faces: [
     [0, 2, 4],
@@ -104,11 +115,22 @@ const D8: DieShape = {
   ],
   artRadius: 0.4,
   textureRotation: 0,
-  // A d8's single visible face is the same equilateral triangle as a d4's —
-  // shape alone cannot tell them apart from a fixed overhead camera, so size
-  // has to. Clearly bigger than d4, clearly smaller than d10.
+  // Size still has to carry the upgrade step: the rest pose is a diamond now,
+  // not a triangle, but the hull should stay clearly between d6 and d10.
   displayScale: 1.02,
 };
+
+/**
+ * How far to tip a d8 from face-on so two adjacent triangles share the camera
+ * equally. For a regular octahedron this is atan(1/√2) ≈ 35.26°; it follows
+ * the pole length so the rest pose and the inscription stay on the same
+ * diamond.
+ */
+export function d8DiamondTip(): number {
+  const pole = Math.abs(D8.vertices[4]![2]!);
+  const equator = Math.abs(D8.vertices[0]![0]!);
+  return Math.acos((Math.SQRT2 * pole) / Math.sqrt(2 * pole * pole + equator * equator));
+}
 
 /**
  * A pentagonal trapezohedron — the shape of every d10 you have ever rolled.
