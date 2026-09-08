@@ -45,6 +45,7 @@ import { HowToPlaySheet } from "./HowToPlay";
 import { Shipyard } from "./Shipyard";
 import { RoundReportCard } from "./RoundReport";
 import { BattleRecap } from "./BattleRecap";
+import { SeatReturn } from "./SeatReturn";
 
 type Props = {
   controller: MatchController;
@@ -82,6 +83,7 @@ export function MatchScreen({ controller, onExit, title, subtitle }: Props) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [braceShips, setBraceShips] = useState<Set<string>>(new Set());
   const [helpOpen, setHelpOpen] = useState(false);
+  const [restartOpen, setRestartOpen] = useState(false);
   const [muted, setMuted] = useState(false);
   const [shake, setShake] = useState(false);
   /**
@@ -618,6 +620,7 @@ export function MatchScreen({ controller, onExit, title, subtitle }: Props) {
                   setMuted(audio.toggleMuted());
                 }}
                 onHelp={() => setHelpOpen(true)}
+                onRestart={controller.restart ? () => setRestartOpen(true) : undefined}
               />
             }
           />
@@ -629,6 +632,14 @@ export function MatchScreen({ controller, onExit, title, subtitle }: Props) {
                 <span className="match-reconnect-dot" />
                 Reconnecting…
               </span>
+            </div>
+          )}
+          {controller.mode === "versus" && state.status === "active" && (
+            <SeatReturn matchId={state.id} otherName={enemyName} />
+          )}
+          {controller.recoveringMove && (
+            <div className="seat-return-notice" role="status">
+              Checking your last move… Your battle is still here.
             </div>
           )}
 
@@ -651,6 +662,9 @@ export function MatchScreen({ controller, onExit, title, subtitle }: Props) {
 
         {/* ---------------- bottom ---------------- */}
         <div ref={bottomRef} className="match-bottom mx-auto w-full max-w-[44rem] px-2 pb-2">
+          {controller.recoveryNotice && (
+            <Notice tone="warn" className="mb-2">{controller.recoveryNotice}</Notice>
+          )}
           {error && (
             <Notice tone="warn" className="mb-2">
               {error}{" "}
@@ -758,6 +772,13 @@ export function MatchScreen({ controller, onExit, title, subtitle }: Props) {
         </div>
       </div>
 
+      <Sheet open={restartOpen} onClose={() => setRestartOpen(false)} title="Start a new solo battle?">
+        <p className="text-sm">This replaces your saved solo battle. Keep playing if you want to finish this one.</p>
+        <div className="mt-4 flex flex-col gap-2">
+          <Button full tone="ghost" onClick={() => setRestartOpen(false)}>Keep this battle</Button>
+          <Button full onClick={() => { setRestartOpen(false); controller.restart?.(); }}>Start a new battle</Button>
+        </div>
+      </Sheet>
       <HowToPlaySheet open={helpOpen} onClose={() => setHelpOpen(false)} />
       <Sheet
         open={leaveOpen}
@@ -1415,11 +1436,13 @@ function MatchMenu({
   onHome,
   onSound,
   onHelp,
+  onRestart,
 }: {
   muted: boolean;
   onHome(): void;
   onSound(): void;
   onHelp(): void;
+  onRestart?: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const wrap = useRef<HTMLDivElement>(null);
@@ -1474,6 +1497,11 @@ function MatchMenu({
             <HelpIcon />
             How to play
           </button>
+          {onRestart && (
+            <button type="button" role="menuitem" onClick={pick(onRestart)}>
+              Start a new solo battle
+            </button>
+          )}
         </div>
       )}
     </div>

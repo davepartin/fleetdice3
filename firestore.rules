@@ -44,6 +44,18 @@ service cloud.firestore {
     // you widen a rule.
     // ===================================================================
 
+    // Seat metadata may follow an explicitly approved, atomic seat return.
+    function syncingSeats(matchId) {
+      let before = get(/databases/$(database)/documents/fd3Matches/$(matchId)).data;
+      let after = getAfter(/databases/$(database)/documents/fd3Matches/$(matchId)).data;
+      return signedIn()
+        && (before.hostUid == request.auth.uid || before.guestUid == request.auth.uid)
+        && (before.hostUid != after.hostUid || before.guestUid != after.guestUid)
+        && request.resource.data.hostUid == after.hostUid
+        && request.resource.data.guestUid == after.guestUid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["hostUid", "guestUid", "updatedAt"]);
+    }
+
     // Four-digit Jackbox-style room codes: fd3Codes/0525 -> { matchId, ... }.
     //
     // This tiny collection exists so that a client can be told "that room
@@ -108,6 +120,7 @@ service cloud.firestore {
           resource.data.hostUid == request.auth.uid
           || claimingCodeSeat()
           || finishingActiveCode()
+          || syncingSeats(resource.data.matchId)
         );
       allow delete: if signedIn()
         && resource.data.hostUid == request.auth.uid;
@@ -162,68 +175,64 @@ service cloud.firestore {
         || (signedIn() && resource.data.status == "finished");
       allow list: if false;
 
-      // A seat whose commander has gone quiet may be taken back by whoever
-      // holds the link.
-      //
-      // This exists because a seat belongs to an anonymous id kept in one
-      // browser's storage for one exact address. A private tab, a different
-      // domain, or cleared storage mints a new person — and the seat stays
-      // held by an id that nothing can reach any more. That ended matches:
-      // both players locked out of a game still in progress.
-      //
-      // What keeps this from being a way to shove someone out of a live game
-      // is the seat's own clock. A seated commander stamps `guestSeenAt`
-      // every twenty seconds while the match screen is open, so a seat can
-      // only be taken after a full minute of silence. Someone merely
-      // deciding what to buy is never quiet that long.
-      //
-      // A missing stamp counts as quiet, which is deliberate: rooms created
-      // before this feature have no stamp at all, and those are exactly the
-      // games already stuck.
-      //
-      // The claimant may change only who they are — their uid and their
-      // name. Health, energy, round, phase, dice and ships must all survive
-      // the write untouched, and the host's whole player object with them, so
-      // a reclaim cannot be used to edit the game it is rejoining.
-      function seatIsQuiet(seenAt) {
-        return seenAt == null
-          || request.time > seenAt + duration.value(60, 's');
-      }
-
-      function reclaimingQuietGuestSeat() {
+      // Losing connection never forfeits a seat. The OTHER seated commander
+      // must approve a recent request. Only the returning UID may change.
+      function approvingReturn(side, other) {
+        let uid = request.resource.data.state.players[other].uid;
+        let ticket = get(/databases/$(database)/documents/fd3Matches/$(matchId)/rejoin/$(uid)).data;
+        let answer = getAfter(/databases/$(database)/documents/fd3Matches/$(matchId)/rejoin/$(uid)).data;
         return signedIn()
           && resource.data.status == "active"
-          && resource.data.guestUid != null
-          && resource.data.guestUid != request.auth.uid
-          && seatIsQuiet(resource.data.get("guestSeenAt", null))
-          && request.resource.data.guestUid == request.auth.uid
-          && request.resource.data.state.players.guest.uid == request.auth.uid
-          && request.resource.data.hostUid == resource.data.hostUid
-          && request.resource.data.code == resource.data.code
-          && request.resource.data.status == resource.data.status
-          && request.resource.data.state.players.host
-            == resource.data.state.players.host
-          && request.resource.data.state.players.guest.hp
-            == resource.data.state.players.guest.hp
-          && request.resource.data.state.players.guest.energy
-            == resource.data.state.players.guest.energy
-          && request.resource.data.state.players.guest.round
-            == resource.data.state.players.guest.round
-          && request.resource.data.state.players.guest.phase
-            == resource.data.state.players.guest.phase
-          && request.resource.data.state.players.guest.dice
-            == resource.data.state.players.guest.dice
-          && request.resource.data.state.players.guest.ships
-            == resource.data.state.players.guest.ships
-          && request.resource.data.diff(resource.data).affectedKeys()
-            .hasOnly(["guestUid", "state", "guestSeenAt", "updatedAt"]);
+          && resource.data.state.players[side].uid == request.auth.uid
+          && uid != request.auth.uid
+          && ticket.status == "pending"
+          && ticket.createdAt > request.time - duration.value(15, 'm')
+          && answer.status == "approved" && answer.answeredBy == request.auth.uid
+          && request.resource.data.acceptedRecovery == uid
+          && request.resource.data.state.players[side] == resource.data.state.players[side]
+          && request.resource.data.state.players[other].diff(resource.data.state.players[other]).affectedKeys().hasOnly(["uid"])
+          && request.resource.data.state.players.diff(resource.data.state.players).affectedKeys().hasOnly([other])
+          && request.resource.data.state.diff(resource.data.state).affectedKeys().hasOnly(["players", "version"])
+          && request.resource.data.version == resource.data.version + 1
+          && request.resource.data.state.version == request.resource.data.version
+          && request.resource.data.hostUid == request.resource.data.state.players.host.uid
+          && request.resource.data.guestUid == request.resource.data.state.players.guest.uid
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["hostUid", "guestUid", "state", "version", "acceptedRecovery", "updatedAt"]);
+      }
+
+      match /rejoin/{uid} {
+        function seated() {
+          let room = get(/databases/$(database)/documents/fd3Matches/$(matchId)).data;
+          return signedIn() && (room.hostUid == request.auth.uid || room.guestUid == request.auth.uid);
+        }
+        function ownRequest() {
+          return signedIn() && request.auth.uid == uid
+            && get(/databases/$(database)/documents/fd3Matches/$(matchId)).data.status == "active"
+            && request.resource.data.keys().hasOnly(["uid", "name", "status", "createdAt"])
+            && request.resource.data.uid == uid && request.resource.data.status == "pending"
+            && request.resource.data.createdAt == request.time
+            && request.resource.data.name is string && request.resource.data.name.size() <= 40;
+        }
+        allow get: if signedIn() && (request.auth.uid == uid || seated());
+        allow list: if seated();
+        allow create: if ownRequest();
+        allow update: if ownRequest() || (seated()
+          && resource.data.status == "pending"
+          && request.resource.data.answeredBy == request.auth.uid
+          && request.resource.data.status in ["approved", "declined"]
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["status", "answeredBy"])
+          && (request.resource.data.status == "declined"
+            || getAfter(/databases/$(database)/documents/fd3Matches/$(matchId)).data.hostUid == uid
+            || getAfter(/databases/$(database)/documents/fd3Matches/$(matchId)).data.guestUid == uid));
+        allow delete: if false;
       }
 
       // Seating is otherwise immutable once taken. Within that, the two
       // commanders may write whatever state the engine produces — the engine
       // runs on their phones, so these rules protect the ROOM, not the dice.
       allow update: if joiningOpenSeat()
-        || reclaimingQuietGuestSeat()
+        || approvingReturn("host", "guest")
+        || approvingReturn("guest", "host")
         || (participant()
           && request.resource.data.hostUid == resource.data.hostUid
           && request.resource.data.guestUid == resource.data.guestUid);
@@ -284,6 +293,7 @@ service cloud.firestore {
       // passes through this same rule. Nobody can rename the host or move
       // a room they are not sitting in.
       allow update: if claimingOpenBoardSeat()
+        || syncingSeats(matchId)
         || (boardParticipant()
           && request.resource.data.hostUid == resource.data.hostUid
           && request.resource.data.guestUid == resource.data.guestUid

@@ -257,8 +257,8 @@ play still works.
   match, runs `applyAction` from `lib/engine.ts` inside a transaction, and
   writes it back.
 - `firestore.rules` — Fleet Dice only (`fd3Codes`, `fd3Matches`, `fd3Live`,
-  `fd3Results`, including reclaiming a quiet guest seat). Read the comments
-  before loosening anything: a permissions complaint from a player has
-  historically meant a confused host, not a rule that is too tight.
+  `fd3Results`, including a friend-approved seat return under `rejoin/`). Read
+  the comments before loosening anything: a permissions complaint from a player
+  has historically meant a confused host, not a rule that is too tight.
 - The invite link is `/join/?id=…&code=0525`. Whatever page answers that route
   should call `joinRoomByCode` or `joinRoomById`.
