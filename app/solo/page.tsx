@@ -15,6 +15,7 @@ import { Button, Panel } from "@/components/ui";
 import { HowToPlaySheet } from "@/components/HowToPlay";
 import { useSoloMatch } from "@/lib/useMatch";
 import { DIFFICULTIES, DIFFICULTY, PLAN_BLURB, PLAN_LABEL, PLANS, type Difficulty, type Plan } from "@/lib/ai";
+import { loadSoloSave, type SoloSave } from "@/lib/soloSave";
 import { NOUN } from "@/lib/reference";
 import {
   emptyRecord,
@@ -31,6 +32,14 @@ export default function SoloPage() {
   const [difficulty, setDifficulty] = useState<Difficulty | null>(null);
   const [plan, setPlan] = useState<Plan | "surprise">("surprise");
   const [helpOpen, setHelpOpen] = useState(false);
+  const [resume, setResume] = useState<SoloSave | null>(null);
+  const [loaded, setLoaded] = useState(false);
+  useEffect(() => {
+    const saved = loadSoloSave();
+    if (saved) { setResume(saved); setDifficulty(saved.brain.difficulty); setPlan(saved.brain.plan); }
+    setLoaded(true);
+  }, []);
+  if (!loaded) return <div className="recovery-screen">Checking for your saved battle…</div>;
 
   if (!difficulty) {
     return (
@@ -49,6 +58,7 @@ export default function SoloPage() {
   return (
     <SoloMatch
       difficulty={difficulty}
+      resume={resume}
       plan={plan === "surprise" ? undefined : plan}
       onExit={() => router.push("/")}
     />
@@ -57,14 +67,16 @@ export default function SoloPage() {
 
 function SoloMatch({
   difficulty,
+  resume,
   plan,
   onExit,
 }: {
   difficulty: Difficulty;
+  resume?: SoloSave | null;
   plan?: Plan;
   onExit(): void;
 }) {
-  const controller = useSoloMatch({ difficulty, plan });
+  const controller = useSoloMatch({ difficulty, plan, resume });
   const state = controller.state;
   // Restart reuses this component with a new match id, so the guard is keyed by
   // id rather than a bare "already done" flag.
@@ -85,7 +97,7 @@ function SoloMatch({
     });
   }, [state, controller.side, difficulty]);
 
-  return <MatchScreen controller={controller} onExit={onExit} />;
+  return <MatchScreen key={state?.id ?? "loading"} controller={controller} onExit={onExit} />;
 }
 
 function SoloSetup({

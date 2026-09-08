@@ -1,5 +1,11 @@
 @import "tailwindcss";
 
+.seat-return-notice { display: block; max-width: 100%; margin: 8px auto 0; padding: 8px 12px; border: 1px solid #ffd23d55; border-radius: 8px; background: #121824; color: #f4f1e8; font-size: 13px; line-height: 1.4; text-align: center; }
+.recovery-screen { min-height: 100dvh; max-width: 480px; margin: auto; padding: 24px; display: flex; flex-direction: column; justify-content: center; gap: 24px; color: #f4f1e8; background: #090d15; }
+.recovery-screen h1 { font-size: 22px; font-weight: 700; }
+.recovery-screen p { font-size: 16px; line-height: 1.5; }
+.recovery-screen button { padding: 16px; border-radius: 14px; background: #f4f1e8; color: #11151d; font-weight: 700; }
+
 /* ==================================================================
    Fleet Dice — design system
    Dark hangar deck. Light comes from the dice, never from the panels.

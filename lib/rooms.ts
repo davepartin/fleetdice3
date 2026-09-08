@@ -58,6 +58,7 @@ import {
   type MatchState,
   type SideId,
 } from "./engine";
+import { checkMove, type MoveEnvelope, type MoveReceipts } from "./moveReceipt";
 import { isOnTheField } from "./liveboard";
 import { NOUN } from "./reference";
 
@@ -112,6 +113,7 @@ export const INVITE_ROUTE = "/join/";
 
 /** The shape of one fd3Matches document. `state` is the engine's MatchState. */
 type MatchDocument = {
+  receipts?: MoveReceipts;
   code: string;
   hostUid: string;
   guestUid: string | null;
@@ -130,6 +132,8 @@ type CodeDocument = {
 
 /** A room you are seated in, as this phone should render it. */
 export type LiveRoom = {
+  fromCache?: boolean;
+  receipts?: MoveReceipts;
   id: string;
   code: string;
   /** Which commander you are. */
@@ -325,6 +329,7 @@ export async function joinRoomById(matchId: string, name: string): Promise<LiveR
             side: alreadySeated,
             state: publicMatchView(state, alreadySeated),
             version: data.version,
+            receipts: data.receipts ?? {},
           } satisfies LiveRoom;
         }
 
@@ -476,6 +481,7 @@ export async function enterRoom(
       side,
       state: publicMatchView(data.state, side),
       version: data.version,
+      receipts: data.receipts ?? {},
     };
   } catch (error) {
     throw friendlyRoomError(error);
@@ -494,7 +500,7 @@ export async function enterRoom(
  * waiting, and only because the engine holds the volley until both sides have
  * locked their rolls.
  */
-export async function playAction(matchId: string, action: MatchAction): Promise<LiveRoom> {
+export async function playAction(matchId: string, action: MatchAction, move?: MoveEnvelope): Promise<LiveRoom> {
   const db = requireDb();
   assertOnline();
   const user = await ensurePlayerIdentity();
@@ -513,6 +519,10 @@ export async function playAction(matchId: string, action: MatchAction): Promise<
         const side = roleFor(state, user.uid);
         if (!side) throw new NotSeatedError(NOT_YOUR_ROOM_MESSAGE);
 
+        const receipts = data.receipts ?? {};
+        if (move && checkMove(state, side, receipts, move) === "acknowledged") {
+          return { id: matchId, code: state.code, side, state: publicMatchView(state, side), version: data.version, receipts };
+        }
         const boardSnap = await transaction.get(boardRef);
         const codeRef = doc(db, CODES, state.code);
         const codeSnap = await transaction.get(codeRef);
@@ -520,8 +530,10 @@ export async function playAction(matchId: string, action: MatchAction): Promise<
         // Engine errors are already written for players ("You need 4 Energy for
         // that."), so they travel straight through to the screen.
         applyAction(state, side, action);
+        if (move) receipts[side] = { sequence: move.sequence, id: move.id };
 
         transaction.update(matchRef, {
+          receipts,
           status: state.status,
           state,
           version: state.version,
@@ -552,6 +564,7 @@ export async function playAction(matchId: string, action: MatchAction): Promise<
           side,
           state: publicMatchView(state, side),
           version: state.version,
+          receipts,
         } satisfies LiveRoom;
       }),
       NETWORK_TIMEOUT_MS,
@@ -699,6 +712,7 @@ export async function watchRoom(
 
   return onSnapshot(
     doc(db, MATCHES, matchId),
+    { includeMetadataChanges: true },
     (snapshot) => {
       try {
         if (!snapshot.exists()) {
@@ -726,11 +740,13 @@ export async function watchRoom(
           rememberRoom(matchId);
         }
         onMatch({
+          fromCache: snapshot.metadata.fromCache,
           id: matchId,
           code: data.state.code,
           side,
           state: publicMatchView(data.state, side),
           version: data.version,
+          receipts: data.receipts ?? {},
         });
       } catch (reason) {
         onError(friendlyRoomError(reason));
@@ -860,49 +876,6 @@ export function startSeatPresence(matchId: string, side: SideId, everyMs = SEAT_
   void touchSeat(matchId, side);
   const timer = window.setInterval(() => void touchSeat(matchId, side), everyMs);
   return () => window.clearInterval(timer);
-}
-
-/**
- * Take back a guest seat whose commander has gone quiet.
- *
- * This is the answer to losing your seat by closing a tab. A seat belongs to an
- * anonymous id in that browser's storage for that exact address; a private tab,
- * a different domain, or cleared storage all mint a new person, and the old one
- * holds the seat with nothing able to reach it. Before this, that ended the
- * match for both players.
- *
- * It is a blind write on purpose. An active match may not be read by anyone but
- * its two commanders — the document holds both fleets, including dice that have
- * not been revealed — so someone locked out cannot look before they leap. They
- * send only the two fields that change their own identity, and the rules decide,
- * from the seat's own timestamp, whether the seat was really abandoned.
- */
-export async function reclaimGuestSeat(matchId: string, name: string): Promise<void> {
-  const db = requireDb();
-  if (!matchId) throw new Error("That invite link is missing its room. Ask your friend to send it again.");
-  assertOnline();
-  const user = await ensurePlayerIdentity();
-  try {
-    await withTimeout(
-      updateDoc(doc(db, MATCHES, matchId), {
-        guestUid: user.uid,
-        "state.players.guest.uid": user.uid,
-        "state.players.guest.name": name.trim() || "Commander",
-        guestSeenAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-      }),
-      NETWORK_TIMEOUT_MS,
-      "Taking your seat back",
-    );
-    rememberRoom(matchId);
-  } catch (reason) {
-    if (isPermissionDenied(reason)) {
-      throw new Error(
-        "That seat is still in use. If it is yours, the other device is still connected — close it, wait a minute, and try again.",
-      );
-    }
-    throw friendlyRoomError(reason);
-  }
 }
 
 /**
@@ -1088,7 +1061,7 @@ export function isTransientRoomError(error: unknown): boolean {
     code.includes("resource-exhausted") ||
     code.includes("internal") ||
     code.includes("cancelled") ||
-    /network|offline|timed out|did not answer/i.test(message) ||
+    /network|offline|timed out|taking too long|did not answer|busy right now/i.test(message) ||
     message === OFFLINE_MESSAGE
   );
 }
