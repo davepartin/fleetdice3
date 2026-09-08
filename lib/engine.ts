@@ -100,6 +100,15 @@ export type RoundReport = {
   enemyDice: DieValue[];
 };
 
+/** The other fleet as it stood when this volley locked, faces and hulls. */
+export type VolleySnapshot = {
+  tally: Tally;
+  dice: DieValue[];
+  ships: Ship[];
+  open: boolean[];
+  flag: { level: number; face: number; token: boolean };
+};
+
 export type PlayerState = {
   uid: string;
   name: string;
@@ -122,7 +131,7 @@ export type PlayerState = {
   incoming: number;
   directIncoming: number;
   /**
-   * What the other fleet actually rolled at this volley, copied the moment the
+   * What the other fleet actually showed at this volley, copied the moment the
    * volley resolved.
    *
    * The round report used to read the opponent's live `tally` when it was
@@ -132,8 +141,12 @@ export type PlayerState = {
    * way. The slower commander's report then described a volley of zeroes —
    * right hit points, no explanation. Both sides have submitted by the time
    * `resolveSubmissions` runs, so that is where the copy is taken.
+   *
+   * Ships, open bays and the flagship are copied too: `publicMatchView` shows
+   * this snapshot to a commander still on the post-attack screen, so they
+   * cannot watch the faster player shop and roll the next round live.
    */
-  incomingVolley: { tally: Tally; dice: DieValue[] } | null;
+  incomingVolley: VolleySnapshot | null;
   braceShips: string[];
   report: RoundReport | null;
   /** Running totals for the end-of-match battle recap. */
@@ -980,10 +993,8 @@ function resolveSubmissions(state: MatchState) {
     [host, guest],
     [guest, host],
   ] as const) {
-    // Copy the other fleet's roll now, while both are still on the table.
-    player.incomingVolley = enemy.tally
-      ? { tally: structuredClone(enemy.tally), dice: enemy.dice.map((die) => ({ ...die })) }
-      : null;
+    // Copy the other fleet now, while both are still on the table.
+    player.incomingVolley = snapshotVolley(enemy);
   }
   for (const player of [host, guest]) {
     player.braceShips = [];
@@ -1066,7 +1077,7 @@ function settlePlayer(state: MatchState, player: PlayerState) {
   // Deliberately the copy taken at `resolveSubmissions`, never the opponent's
   // live tally: by now they may have moved on and cleared it.
   const enemy = state.players[player === state.players.host ? "guest" : "host"];
-  const volley = player.incomingVolley ?? (enemy?.tally ? { tally: enemy.tally, dice: enemy.dice } : null);
+  const volley = player.incomingVolley ?? snapshotVolley(enemy);
 
   player.report = {
     round: player.round,
@@ -1185,16 +1196,60 @@ function cleanName(name: string): string {
 /* Views                                                               */
 /* ------------------------------------------------------------------ */
 
+/** The other fleet as it stood when this volley locked. */
+export function snapshotVolley(enemy: PlayerState | null | undefined): VolleySnapshot | null {
+  if (!enemy?.tally) return null;
+  return {
+    tally: structuredClone(enemy.tally),
+    dice: enemy.dice.map((die) => ({ ...die })),
+    ships: enemy.ships.map((ship) => ({ ...ship })),
+    open: enemy.open.slice(),
+    flag: { ...enemy.flag },
+  };
+}
+
+function watchingPostVolley(player: PlayerState): boolean {
+  return player.phase === "brace" || player.phase === "report";
+}
+
+function opponentHasLeftVolley(you: PlayerState, them: PlayerState): boolean {
+  if (them.round > you.round) return true;
+  return them.phase === "shop" || them.phase === "ready" || them.phase === "rolling" || them.phase === "submitted";
+}
+
+function freezeEnemyToVolley(you: PlayerState, them: PlayerState): void {
+  const snap = you.incomingVolley;
+  if (snap) {
+    them.dice = snap.dice.map((die) => ({ ...die }));
+    them.tally = structuredClone(snap.tally);
+    if (snap.ships) them.ships = snap.ships.map((ship) => ({ ...ship }));
+    if (snap.open) them.open = snap.open.slice();
+    if (snap.flag) them.flag = { ...snap.flag };
+    them.round = you.round;
+    return;
+  }
+  const report = you.report;
+  if (!report?.enemyDice.length) return;
+  them.dice = report.enemyDice.map((die) => ({ ...die }));
+  them.tally = report.enemyTally ? structuredClone(report.enemyTally) : null;
+}
+
 /** What a commander is allowed to see. Their dice stay hidden until both lock. */
 export function publicMatchView(state: MatchState, viewer: SideId): MatchState {
   const copy = structuredClone(state);
   const you = copy.players[viewer];
   const them = copy.players[opponentOf(viewer)];
-  const revealed =
-    you?.phase === "brace" || you?.phase === "report" || you?.phase === "over";
+  const revealed = you?.phase === "brace" || you?.phase === "report" || you?.phase === "over";
   if (them && you && state.status === "active" && !revealed) {
     them.dice = [];
     them.tally = null;
+  }
+  // The post-attack screen shows both fleets on purpose — that is this
+  // volley's reveal. Once the other commander has walked on to the shipyard
+  // or the next roll, their live board is next-round information. Freeze it
+  // to the copy taken when the volley locked.
+  if (them && you && state.status === "active" && watchingPostVolley(you) && opponentHasLeftVolley(you, them)) {
+    freezeEnemyToVolley(you, them);
   }
   return copy;
 }

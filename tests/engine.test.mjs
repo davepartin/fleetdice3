@@ -48,6 +48,7 @@ const {
   rollHint,
   chooseRerollDetailed,
   runMemberIds,
+  selectionAfterFlagToken,
   setRng,
   slotForCell,
   straightPrizeTakes,
@@ -576,6 +577,96 @@ test("a commander cannot see the other fleet's dice until the volley starts", ()
   resolved.players.guest.dice = [{ id: "flag", sides: 6, value: 6, flag: true }];
   const reportView = publicMatchView(resolved, "host");
   assert.equal(reportView.players.guest.dice.length, 1, "the report is allowed to show what hit you");
+});
+
+function forceOddVolley(state) {
+  for (const side of ["host", "guest"]) {
+    applyAction(state, side, { type: "roll", dice: [] });
+  }
+  for (const side of ["host", "guest"]) {
+    const player = state.players[side];
+    player.dice = player.dice.map((die, index) => ({
+      ...die,
+      value: die.flag ? 1 : index % 2 === 0 ? 1 : 3,
+    }));
+    player.flag.face = 1;
+  }
+  applyAction(state, "host", { type: "submit" });
+  applyAction(state, "guest", { type: "submit" });
+  for (const side of ["host", "guest"]) {
+    if (state.players[side].phase === "brace") {
+      applyAction(state, side, { type: "brace", ships: [] });
+    }
+  }
+}
+
+test("the slower commander on the report still sees the volley, not the next roll", () => {
+  const state = freshMatch(11);
+  forceOddVolley(state);
+  assert.equal(state.players.host.phase, "report");
+  assert.equal(state.players.guest.phase, "report");
+  const volley = state.players.host.incomingVolley;
+  assert.ok(volley, "the volley copy must exist");
+  assert.ok(volley.ships.length > 0, "the copy includes hulls, not just faces");
+  const volleySides = volley.ships.map((ship) => ship.sides);
+  const volleyFaces = volley.dice.map((die) => `${die.id}:${die.value}`).sort();
+
+  const stillTogether = publicMatchView(state, "host");
+  assert.equal(stillTogether.players.guest.dice.length, volley.dice.length,
+    "both still on the report must see this volley's dice");
+  assert.equal(stillTogether.players.guest.dice.find((die) => die.flag).value, 1);
+
+  applyAction(state, "guest", { type: "continue" });
+  state.players.guest.energy = 40;
+  const target = state.players.guest.ships[0];
+  const oldSides = target.sides;
+  applyAction(state, "guest", { type: "shop", operation: "upgrade", shipId: target.id });
+  assert.ok(state.players.guest.ships.find((ship) => ship.id === target.id).sides > oldSides,
+    "the faster commander did actually upgrade");
+
+  const shopView = publicMatchView(state, "host");
+  assert.equal(shopView.players.host.phase, "report");
+  assert.deepEqual(
+    shopView.players.guest.ships.map((ship) => ship.sides),
+    volleySides,
+    "a commander still on the report must not see the hull they just bought",
+  );
+
+  applyAction(state, "guest", { type: "ready" });
+  applyAction(state, "guest", { type: "roll", dice: [] });
+  assert.equal(state.players.guest.phase, "rolling");
+  // A coincidental identical roll must not let this test pass for the wrong reason.
+  if (
+    state.players.guest.dice.map((die) => `${die.id}:${die.value}`).sort().join() ===
+    volleyFaces.join()
+  ) {
+    state.players.guest.dice[0].value = state.players.guest.dice[0].value === 1 ? 2 : 1;
+  }
+  const liveFaces = state.players.guest.dice.map((die) => `${die.id}:${die.value}`).sort();
+  const frozen = publicMatchView(state, "host");
+  const seenFaces = frozen.players.guest.dice.map((die) => `${die.id}:${die.value}`).sort();
+  assert.deepEqual(seenFaces, volleyFaces, "must still show the volley faces, not the live next roll");
+  assert.notDeepEqual(liveFaces, volleyFaces, "the faster commander did actually roll something new");
+  assert.equal(frozen.players.guest.dice.find((die) => die.flag).value, 1);
+});
+
+test("using the flagship weapon keeps the flag die's id, so leftover selection would still fire", () => {
+  setRng(makeRng(1));
+  const state = freshMatch(1);
+  applyAction(state, "host", { type: "roll", dice: [] });
+  const flag = state.players.host.dice.find((die) => die.flag);
+  assert.equal(flag.id, "flag");
+  const before = flag.value;
+  applyAction(state, "host", { type: "flag-token", direction: 1 });
+  const after = state.players.host.dice.find((die) => die.flag);
+  assert.equal(after.id, "flag", "a leftover selection of 'flag' would still match this die");
+  assert.equal(after.value, (before % 6) + 1);
+  assert.equal(state.players.host.flag.token, false);
+});
+
+test("the flagship weapon drops every reroll pick", () => {
+  const left = selectionAfterFlagToken();
+  assert.equal(left.size, 0, "the next primary tap must be Lock in, not Reroll");
 });
 
 function lockFleets(state, hostSpec, guestSpec, round = 1) {

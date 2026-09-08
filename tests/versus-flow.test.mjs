@@ -71,7 +71,7 @@ test("only locking in waits on the enemy", () => {
 
 import { bundlePath } from "../sim/bundle.mjs";
 const G = await import(bundlePath);
-const { applyAction, makeRng, newMatch, newPlayer, setRng } = G;
+const { applyAction, makeRng, newMatch, newPlayer, publicMatchView, setRng } = G;
 
 /**
  * A volley that leaves the guest blocking and the host with nothing to answer.
@@ -146,4 +146,48 @@ test("the volley copy is cleared when the next round is prepared", () => {
     applyAction(s, side, { type: "ready" });
     assert.equal(s.players[side].incomingVolley, null, "a new round starts with no old volley");
   }
+});
+
+test("a slower commander on the report cannot watch the faster one shop", () => {
+  const s = volleyLeavingGuestBlocking();
+  applyAction(s, "guest", { type: "brace", ships: [] });
+  assert.equal(s.players.guest.phase, "report");
+  const volleySides = s.players.host.incomingVolley.ships.map((ship) => ship.sides);
+  applyAction(s, "guest", { type: "continue" });
+  s.players.guest.energy = 40;
+  const shipId = s.players.guest.ships[0].id;
+  const beforeSides = s.players.guest.ships[0].sides;
+  applyAction(s, "guest", { type: "shop", operation: "upgrade", shipId });
+  assert.ok(
+    s.players.guest.ships.find((entry) => entry.id === shipId).sides > beforeSides,
+    "the faster commander did actually buy a bigger hull",
+  );
+
+  const view = publicMatchView(s, "host");
+  assert.equal(view.players.host.phase, "report", "the slower commander is still on the last attack");
+  assert.deepEqual(
+    view.players.guest.ships.map((entry) => entry.sides),
+    volleySides,
+    "their board must still be the volley fleet, not the shipyard",
+  );
+});
+
+test("using the flagship weapon drops reroll selection so Lock in is next", () => {
+  const src = read("../components/MatchScreen.tsx");
+  assert.match(src, /selectionAfterFlagToken/,
+    "the weapon must go through the helper that empties the reroll set");
+  const onToken = src.match(/onToken=\{\(direction\) => \{[\s\S]*?\}\}/);
+  assert.ok(onToken, "the roll dock should still send the flagship weapon");
+  assert.match(onToken[0], /setSelected\(selectionAfterFlagToken/,
+    "using the weapon must clear selection before the next primary tap");
+  assert.match(onToken[0], /flag-token/,
+    "clearing selection must happen on the weapon path, not a different action");
+});
+
+test("the weapon popover disables reroll and lock-in while it is open", () => {
+  const src = read("../components/MatchScreen.tsx");
+  assert.match(src, /disabled=\{busy \|\| !canReroll \|\| tokenOpen\}/,
+    "Reroll must not fire while the player is aiming the weapon");
+  assert.match(src, /disabled=\{busy \|\| tokenOpen\}/,
+    "Lock in must not fire while the weapon popover is open");
 });
