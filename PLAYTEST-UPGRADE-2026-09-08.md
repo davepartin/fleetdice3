@@ -37,8 +37,10 @@ rerolls, and all shipped balance numbers remain unchanged.
 
 ## 3. Dice, motion, sound and reroll clarity
 
-- The d8 has a beveled diamond frame while settled; d4 stays triangular. Actual
-  dice remain 3D polyhedra in flight. Neutral side facets suppress stray numbers.
+- After Dave’s visual feedback, the d8’s actual octahedron rests with two
+  adjacent triangles forming a solid diamond. The added gray frame was removed.
+  The lower facet shares the rolled face’s color, with darker shading and no
+  extra number. D4, d6 and d10 geometry is unchanged. Dice remain 3D in flight.
 - Different hull sizes have different throw timing/spin and landing pitches.
   Landing sounds follow actual landings; impacts/direct hits use distinct cues.
 - Effects and ambience have separate saved volume controls and audition buttons.
@@ -93,3 +95,9 @@ return feature requires `firestore.rules` as well as the frontend; a Pages-only
 deployment is insufficient. Before rollout, re-run the demo emulator test,
 deploy the tested rules and frontend together, and check a real two-phone room.
 Do not mark the full AAA roadmap complete from this pass.
+
+### D8 visual revision acceptance
+
+Production build and lint passed after removing the separate diamond frame.
+The browser preview restored Dave’s round 4 (29 HP, 3 Energy, 22 Attack) with
+the new solid diamond and its existing formation highlights intact.

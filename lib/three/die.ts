@@ -248,6 +248,7 @@ export function createDie(kind: DieKind, font: string, scale = 1, cellSize = 0, 
 
   const material = shared.material.clone();
   let activeFaceUniform: { value: number } | null = null;
+  material.customProgramCacheKey = () => kind === 8 ? "fleet-diamond-facets" : "fleet-neutral-facets";
   material.onBeforeCompile = (shader) => {
     // onBeforeCompile fires lazily, on this die's first real draw call — by
     // then `value` (declared below) already holds whatever face was set
@@ -275,13 +276,16 @@ export function createDie(kind: DieKind, font: string, scale = 1, cellSize = 0, 
           // — so a fleet of dice reads as one legible number each, not nine.
           float lit = abs(vFaceIndex - uActiveFace) < 0.5 ? 1.0 : 0.0;
           // Neutral side facets show the solid's depth, never a second number.
-          diffuseColor.rgb = mix(vec3(0.055, 0.075, 0.10), diffuseColor.rgb, lit);
+          vec3 sideColor = ${kind === 8
+            ? "(mod(uActiveFace, 2.0) > 0.5 ? vec3(0.34, 0.045, 0.10) : vec3(0.035, 0.22, 0.38))"
+            : "vec3(0.055, 0.075, 0.10)"};
+          diffuseColor.rgb = mix(sideColor, diffuseColor.rgb, lit);
           totalEmissiveRadiance *= lit;
         }`,
       );
   };
   const mesh = new THREE.Mesh(shared.built.geometry, material);
-  if (kind === 8) mesh.scale.setScalar(0.86);
+  if (kind === 8) mesh.scale.setScalar(0.78);
   mesh.castShadow = true;
   mesh.receiveShadow = false;
   pivot.add(mesh);
@@ -479,29 +483,6 @@ export function createDie(kind: DieKind, font: string, scale = 1, cellSize = 0, 
     object.add(plateMesh);
   }
 
-  // The d8 keeps its eight real faces in flight; a beveled diamond hull rim
-  // makes its settled silhouette distinct from the d4's triangle on phones.
-  const diamondShape = new THREE.Shape();
-  const diamondRadius = shared.built.radius * 0.8;
-  diamondShape.moveTo(0, diamondRadius);
-  diamondShape.lineTo(diamondRadius, 0); diamondShape.lineTo(0, -diamondRadius);
-  diamondShape.lineTo(-diamondRadius, 0); diamondShape.closePath();
-  const innerDiamond = new THREE.Path();
-  const inset = diamondRadius * 0.91;
-  innerDiamond.moveTo(0, inset); innerDiamond.lineTo(-inset, 0);
-  innerDiamond.lineTo(0, -inset); innerDiamond.lineTo(inset, 0); innerDiamond.closePath();
-  diamondShape.holes.push(innerDiamond);
-  const diamond = kind === 8 ? new THREE.Mesh(
-    new THREE.ExtrudeGeometry(diamondShape, { depth: 0.07, bevelEnabled: true, bevelSegments: 1, steps: 1, bevelSize: 0.025, bevelThickness: 0.025 }),
-    new THREE.MeshStandardMaterial({ color: 0xb4c8dc, metalness: 0.45, roughness: 0.32 }),
-  ) : null;
-  if (diamond) {
-    diamond.quaternion.copy(lean);
-    diamond.position.y = -shared.built.seatHeight * 0.25;
-    diamond.castShadow = true;
-    object.add(diamond);
-  }
-
   object.scale.setScalar(scale);
 
   const home = new THREE.Vector3();
@@ -537,7 +518,13 @@ export function createDie(kind: DieKind, font: string, scale = 1, cellSize = 0, 
   function frameFor(faceValue: number): THREE.Quaternion {
     const frame = shared.built.frames[(faceValue - 1) % shared.built.frames.length];
     const base = frame ? frame.quaternion.clone() : new THREE.Quaternion();
-    return lean.clone().multiply(base);
+    // Show the two adjacent triangles equally: the actual octahedron reads
+    // as a solid diamond, with the rolled number on the upper facet.
+    const pose = lean.clone();
+    if (kind === 8) pose.multiply(new THREE.Quaternion().setFromAxisAngle(
+      new THREE.Vector3(1, 0, 0), -Math.atan(1 / Math.sqrt(2)),
+    ));
+    return pose.multiply(base);
   }
 
   function applyStateColours() {
@@ -584,7 +571,7 @@ export function createDie(kind: DieKind, font: string, scale = 1, cellSize = 0, 
       outline.scale.setScalar(1.055);
     } else {
       outlineMaterial.color.setHex(0x020409);
-      outline.scale.setScalar(kind === 8 ? 1.012 * 0.86 : 1.012);
+      outline.scale.setScalar(kind === 8 ? 1.012 * 0.78 : 1.012);
     }
     contactMaterial.opacity = state.disabled ? 0.28 : 0.5;
     if (state.facedown) {
@@ -779,7 +766,6 @@ export function createDie(kind: DieKind, font: string, scale = 1, cellSize = 0, 
     },
     update(dt, time) {
       frameCount += 1;
-      if (diamond) diamond.visible = !rolling && !launched && !state.facedown && !state.disabled && !state.damageSelected;
 
       if (blockPulse) {
         // ~1.7s round trip. Slow enough to read as breathing rather than an
@@ -898,8 +884,6 @@ export function createDie(kind: DieKind, font: string, scale = 1, cellSize = 0, 
       };
     },
     dispose() {
-      diamond?.geometry.dispose();
-      diamond?.material.dispose();
       material.dispose();
       outlineMaterial.dispose();
       plateMaterial?.dispose();
