@@ -1,5 +1,20 @@
 # AAA-PLAN.md — the direction we are building to
 
+## September 8 playtester priority pass
+
+Dave authorized the first three priorities from `ASTRA-AAA-REVIEW-2026-09-08.md`
+together, with Reactor balance preserved. See `PLAYTEST-UPGRADE-2026-09-08.md`
+for implementation, verification, limitations and release requirements.
+
+- [x] Local player feedback and bounded diagnostics implemented.
+- [x] Solo persistence, retry receipts, approved seat return and graphics recovery implemented.
+- [x] Initial d8 distinction, landing feedback, sound/motion controls and paid-reroll clarity implemented.
+- [ ] Human phone listening and two-device recovery acceptance; production rollout.
+
+Evidence: 145 tests and six real-API emulator scenarios passed; phone-frame
+browser checks verified exact save restoration and actual WebGL recovery.
+These checks cover this first slice, not completion of the entire AAA plan below.
+
 **This file is the plan. If you are an AI working on Fleet Dice 3, read this before you touch anything, and check your work against it before you hand it back.**
 
 Fleet Dice 3 is a good game that does not yet look like one. The mechanics are

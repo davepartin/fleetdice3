@@ -24,6 +24,7 @@ const nextConfig: NextConfig = {
   images: { unoptimized: true },
   trailingSlash: true,
   env: {
+    NEXT_PUBLIC_BUILD_ID: process.env.GITHUB_SHA?.slice(0, 8) || "playtest-recovery-1",
     NEXT_PUBLIC_BASE_PATH: basePath,
     NEXT_PUBLIC_SITE_URL: siteUrl,
   },

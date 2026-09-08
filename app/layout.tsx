@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
+import { PlaytestDiagnostics } from "@/components/PlaytestDiagnostics";
 import { ViewportSync } from "@/components/ViewportSync";
 import "./globals.css";
 
@@ -84,6 +85,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" className={`${display.variable} ${body.variable} ${numeral.variable}`}>
       <body>
         <ViewportSync />
+        <PlaytestDiagnostics />
         {children}
       </body>
     </html>

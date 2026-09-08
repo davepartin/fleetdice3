@@ -1,5 +1,19 @@
 @import "tailwindcss";
 
+.reroll-guide { margin: 0 0 8px; color: #c7d0dd; font-size: 11px; line-height: 1.4; text-align: center; }
+.seat-return-notice { display: block; max-width: 100%; margin: 8px auto 0; padding: 8px 12px; border: 1px solid #ffd23d55; border-radius: 8px; background: #121824; color: #f4f1e8; font-size: 13px; line-height: 1.4; text-align: center; }
+.feedback-input { display: block; width: 100%; margin: 8px 0 16px; padding: 12px; border: 1px solid #ffffff33; border-radius: 8px; background: #090d15; color: #f4f1e8; font-size: 16px; resize: vertical; }
+.sound-settings { display: flex; flex-direction: column; gap: 24px; }
+.sound-settings label { display: block; font-size: 16px; color: #f4f1e8; }
+.sound-settings label > span { float: right; font-variant-numeric: tabular-nums; }
+.sound-settings input[type="range"] { display: block; width: 100%; min-height: 44px; accent-color: #f4f1e8; }
+.sound-settings .motion-choice { display: flex; gap: 12px; align-items: center; font-size: 13px; }
+.motion-choice input { width: 24px; height: 24px; accent-color: #f4f1e8; flex-shrink: 0; }
+.recovery-screen { min-height: 100dvh; max-width: 480px; margin: auto; padding: 24px; display: flex; flex-direction: column; justify-content: center; gap: 24px; color: #f4f1e8; background: #090d15; }
+.recovery-screen h1 { font-size: 22px; font-weight: 700; }
+.recovery-screen p { font-size: 16px; line-height: 1.5; }
+.recovery-screen button { padding: 16px; border-radius: 14px; background: #f4f1e8; color: #11151d; font-weight: 700; }
+
 /* ==================================================================
    Fleet Dice — design system
    Dark hangar deck. Light comes from the dice, never from the panels.

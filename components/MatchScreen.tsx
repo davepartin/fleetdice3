@@ -44,6 +44,11 @@ import { Button, Chip, HpRail, Notice, Sheet, TallyStrip } from "./ui";
 import { HowToPlaySheet } from "./HowToPlay";
 import { Shipyard } from "./Shipyard";
 import { RoundReportCard } from "./RoundReport";
+import { PlaytestReport } from "./PlaytestReport";
+import { SoundSettings } from "./SoundSettings";
+import { reducedMotion } from "@/lib/presentation";
+import { SeatReturn } from "./SeatReturn";
+import { notePlaytest } from "@/lib/playtest";
 import { BattleRecap } from "./BattleRecap";
 
 type Props = {
@@ -78,10 +83,24 @@ export function MatchScreen({ controller, onExit, title, subtitle }: Props) {
   const headerRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const arenaRef = useRef<Arena | null>(null);
-  const [arenaReady, setArenaReady] = useState(false);
+  // A generation, not a boolean: React may batch false/true during a rebuild.
+  // Every new arena must receive the fleet and camera even when state is unchanged.
+  const [arenaReady, setArenaReady] = useState(0);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [braceShips, setBraceShips] = useState<Set<string>>(new Set());
   const [helpOpen, setHelpOpen] = useState(false);
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
+  const [restartOpen, setRestartOpen] = useState(false);
+  const [soundOpen, setSoundOpen] = useState(false);
+  const [sceneEpoch, setSceneEpoch] = useState(0);
+  const [graphicsError, setGraphicsError] = useState<string | null>(null);
+  const sceneTimers = useRef(new Set<ReturnType<typeof setTimeout>>());
+  const scheduleScene = useCallback((run: () => void, ms: number) => {
+    const arena = arenaRef.current;
+    const timer = setTimeout(() => { sceneTimers.current.delete(timer); if (arenaRef.current === arena) run(); }, ms);
+    sceneTimers.current.add(timer);
+    return timer;
+  }, []);
   const [muted, setMuted] = useState(false);
   const [shake, setShake] = useState(false);
   /**
@@ -178,6 +197,30 @@ export function MatchScreen({ controller, onExit, title, subtitle }: Props) {
     const canvas = canvasRef.current;
     if (!canvas) return;
     let cancelled = false;
+    let phoneLayout = isPhoneLayout();
+    const layoutChanged = () => {
+      const next = isPhoneLayout();
+      if (next !== phoneLayout) { phoneLayout = next; setSceneEpoch(epoch => epoch + 1); }
+    };
+    const timers = sceneTimers.current;
+    const lost = (event: Event) => {
+      event.preventDefault();
+      arenaRef.current?.stage.stop();
+      setGraphicsError("Your browser paused the 3D board. Your battle progress is preserved.");
+      setCinematic(null);
+      notePlaytest("graphics-lost");
+    };
+    const restored = () => { notePlaytest("graphics-restored"); setSceneEpoch(e => e + 1); };
+    const visibility = () => {
+      const stage = arenaRef.current?.stage;
+      if (document.visibilityState === "hidden") stage?.stop();
+      else if (!canvas.getContext("webgl2")?.isContextLost()) { stage?.resize(); stage?.start(); }
+    };
+    canvas.addEventListener("webglcontextlost", lost);
+    canvas.addEventListener("webglcontextrestored", restored);
+    document.addEventListener("visibilitychange", visibility);
+    window.addEventListener("resize", layoutChanged);
+    window.addEventListener("fd3-viewport", layoutChanged);
 
     (async () => {
       await waitForFonts();
@@ -195,15 +238,26 @@ export function MatchScreen({ controller, onExit, title, subtitle }: Props) {
         },
       });
       arenaRef.current = arena;
-      setArenaReady(true);
-    })();
+      firstSyncRef.current = true;
+      setGraphicsError(null);
+      setArenaReady(generation => generation + 1);
+    })().catch(() => {
+      if (!cancelled) { setGraphicsError("The 3D board could not start. Reopen it to continue your battle."); notePlaytest("graphics-start-failed"); }
+    });
 
     return () => {
       cancelled = true;
+      canvas.removeEventListener("webglcontextlost", lost);
+      canvas.removeEventListener("webglcontextrestored", restored);
+      document.removeEventListener("visibilitychange", visibility);
+      window.removeEventListener("resize", layoutChanged);
+      window.removeEventListener("fd3-viewport", layoutChanged);
+      timers.forEach(clearTimeout);
+      timers.clear();
       arenaRef.current?.dispose();
       arenaRef.current = null;
     };
-  }, [controller.mode]);
+  }, [controller.mode, sceneEpoch]);
 
   /* Keep the board in step with the rules ---------------------------- */
 
@@ -333,8 +387,8 @@ export function MatchScreen({ controller, onExit, title, subtitle }: Props) {
     lastPhaseRef.current = phase;
     if (previous === "submitted" && (phase === "brace" || phase === "report")) {
       setCinematic(phase === "report" ? "volley" : "reveal");
-      const hold = phase === "report" ? 2400 : 1500;
-      const timer = window.setTimeout(() => setCinematic(null), hold);
+      const hold = reducedMotion() ? 120 : phase === "report" ? 2400 : 1500;
+      const timer = scheduleScene(() => setCinematic(null), hold);
       return () => window.clearTimeout(timer);
     }
     // The killing blow is the one volley nobody ever saw. Going straight from
@@ -350,11 +404,11 @@ export function MatchScreen({ controller, onExit, title, subtitle }: Props) {
     // the `previous === "over"` case.
     if (previous !== "over" && phase === "over") {
       setCinematic("finish");
-      const timer = window.setTimeout(() => setCinematic(null), FINISH_HOLD_MAX_MS);
+      const timer = scheduleScene(() => setCinematic(null), FINISH_HOLD_MAX_MS);
       return () => window.clearTimeout(timer);
     }
     if (phase !== "brace" && phase !== "report" && phase !== "over") setCinematic(null);
-  }, [phase]);
+  }, [phase, scheduleScene]);
 
   /* The volley — play it once per round, when the report appears ------ */
 
@@ -370,8 +424,8 @@ export function MatchScreen({ controller, onExit, title, subtitle }: Props) {
     const yourFlag = arena.flagshipWorld("you");
 
     // Your shot goes out first, then theirs comes back. Two beats, not one.
-    const yourAttack = (you.tally?.attack ?? 0) + report.escalation;
-    const yourDirect = you.tally?.direct ?? 0;
+    const yourAttack = report.tally.attack + report.escalation;
+    const yourDirect = report.tally.direct;
 
     // A ship that blocked a volley reacts on its own cell — a guard
     // ring, a hard white spark, then the colour draining out of it — instead
@@ -381,7 +435,7 @@ export function MatchScreen({ controller, onExit, title, subtitle }: Props) {
         const ship = player.ships.find((candidate) => candidate.id === entry.id);
         if (!ship) return;
         const point = arena.cellWorld(side, cellForSlot(ship.slot));
-        window.setTimeout(() => {
+        scheduleScene(() => {
           arena.vfx.shipSacrifice(point);
           arena.nudgeShip(side, entry.id, 1.1);
           audio.play("impact-light", { pitch: 1.05 + index * 0.05 });
@@ -393,36 +447,38 @@ export function MatchScreen({ controller, onExit, title, subtitle }: Props) {
     void arena.vfx
       .volley({ from: yourFlag, to: enemyFlag, amount: yourAttack, kind: "attack" })
       .then(() => {
+        if (arenaRef.current !== arena) return;
         if (them?.report && them.report.round === report.round) {
           reactShips("enemy", them, them.report.bracedShips);
         }
       });
     if (yourDirect > 0) {
-      window.setTimeout(() => {
+      scheduleScene(() => {
         void arena.vfx.volley({ from: yourFlag, to: enemyFlag, amount: yourDirect, kind: "direct" });
       }, 260);
     }
 
-    window.setTimeout(() => {
+    scheduleScene(() => {
       const incoming = report.incoming;
       const direct = report.direct;
       audio.play("volley", { pitch: 0.92 });
       void arena.vfx
         .volley({ from: enemyFlag, to: yourFlag, amount: incoming, kind: "attack" })
         .then(() => {
+          if (arenaRef.current !== arena) return;
           reactShips("you", you, report.bracedShips);
           if (report.blocked > 0) arena.vfx.shieldBlock(yourFlag, report.blocked);
           if (report.damage > 0) {
             arena.vfx.impact(yourFlag, report.damage, "attack");
             audio.play(report.damage > 12 ? "impact-heavy" : "impact-light");
-            setShake(true);
-            window.setTimeout(() => setShake(false), 560);
+            setShake(!reducedMotion());
+            scheduleScene(() => setShake(false), 560);
           } else {
             audio.play("shield-block");
           }
-          if (direct > 0) arena.vfx.impact(yourFlag, direct, "direct");
+          if (direct > 0) { arena.vfx.impact(yourFlag, direct, "direct"); audio.play("direct-hit", { gain: 0.55 }); }
           if (report.repair > 0) {
-            window.setTimeout(() => {
+            scheduleScene(() => {
               arena.vfx.repair(yourFlag, report.repair);
               audio.play("repair");
             }, 420);
@@ -458,7 +514,7 @@ export function MatchScreen({ controller, onExit, title, subtitle }: Props) {
       arena.vfx.straightSweep(points, run.taken, 0.7);
       audio.play("straight");
     }
-  }, [you, them]);
+  }, [you, them, scheduleScene]);
 
   /* Victory / defeat -------------------------------------------------- */
 
@@ -473,6 +529,7 @@ export function MatchScreen({ controller, onExit, title, subtitle }: Props) {
     }
     const arena = arenaRef.current;
     const won = state.winner === controller.side;
+    if (reducedMotion()) { audio.play(won ? "victory" : "defeat"); setCinematic(null); return; }
     if (!arena) {
       // No 3D to wait for — show the result rather than holding an empty board.
       audio.play(won ? "victory" : "defeat");
@@ -484,7 +541,7 @@ export function MatchScreen({ controller, onExit, title, subtitle }: Props) {
     // effect fires on the same commit. Let it arrive before the flagship goes,
     // or the break happens underneath its own incoming shot.
     const timers = [
-      window.setTimeout(() => {
+      scheduleScene(() => {
         audio.play(won ? "victory" : "defeat");
         // The default "over" framing is a wide establishing shot of both decks
         // — fine for reading the result, wrong for watching a flagship break.
@@ -496,15 +553,16 @@ export function MatchScreen({ controller, onExit, title, subtitle }: Props) {
         void arena.vfx
           .flagshipBreak(arena.flagshipWorld(loser), () => arena.scatterDice(loser), FINISH_BREAK_STRETCH)
           .then(() => {
+            if (arenaRef.current !== arena) return;
             arena.setFocus("wide");
             // A beat on the wide shot with the wreckage still drifting, then
             // the recap.
-            timers.push(window.setTimeout(() => setCinematic(null), FINISH_SETTLE_MS));
+            timers.push(scheduleScene(() => setCinematic(null), FINISH_SETTLE_MS));
           });
       }, FINISH_VOLLEY_MS),
     ];
     return () => timers.forEach((timer) => window.clearTimeout(timer));
-  }, [state?.status, state?.winner, state?.cancelledBy, controller.side]);
+  }, [state?.status, state?.winner, state?.cancelledBy, controller.side, scheduleScene]);
 
   /* --------------------------------------------------------------- */
   /* Actions                                                          */
@@ -618,11 +676,16 @@ export function MatchScreen({ controller, onExit, title, subtitle }: Props) {
                   setMuted(audio.toggleMuted());
                 }}
                 onHelp={() => setHelpOpen(true)}
+                onFeedback={() => setFeedbackOpen(true)}
+                onSoundSettings={() => setSoundOpen(true)}
+                onRestart={controller.restart ? () => setRestartOpen(true) : undefined}
               />
             }
           />
           </header>
 
+          {controller.mode === "versus" && state.status === "active" && <SeatReturn matchId={state.id} otherName={enemyName} />}
+          {controller.recoveringMove && <div className="seat-return-notice" role="status">Checking your last move… Your battle is still here.</div>}
           {controller.reconnecting && (
             <div className="flex items-center justify-center pt-2">
               <span className="match-reconnect">
@@ -651,6 +714,14 @@ export function MatchScreen({ controller, onExit, title, subtitle }: Props) {
 
         {/* ---------------- bottom ---------------- */}
         <div ref={bottomRef} className="match-bottom mx-auto w-full max-w-[44rem] px-2 pb-2">
+          {process.env.NODE_ENV === "development" && <details className="text-xs c-dim"><summary>Development checks</summary><button onClick={() => {
+            const context = canvasRef.current?.getContext("webgl2");
+            const extension = context?.getExtension("WEBGL_lose_context");
+            extension?.loseContext();
+            setTimeout(() => extension?.restoreContext(), 4000);
+          }}>Simulate graphics interruption</button></details>}
+          {graphicsError && <Notice tone="warn" className="mb-2">{graphicsError} <button className="underline" onClick={() => { setSceneEpoch(e => e + 1); }}>Reopen board</button> · <button className="underline" onClick={() => window.location.reload()}>Reload battle</button></Notice>}
+          {controller.recoveryNotice && <Notice tone="warn" className="mb-2">{controller.recoveryNotice}</Notice>}
           {error && (
             <Notice tone="warn" className="mb-2">
               {error}{" "}
@@ -758,6 +829,15 @@ export function MatchScreen({ controller, onExit, title, subtitle }: Props) {
         </div>
       </div>
 
+      <SoundSettings open={soundOpen} onClose={() => { setSoundOpen(false); setMuted(audio.muted); }} />
+      <PlaytestReport open={feedbackOpen} onClose={() => setFeedbackOpen(false)} />
+      <Sheet open={restartOpen} onClose={() => setRestartOpen(false)} title="Start a new solo battle?">
+        <p className="text-sm">This replaces your saved solo battle. Keep playing if you want to finish this one.</p>
+        <div className="mt-4 flex flex-col gap-2">
+          <Button full tone="ghost" onClick={() => setRestartOpen(false)}>Keep this battle</Button>
+          <Button full onClick={() => { setRestartOpen(false); controller.restart?.(); }}>Start a new battle</Button>
+        </div>
+      </Sheet>
       <HowToPlaySheet open={helpOpen} onClose={() => setHelpOpen(false)} />
       <Sheet
         open={leaveOpen}
@@ -1020,6 +1100,15 @@ function RollDock({
       </div>
 
       <div className="roll-dock-action">
+      {!waiting && <p className="reroll-guide" aria-live="polite">
+        {notRolled
+          ? `${TUNING.rollsPerRound} free rolls, then up to ${TUNING.paidRollsPerRound} Energy rerolls.`
+          : rollsRemaining === 0
+            ? "All rerolls used. Lock in your fleet."
+            : paidNumber > 0
+              ? `${rollsRemaining} Energy reroll${rollsRemaining === 1 ? "" : "s"} left · ${rollCostFor({ rolls: TUNING.rollsPerRound }, 1)} Energy per selected die. Tap dice to reroll, or lock in.`
+              : `${rollsLeft} free roll${rollsLeft === 1 ? "" : "s"} left, then ${TUNING.paidRollsPerRound} Energy rerolls at ${rollCostFor({ rolls: TUNING.rollsPerRound }, 1)} Energy per selected die.`}
+      </p>}
       {waiting ? (
         <div className="flex items-center justify-center gap-3 py-2" aria-live="polite">
           <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-white/20 border-t-white/80" />
@@ -1415,11 +1504,17 @@ function MatchMenu({
   onHome,
   onSound,
   onHelp,
+  onFeedback,
+  onSoundSettings,
+  onRestart,
 }: {
   muted: boolean;
   onHome(): void;
   onSound(): void;
   onHelp(): void;
+  onFeedback(): void;
+  onSoundSettings(): void;
+  onRestart?: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const wrap = useRef<HTMLDivElement>(null);
@@ -1474,6 +1569,9 @@ function MatchMenu({
             <HelpIcon />
             How to play
           </button>
+          <button type="button" role="menuitem" onClick={pick(onSoundSettings)}>Sound &amp; motion</button>
+          <button type="button" role="menuitem" onClick={pick(onFeedback)}>Share playtest feedback</button>
+          {onRestart && <button type="button" role="menuitem" onClick={pick(onRestart)}>Start a new solo battle</button>}
         </div>
       )}
     </div>

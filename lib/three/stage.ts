@@ -12,6 +12,7 @@ import { RenderPass } from "three/examples/jsm/postprocessing/RenderPass.js";
 import { UnrealBloomPass } from "three/examples/jsm/postprocessing/UnrealBloomPass.js";
 import { ShaderPass } from "three/examples/jsm/postprocessing/ShaderPass.js";
 import { OutputPass } from "three/examples/jsm/postprocessing/OutputPass.js";
+import { reducedMotion } from "../presentation";
 import { isPhoneLayout } from "../viewport";
 
 export type Quality = "low" | "medium" | "high";
@@ -687,9 +688,11 @@ export function createStage(canvas: HTMLCanvasElement, initial?: Quality): Stage
       applyQuality();
     },
     shake(strength) {
+      if (reducedMotion()) return;
       shakeAmount = Math.min(1.6, Math.max(shakeAmount, strength));
     },
     flash(color, strength) {
+      if (reducedMotion()) return;
       gradePass.uniforms.uFlash.value = new THREE.Color(color);
       flashAmount = Math.min(1, Math.max(flashAmount, strength));
     },
