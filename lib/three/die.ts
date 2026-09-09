@@ -248,6 +248,9 @@ export function createDie(kind: DieKind, font: string, scale = 1, cellSize = 0, 
 
   const material = shared.material.clone();
   let activeFaceUniform: { value: number } | null = null;
+  // The d8's visible lower triangle needs a trace more light than the hidden
+  // facets on other dice; it is the silhouette cue that separates it from d4.
+  const sideFacetShader = kind === 8 ? "vec3(0.075, 0.13, 0.20)" : "vec3(0.055, 0.075, 0.10)";
   material.onBeforeCompile = (shader) => {
     // onBeforeCompile fires lazily, on this die's first real draw call — by
     // then `value` (declared below) already holds whatever face was set
@@ -275,7 +278,7 @@ export function createDie(kind: DieKind, font: string, scale = 1, cellSize = 0, 
           // — so a fleet of dice reads as one legible number each, not nine.
           float lit = abs(vFaceIndex - uActiveFace) < 0.5 ? 1.0 : 0.0;
           // Neutral side facets show the solid's depth, never a second number.
-          vec3 sideColor = vec3(0.055, 0.075, 0.10);
+          vec3 sideColor = ${sideFacetShader};
           diffuseColor.rgb = mix(sideColor, diffuseColor.rgb, lit);
           totalEmissiveRadiance *= lit;
         }`,
