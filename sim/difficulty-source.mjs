@@ -12,14 +12,18 @@
  *
  *   node sim/difficulty-source.mjs [n]     (default 1200 matches per condition)
  *
- * Measured at n=900, against Hard:
- *   1. samples 120 vs 40 ....... 51.4% ±3.3  extra thinking buys nothing
- *   2. Expert knobs, no padding  48.2% ±3.3  the knob tweaks add no skill
- *   3. Hard brain + Expert stats 66.6% ±3.1  ≈ shipped Expert's 68.4%
+ * Every padded condition reads Expert's real numbers out of DIFFICULTY rather
+ * than repeating them here, and the shipped baseline is measured rather than
+ * quoted. This file used to hardcode "+20HP/+3E" and compare against a
+ * remembered 68.4%; Expert had long since moved to +10HP and neither number was
+ * true any more, so the headline it printed was answering about a hull twice as
+ * thick as the real one. A measuring stick has to be re-cut when the thing it
+ * measures moves.
  *
- * Read together: Expert is Hard in a thicker hull, and `samples` is saturated
- * well below 40. If you make a tier harder, make it *play* differently — these
- * two dials are spent.
+ * What it has consistently shown: `samples` is saturated well below 40, and
+ * Expert's knob tweaks add little on their own — the tier is carried by what it
+ * starts with. That is an argument for making a tier *play* differently, not
+ * for more padding.
  */
 
 import { bundlePath } from "./bundle.mjs";
@@ -71,27 +75,53 @@ const n = Number(process.argv[2] ?? 1200);
 const orig = JSON.parse(JSON.stringify(DIFFICULTY));
 const restore = () => { for (const k of Object.keys(orig)) Object.assign(DIFFICULTY[k], orig[k]); };
 
+/**
+ * Every way a tier can start ahead, in one place. Adding a new starting edge to
+ * DifficultyKnobs means adding it here too, or "padding removed" quietly stops
+ * removing all of it — which is exactly what happened when `startBaseEnergy`
+ * arrived and this list still named only the other two.
+ */
+const NO_PADDING = { startHpBonus: 0, startEnergyBonus: 0, startBaseEnergy: 0 };
+/** Expert's real starting edge, read from the game rather than remembered. */
+const EXPERT_PADDING = Object.fromEntries(
+  Object.keys(NO_PADDING).map((k) => [k, orig.expert[k]]),
+);
+const describe = (p) =>
+  Object.entries(p).filter(([, v]) => v)
+    .map(([k, v]) => `+${v}${k === "startHpBonus" ? "HP" : k === "startBaseEnergy" ? "base" : "E"}`)
+    .join("/") || "nothing";
+
 console.log(`\n=== WHAT ACTUALLY MAKES A TIER HARDER? (${n} matches each) ===\n`);
 
-// 1. Is `samples` saturated? Hard at 120 vs the same brain at 40.
+// 0. The baseline every other line is read against, measured not quoted.
 restore();
-Object.assign(DIFFICULTY.expert, orig.hard, { samples: 40, startHpBonus: 0, startEnergyBonus: 0 });
+const shipped = duel("expert", "hard", n);
+console.log(`0. Shipped Expert vs Hard                              : ${pct(shipped)} ±${ci(shipped, n)}`);
+console.log(`   Expert's starting edge is ${describe(EXPERT_PADDING)}.\n`);
+
+// 1. Is `samples` saturated? Hard at 120 vs the same brain at 40.
+//    Both sides stripped: Hard carries its own +1 base now, so unpadding only
+//    the challenger would measure that head start instead of the thinking.
+restore();
+Object.assign(DIFFICULTY.hard, NO_PADDING);
+Object.assign(DIFFICULTY.expert, orig.hard, { samples: 40 }, NO_PADDING);
 let r = duel("hard", "expert", n);
-console.log(`1. Hard(samples 120) vs identical brain at samples 40 : ${pct(r)} ±${ci(r, n)}`);
+console.log(`1. Hard(samples 120) vs identical brain at samples 40   : ${pct(r)} ±${ci(r, n)}`);
 console.log(`   50% here means extra thinking buys nothing.\n`);
 
-// 2. How much of Expert's edge is the +20HP/+3E padding, not the knobs?
+// 2. How much of Expert's edge is what it starts with, not how it thinks?
+//    Both sides stripped again, for the same reason.
 restore();
-Object.assign(DIFFICULTY.expert, { startHpBonus: 0, startEnergyBonus: 0 });
+Object.assign(DIFFICULTY.hard, NO_PADDING);
+Object.assign(DIFFICULTY.expert, NO_PADDING);
 r = duel("expert", "hard", n);
-console.log(`2. Expert knobs only, stat padding removed, vs Hard     : ${pct(r)} ±${ci(r, n)}`);
-console.log(`   Shipped Expert beats Hard 68.4%. The gap between that`);
-console.log(`   and this number is pure health, not better play.\n`);
+console.log(`2. Both brains, neither starting edge, Expert vs Hard   : ${pct(r)} ±${ci(r, n)}`);
+console.log(`   The gap up to ${pct(shipped)} is what Expert starts with, not better play.\n`);
 
-// 3. Hard brain + Expert's padding vs real Expert: does the brain matter at all?
+// 3. Hard brain + Expert's starting edge: does the brain matter at all?
 restore();
-Object.assign(DIFFICULTY.expert, orig.hard, { startHpBonus: 20, startEnergyBonus: 3 });
+Object.assign(DIFFICULTY.expert, orig.hard, EXPERT_PADDING);
 r = duel("expert", "hard", n);
-console.log(`3. Hard brain WITH Expert's +20HP/+3E, vs Hard          : ${pct(r)} ±${ci(r, n)}`);
-console.log(`   If this ≈ 68.4%, Expert is Hard in a thicker hull.\n`);
+console.log(`3. Hard brain WITH Expert's ${describe(EXPERT_PADDING).padEnd(13)}, vs Hard : ${pct(r)} ±${ci(r, n)}`);
+console.log(`   If this ≈ ${pct(shipped)}, Expert is Hard in a thicker hull.\n`);
 restore();
