@@ -33,10 +33,13 @@ export default function SoloPage() {
   const [plan, setPlan] = useState<Plan | "surprise">("surprise");
   const [helpOpen, setHelpOpen] = useState(false);
   const [resume, setResume] = useState<SoloSave | null>(null);
+  const [resuming, setResuming] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  // A saved battle is offered, never forced. Jumping straight back into the old
+  // match meant tapping Solo could not reach the tier list at all — the one
+  // screen this page exists for.
   useEffect(() => {
-    const saved = loadSoloSave();
-    if (saved) { setResume(saved); setDifficulty(saved.brain.difficulty); setPlan(saved.brain.plan); }
+    setResume(loadSoloSave());
     setLoaded(true);
   }, []);
   if (!loaded) return <div className="recovery-screen">Checking for your saved battle…</div>;
@@ -46,7 +49,17 @@ export default function SoloPage() {
       <SoloSetup
         plan={plan}
         onPlan={setPlan}
-        onStart={setDifficulty}
+        resume={resume}
+        onResume={() => {
+          if (!resume) return;
+          setPlan(resume.brain.plan);
+          setResuming(true);
+          setDifficulty(resume.brain.difficulty);
+        }}
+        onStart={(picked) => {
+          setResuming(false);
+          setDifficulty(picked);
+        }}
         onHelp={() => setHelpOpen(true)}
         onBack={() => router.push("/")}
         helpOpen={helpOpen}
@@ -58,7 +71,7 @@ export default function SoloPage() {
   return (
     <SoloMatch
       difficulty={difficulty}
-      resume={resume}
+      resume={resuming ? resume : null}
       plan={plan === "surprise" ? undefined : plan}
       onExit={() => router.push("/")}
     />
@@ -103,6 +116,8 @@ function SoloMatch({
 function SoloSetup({
   plan,
   onPlan,
+  resume,
+  onResume,
   onStart,
   onHelp,
   onBack,
@@ -111,6 +126,8 @@ function SoloSetup({
 }: {
   plan: Plan | "surprise";
   onPlan(plan: Plan | "surprise"): void;
+  resume: SoloSave | null;
+  onResume(): void;
   onStart(difficulty: Difficulty): void;
   onHelp(): void;
   onBack(): void;
@@ -152,6 +169,24 @@ function SoloSetup({
               <p className="t-eyebrow">Solo</p>
               <h1 className="t-display text-3xl">How hard?</h1>
             </header>
+
+            {resume ? (
+              <button type="button" onClick={onResume} className="w-full text-left">
+                <Panel className="flex items-center gap-4 p-4 transition hover:border-white/25">
+                  <span className="min-w-0 flex-1">
+                    <span className="t-display block text-xl text-white">Carry on</span>
+                    <span className="mt-0.5 block text-sm leading-snug c-dim">
+                      Your saved battle — round {resume.state.round} on{" "}
+                      {DIFFICULTY[resume.brain.difficulty].label} against{" "}
+                      {PLAN_LABEL[resume.brain.plan]}. Or pick a level below to start fresh.
+                    </span>
+                  </span>
+                  <span className="c-dim" aria-hidden>
+                    ›
+                  </span>
+                </Panel>
+              </button>
+            ) : null}
 
             {nudge ? (
               <p className="solo-nudge">

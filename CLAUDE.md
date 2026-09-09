@@ -172,6 +172,17 @@ it in ±3.5 points of noise.
   Medium/Low 72.0%, Hard/Medium 63.4%, Expert/Hard 58.4%. The curve peaks near
   four and falls away by fifteen. BALANCE.md's old guess that it should be
   *lower* is measured wrong.
+- **A standing Energy income is the lever that padding was not.** `startBaseEnergy`
+  adds to `baseEnergy`, so it pays every round instead of once, and the reroll
+  cap does not touch it — which is exactly why `startEnergyBonus` is worth
+  nothing now and this is worth a great deal. Against Hard, 900 matches a
+  condition on paired seeds: +0 is 59.6%, +1 is 71.8%, +2 is 81.1%, +3 is 87.9%.
+  Expert on +2 beats the old Expert 77.0%. Shipped as Hard +1 and Expert +2,
+  because Expert +2 alone made an 82.5% cliff over an untouched Hard; the ladder
+  now reads Medium/Low 72.2%, Hard/Medium 76.8%, Expert/Hard 68.8%. Both tiers
+  say it in their `blurb` — `applyDifficultyStart`'s rule is "honest and
+  visible", and income the player cannot see reads as the game cheating.
+
 - **Making the brain save up for a bay is worth nothing.** Six paired runs, all
   ~50%. It buys more bays and ends with more ships and wins no more often. The
   brain was never undervaluing bays — instrumented, it reaches the shipyard with

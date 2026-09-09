@@ -130,6 +130,26 @@ export type DifficultyKnobs = {
   /** Extra Energy in the Enemy bank at the start. 0 on every tier but Expert. */
   startEnergyBonus: number;
   /**
+   * Standing Energy income — added to `baseEnergy`, so it pays out EVERY round
+   * rather than once. Everyone starts on 0; Hard takes 1 and Expert 2.
+   *
+   * This is a different lever from `startEnergyBonus` and much the stronger of
+   * the two. A one-time bank mostly buys paid rerolls, and `paidRollsPerRound`
+   * caps how many of those a round can hold — which is why handing Expert +60
+   * Energy is worth almost nothing now. Income arrives early instead, while it
+   * still compounds into hulls and bays.
+   *
+   * Measured at 900 matches a condition, paired seeds, against Hard: +0 is
+   * 59.6%, +1 is 71.8%, +2 is 81.1%, +3 is 87.9%. Against the old Expert, +2
+   * wins 77.0% — it is felt, not cosmetic. Hard takes +1 so Expert's rung does
+   * not become a cliff: the ladder reads 76.8% then 68.8%, against 65.5% and
+   * 61.3% before. See BALANCE.md.
+   *
+   * It must stay visible in the tier's `blurb`. An edge the player cannot see
+   * reads as the game cheating.
+   */
+  startBaseEnergy: number;
+  /**
    * Whether this tier does the race arithmetic on the other fleet — see
    * `readOpponent`. Public information only; it is what separates Expert from
    * Hard now that the health bonus is gone.
@@ -151,6 +171,7 @@ export const DIFFICULTY: Record<Difficulty, DifficultyKnobs> = {
     energyWeight: 1.45,
     startHpBonus: 0,
     startEnergyBonus: 0,
+    startBaseEnergy: 0,
     readsOpponent: false,
     label: "Low",
     blurb: "Makes mistakes. A good first fight.",
@@ -166,6 +187,7 @@ export const DIFFICULTY: Record<Difficulty, DifficultyKnobs> = {
     energyWeight: 2.4,
     startHpBonus: 0,
     startEnergyBonus: 0,
+    startBaseEnergy: 0,
     readsOpponent: false,
     label: "Medium",
     blurb: "Plays the board. Chases a line when it sees one, and spends Energy when it is worth it.",
@@ -181,9 +203,10 @@ export const DIFFICULTY: Record<Difficulty, DifficultyKnobs> = {
     energyWeight: 3.4,
     startHpBonus: 0,
     startEnergyBonus: 0,
+    startBaseEnergy: 1,
     readsOpponent: false,
     label: "Hard",
-    blurb: "Reads every line. Only throws a hull in front of a volley when it has to, and does not waste a roll.",
+    blurb: "Reads every line. Only throws a hull in front of a volley when it has to, and does not waste a roll. Its reactor runs warm, so it banks 1 extra Energy every round.",
   },
   expert: {
     samples: 120,
@@ -196,9 +219,10 @@ export const DIFFICULTY: Record<Difficulty, DifficultyKnobs> = {
     energyWeight: 4.2,
     startHpBonus: 10,
     startEnergyBonus: 0,
+    startBaseEnergy: 2,
     readsOpponent: true,
     label: "Expert",
-    blurb: "Reads your fleet to work out who wins the race, then races or digs in to suit. Same dice and the same rules, and it starts on a little more health — you can see it on the bar.",
+    blurb: "Reads your fleet to work out who wins the race, then races or digs in to suit. Same dice and the same rules, but it starts on a little more health — you can see it on the bar — and its reactor runs hot, banking 2 extra Energy every round.",
   },
 };
 
@@ -210,6 +234,9 @@ export function applyDifficultyStart(player: PlayerState, difficulty: Difficulty
     player.maxHp += knobs.startHpBonus;
   }
   if (knobs.startEnergyBonus) player.energy += knobs.startEnergyBonus;
+  // Income, not a bank: `settlePlayer` adds baseEnergy every round, and the
+  // Reactor raises it from here toward `reactorCap`.
+  if (knobs.startBaseEnergy) player.baseEnergy += knobs.startBaseEnergy;
   return player;
 }
 
