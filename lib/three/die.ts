@@ -514,7 +514,14 @@ export function createDie(kind: DieKind, font: string, scale = 1, cellSize = 0, 
   function frameFor(faceValue: number): THREE.Quaternion {
     const frame = shared.built.frames[(faceValue - 1) % shared.built.frames.length];
     const base = frame ? frame.quaternion.clone() : new THREE.Quaternion();
-    return lean.clone().multiply(base);
+    // Keep the d8's familiar triangular read, but tip it just enough that
+    // the opposite lower facet is visible. That small dark wedge distinguishes
+    // an octahedron from the d4 without crowding the rolled face.
+    const pose = lean.clone();
+    if (kind === 8) pose.multiply(new THREE.Quaternion().setFromAxisAngle(
+      new THREE.Vector3(1, 0, 0), -0.13,
+    ));
+    return pose.multiply(base);
   }
 
   function applyStateColours() {
