@@ -247,6 +247,9 @@ export function createDie(kind: DieKind, font: string, scale = 1, cellSize = 0, 
 
   const material = shared.material.clone();
   let activeFaceUniform: { value: number } | null = null;
+  // The d8's lower facet is the small visual cue that separates its octahedron
+  // from a d4. Keep it in shadow, but let it hold a little more of its colour.
+  const inactiveFacetStrength = kind === 8 ? "0.42" : "0.3";
   material.onBeforeCompile = (shader) => {
     // onBeforeCompile fires lazily, on this die's first real draw call — by
     // then `value` (declared below) already holds whatever face was set
@@ -274,7 +277,7 @@ export function createDie(kind: DieKind, font: string, scale = 1, cellSize = 0, 
           // — so a fleet of dice reads as one legible number each, not nine.
           float lit = abs(vFaceIndex - uActiveFace) < 0.5 ? 1.0 : 0.0;
           float luma = dot(diffuseColor.rgb, vec3(0.299, 0.587, 0.114));
-          diffuseColor.rgb = mix(vec3(luma) * 0.3, diffuseColor.rgb, lit);
+          diffuseColor.rgb = mix(vec3(luma) * ${inactiveFacetStrength}, diffuseColor.rgb, lit);
           totalEmissiveRadiance *= lit;
         }`,
       );
