@@ -92,7 +92,7 @@ has its own domain — it used to be under `/fleetdice3/`, and that path 404s.
 Other useful commands:
 
 ```bash
-pnpm test        # the rules, checked against themselves — 113 of them
+pnpm test        # the rules, checked against themselves — 145 of them
 pnpm sim         # what the numbers actually do, over thousands of matches
 pnpm build       # the static site, into out/
 ```
@@ -135,9 +135,15 @@ finally treats both directions the same. **62% of commanders** now see a column
 in a match, first one around round four. Every cell you buy after that is a
 corner, and a corner opens whole new lines instead of finishing the one you have.
 
-As a side effect the game got fairer: the gap between the best and worst
-strategy fell from 17.8 points to **8.7**, because the wide cheap fleet no
-longer owned the only line on the board.
+As a side effect the wide cheap fleet stopped owning the board. Wolfpack now
+sits mid-field on **53.6%**, level with Formation, Balanced and Command — all
+four inside two points of each other.
+
+What is left of the spread is one plan. At 600 matches a pairing, Capital
+trails the field on **35.8% ±1.4**, sixteen points below the next worst, and
+that alone is the whole best-to-worst gap of **18.6 points**. Whether big hulls
+are genuinely weak or the Capital plan is just written badly is still open — no
+opponent has ever bought a d10 fresh. See [`BALANCE.md`](BALANCE.md).
 
 ### Levelling the flagship was a dead purchase
 
