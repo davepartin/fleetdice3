@@ -25,7 +25,7 @@ const G = await import(bundlePath);
 const {
   TUNING, applyAction, makeRng, newMatch, newPlayer, setRng,
   tally, bestRun, activeShips, emptyOpenSlots, nextSlotCost, priceOf,
-  upgradeCost, upgradeTarget, flagshipUpgradeCost, shipInSlot,
+  upgradeCost, upgradeTarget, flagshipUpgradeCost, shipInSlot, rollsLeft,
 } = G;
 
 const N = Number(process.argv[2] ?? 400);
@@ -201,10 +201,14 @@ function play(state, side, who) {
       applyAction(state, side, { type: "roll", dice: [] });
       return;
     case "rolling": {
+      // `paidRollsPerRound` caps the round at rollsPerRound + paidRollsPerRound.
+      // Without this the style keeps asking past the cap, the engine refuses,
+      // the throw is swallowed and the match stalls out as "unfinished".
       const free = player.rolls < TUNING.rollsPerRound;
       let ids = style.reroll(player);
       if (ids.length && !free && style.paidRerolls) ids = ids.slice(0, Math.max(0, player.energy));
-      if (ids.length && (free || (style.paidRerolls && ids.length <= player.energy))) {
+      if (rollsLeft(player) > 0
+        && ids.length && (free || (style.paidRerolls && ids.length <= player.energy))) {
         applyAction(state, side, { type: "roll", dice: ids });
         return;
       }

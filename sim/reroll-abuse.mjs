@@ -18,7 +18,7 @@ const G = await import(bundlePath);
 const {
   TUNING, PLANS, applyAction, applyDifficultyStart, makeRng, newBrain, newMatch,
   newPlayer, nextActions, setRng, activeShips, emptyOpenSlots, nextSlotCost,
-  priceOf, flagshipUpgradeCost, rollCostFor,
+  priceOf, flagshipUpgradeCost, rollCostFor, rollsLeft,
 } = G;
 
 if (process.env.PAID_ROLLS) TUNING.paidRollsPerRound = Number(process.env.PAID_ROLLS);
@@ -79,6 +79,10 @@ function playChaser(state, side) {
       applyAction(state, side, { type: "ready" }); return;
     case "ready": applyAction(state, side, { type: "roll", dice: [] }); return;
     case "rolling": {
+      // The cap this file exists to measure also binds the chaser. Without
+      // this it keeps chasing past `paidRollsPerRound`, the engine refuses,
+      // the throw is swallowed and the match stalls out as "unfinished".
+      if (rollsLeft(p) <= 0) { applyAction(state, side, { type: "submit" }); return; }
       const ids = p.dice.filter((d) => d.value !== TARGET).map((d) => d.id);
       if (!ids.length) { applyAction(state, side, { type: "submit" }); return; }
       const free = p.rolls < TUNING.rollsPerRound;

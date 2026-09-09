@@ -12,6 +12,7 @@ const G = await import(bundlePath);
 const {
   TUNING, PLANS, applyAction, applyDifficultyStart, makeRng, newBrain, newMatch,
   newPlayer, nextActions, setRng, activeShips, emptyOpenSlots, nextSlotCost, priceOf,
+  rollsLeft,
 } = G;
 
 const N = Number(process.argv[2] ?? 300);
@@ -65,10 +66,13 @@ function playSwarm(state, side) {
       applyAction(state, side, { type: "ready" }); return;
     case "ready": applyAction(state, side, { type: "roll", dice: [] }); return;
     case "rolling": {
+      // `paidRollsPerRound` caps the round at rollsPerRound + paidRollsPerRound.
+      // Without this the swarm keeps asking past the cap, the engine refuses,
+      // the throw is swallowed and the match stalls out as "unfinished".
       const free = p.rolls < TUNING.rollsPerRound;
       let ids = rerollSwarm(p);
       if (!free) ids = ids.slice(0, Math.max(0, p.energy));
-      if (ids.length && (free || ids.length <= p.energy)) {
+      if (rollsLeft(p) > 0 && ids.length && (free || ids.length <= p.energy)) {
         applyAction(state, side, { type: "roll", dice: ids }); return;
       }
       applyAction(state, side, { type: "submit" }); return;
