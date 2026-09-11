@@ -33,7 +33,27 @@
 Newest finding first. Every number here comes from playing the real engine, not
 from arithmetic on paper. Where I am guessing, I say so.
 
-Two numbers changed in the end:
+## Dave's call — the Reactor has no ceiling
+
+The owner asked to take the income cap off. A flagship 1 now always adds the
+current flagship bonus to standing income (2 / 3 / 4 at levels 1 / 2 / 3).
+There is no max. A 1 no longer pays a flat 2 Energy once you would have hit 6.
+
+Timing is unchanged: the raise is for the rest of the match and lands in time
+for next round's pay. A 1 still does not fire Attack or Direct.
+
+Dave's reason: mid-to-late game everyone wants to roll 2 and up anyway.
+
+`reactorCap` and `reactorOverflow` are gone from `TUNING`. Nothing else moved.
+How to Play is generated from the engine, so the cap-of-6 and overflow-+2
+sentences went with them.
+
+The older write-up in §5 measured the capped Reactor. That measurement still
+describes the game as it was; it is not the rule now.
+
+---
+
+Two numbers changed in the earlier retune:
 
 | in `TUNING` | was | now |
 | --- | --- | --- |

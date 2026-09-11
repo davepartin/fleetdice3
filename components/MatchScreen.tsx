@@ -896,7 +896,7 @@ function StraightPrizes({
 function YourHealth({ you }: { you: PlayerState }) {
   const reactorShowing = you.dice.some((die) => die.flag) && you.flag.face === 1;
   const projectedBase = reactorShowing
-    ? Math.min(TUNING.reactorCap, you.baseEnergy + flagBonusSize(you.flag.level))
+    ? you.baseEnergy + flagBonusSize(you.flag.level)
     : you.baseEnergy;
   const baseRising = projectedBase > you.baseEnergy;
 

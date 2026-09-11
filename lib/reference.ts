@@ -216,7 +216,7 @@ export type FlagshipFaceReference = {
 function flagLevelText(face: number, bonus: number): string {
   switch (face) {
     case 1:
-      return `each 1 raises your income by ${bonus} Energy a round, up to ${TUNING.reactorCap} a round; once your income is ${TUNING.reactorCap}, a 1 pays a flat ${TUNING.reactorOverflow} Energy that round instead`;
+      return `each 1 raises your income by ${bonus} Energy a round`;
     case 2:
       return `every 2 in your fleet fires ${bonus} more Direct`;
     case 3:
@@ -500,7 +500,7 @@ const FLAGSHIP_TABLE_BLOCK: HelpBlock = {
     face.short,
     ...face.levels.map((level) => String(level.bonus)),
   ]),
-  note: `The number in the level columns is the size of the bonus. On a ${FLAGSHIP_FACES[0]!.name} face it is Energy a round, up to ${TUNING.reactorCap}; everywhere else it is added to each matching ship.`,
+  note: `The number in the level columns is the size of the bonus. On a ${FLAGSHIP_FACES[0]!.name} face it is Energy a round; everywhere else it is added to each matching ship.`,
 };
 
 const SHOP_TABLE_BLOCK: HelpBlock = {

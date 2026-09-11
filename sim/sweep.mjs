@@ -714,9 +714,6 @@ function reactorChaser(state, side, actions) {
   if (player.phase !== "rolling") return actions;
   const flag = player.dice.find((d) => d.flag);
   if (!flag || flag.value === 1) return actions;
-  if (player.baseEnergy >= TUNING.reactorCap + 0) {
-    // Cap reached; the overflow still pays, so keep hunting.
-  }
   const free = player.rolls < TUNING.rollsPerRound;
   // The token can step the flagship one face; use it when it lands on a 1.
   if (!free && player.flag.token && (flag.value === 2 || flag.value === 6)) {
@@ -737,26 +734,11 @@ function modeChaser(n) {
     `A flagship 1 raises income for the rest of the match. The brain scores only the\n` +
     `round in front of it, so it never hunts one. Here a commander does. ${n} matches a row.\n`,
   );
-  const rows = [];
-  for (const [cap, over] of [[TUNING.reactorCap, TUNING.reactorOverflow], [4, 2], [2, 2], [6, 0], [4, 1]]) {
-    const out = withTuning({ reactorCap: cap, reactorOverflow: over }, () =>
-      duel(() => {}, () => {}, n, reactorChaser),
-    );
-    rows.push([`cap ${cap}, overflow ${over}`, pct(out.rate), `\u00b1${out.ci.toFixed(1)}`, out.rounds.toFixed(1)]);
-  }
-  table(["reactor settings", "the chaser wins", "95% ci", "rounds"], rows);
-
-  console.log(`\nAnd with a bigger flagship bonus, which is also the Reactor's step:\n`);
-  const rows2 = [];
-  for (const bonus of [[2, 3, 4], [2, 4, 6]]) {
-    for (const cap of [6, 4]) {
-      const out = withTuning({ flagBonus: { 1: bonus[0], 2: bonus[1], 3: bonus[2] }, reactorCap: cap }, () =>
-        duel(() => {}, () => {}, n, reactorChaser),
-      );
-      rows2.push([bonus.join("/"), cap, pct(out.rate), `\u00b1${out.ci.toFixed(1)}`]);
-    }
-  }
-  table(["flag bonus", "reactor cap", "the chaser wins", "95% ci"], rows2);
+  const out = duel(() => {}, () => {}, n, reactorChaser);
+  table(
+    ["reactor", "the chaser wins", "95% ci", "rounds"],
+    [["no income ceiling", pct(out.rate), `\u00b1${out.ci.toFixed(1)}`, out.rounds.toFixed(1)]],
+  );
 }
 
 

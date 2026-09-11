@@ -246,9 +246,6 @@ export const TUNING = {
   flagCost: { 1: 5, 2: 8 } as Record<number, number>,
   /** Flagship bonus size at each level. */
   flagBonus: { 1: 2, 2: 3, 3: 4 } as Record<number, number>,
-  /** Reactor: base Energy ceiling, and what a capped Reactor pays instead. */
-  reactorCap: 6,
-  reactorOverflow: 2,
   /** Dice needed before a straight counts. */
   runMin: 5,
   /** Longest run that pays more. Beyond this the prize stops growing. */
@@ -1063,15 +1060,9 @@ function settlePlayer(state: MatchState, player: PlayerState) {
   player.energy += earned;
 
   // Reactor: the flagship's 1 raises income for the rest of the match.
+  // The raise is for next round's pay — it does not land in this settle.
   if (player.flag.face === 1) {
-    if (player.baseEnergy < TUNING.reactorCap) {
-      player.baseEnergy = Math.min(
-        TUNING.reactorCap,
-        player.baseEnergy + flagBonusSize(player.flag.level),
-      );
-    } else {
-      player.energy += TUNING.reactorOverflow;
-    }
+    player.baseEnergy += flagBonusSize(player.flag.level);
   }
 
   // Deliberately the copy taken at `resolveSubmissions`, never the opponent's

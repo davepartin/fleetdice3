@@ -65,3 +65,16 @@ test("each help face is clipped to the hull that first shows that number", () =>
   assert.match(reference, /export function hullForFace/);
   assert.match(reference, /HULLS\.find\(\(sides\) => sides >= value\)/);
 });
+
+test("How to Play is generated from the engine and never mentions a Reactor cap", () => {
+  const reference = readFileSync(new URL("../lib/reference.ts", import.meta.url), "utf8");
+  const engine = readFileSync(new URL("../lib/engine.ts", import.meta.url), "utf8");
+  assert.match(reference, /from "@\/lib\/engine"/);
+  assert.match(reference, /each 1 raises your income by \$\{bonus\} Energy a round/);
+  assert.doesNotMatch(reference, /reactorCap/);
+  assert.doesNotMatch(reference, /reactorOverflow/);
+  assert.doesNotMatch(reference, /pays a flat/);
+  assert.doesNotMatch(reference, /up to \$\{TUNING/);
+  assert.doesNotMatch(engine, /reactorCap/);
+  assert.doesNotMatch(engine, /reactorOverflow/);
+});
