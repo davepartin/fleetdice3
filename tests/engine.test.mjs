@@ -167,8 +167,8 @@ test("each flagship face boosts only what it says it boosts", () => {
   // 1 Reactor rings nothing on the board — it pays out when the round settles.
   t = tally(board({ 0: 1, 1: 1, 2: 4, 4: 1 }), 1);
   assert.equal(t.flagBonus.energy, 0, "the Reactor face adds no immediate Energy");
-  assert.equal(t.attack, 0, "a 1 does not fire Attack");
-  assert.equal(t.direct, 0, "a 1 does not fire Direct");
+  assert.equal(t.flagBonus.attack, 0, "a flagship 1 does not fire Attack");
+  assert.equal(t.flagBonus.direct, 0, "a flagship 1 does not fire Direct");
 });
 
 test("the flagship bonus grows with its level", () => {
