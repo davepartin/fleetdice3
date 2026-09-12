@@ -33,7 +33,49 @@
 Newest finding first. Every number here comes from playing the real engine, not
 from arithmetic on paper. Where I am guessing, I say so.
 
-Two numbers changed in the end:
+## Dave's call — the Reactor has no ceiling
+
+The owner asked to take the income cap off. A flagship 1 now always adds the
+current flagship bonus to standing income (2 / 3 / 4 at levels 1 / 2 / 3).
+There is no max. A 1 no longer pays a flat 2 Energy once you would have hit 6.
+
+Timing is unchanged: the raise is for the rest of the match and lands in time
+for next round's pay. A 1 still does not fire Attack or Direct.
+
+Dave's reason: mid-to-late game everyone wants to roll 2 and up anyway.
+
+`reactorCap` and `reactorOverflow` are gone from `TUNING`. Nothing else moved.
+How to Play is generated from the engine, so the cap-of-6 and overflow-+2
+sentences went with them.
+
+The older write-up in §5 measured the capped Reactor. That measurement still
+describes the game as it was; it is not the rule now.
+
+Printed by the harness after the change, not guessed:
+
+`node sim/simulate.mjs matchups 120` — 120 matches a pairing, medium:
+
+| plan | wins | 95% ci | matches |
+| --- | --- | --- | --- |
+| Wolfpack | 56.4% | ±3.1 | 960 |
+| Formation | 56.1% | ±3.1 | 960 |
+| Balanced | 51.4% | ±3.2 | 960 |
+| Command | 50.5% | ±3.2 | 960 |
+| Capital | 35.6% | ±3.0 | 960 |
+
+Spread best to worst: 20.8 points. Match length: mean 11.5 rounds, median 12, range 3–20.
+
+`node sim/lab.mjs reactor 300` — flagship 1 showed in 5.6% of rounds (395 of
+6996). Average base income at the end of a match: 1.38⚡ a round (highest 7,
+which is past the old cap of 6). Reactor showed 0.7 times in 11.7 rounds.
+
+`node sim/sweep.mjs chaser 400` — a commander who hunts flagship 1s wins
+**48.8% ±4.9** in 11.6 rounds. Coin flip. Taking the ceiling off did not make
+chasing the Reactor a winning line.
+
+---
+
+Two numbers changed in the earlier retune:
 
 | in `TUNING` | was | now |
 | --- | --- | --- |

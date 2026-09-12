@@ -532,8 +532,8 @@ function modeFlagship(n) {
 function modeReactor(n) {
   console.log(`\n=== THE REACTOR ===\n`);
   console.log(
-    `A flagship 1 raises base income by ${TUNING.flagBonus[1]} a round, capped at ` +
-    `${TUNING.reactorCap}, then pays ${TUNING.reactorOverflow} instead.\n`,
+    `A flagship 1 raises base income by ${TUNING.flagBonus[1]} a round at level 1 ` +
+    `(level 3 is ${TUNING.flagBonus[3]}). There is no ceiling.\n`,
   );
   let matches = 0;
   const base = [], faceCount = new Map(), reactorRounds = [], totalRounds = [];
@@ -582,9 +582,8 @@ function modeReactor(n) {
   );
   console.log(
     `\nAverage base income at the end of a match: ${meanOf(base).toFixed(2)}⚡ a round ` +
-      `(cap ${TUNING.reactorCap}). Reactor showed ${meanOf(reactorRounds).toFixed(1)} times ` +
-      `in ${meanOf(totalRounds).toFixed(1)} rounds. Capped in ` +
-      `${pct(base.filter((b) => b >= TUNING.reactorCap).length / base.length)} of commanders.`,
+      `(highest ${Math.max(...base)}). Reactor showed ${meanOf(reactorRounds).toFixed(1)} times ` +
+      `in ${meanOf(totalRounds).toFixed(1)} rounds.`,
   );
 }
 

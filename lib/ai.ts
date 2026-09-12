@@ -235,7 +235,7 @@ export function applyDifficultyStart(player: PlayerState, difficulty: Difficulty
   }
   if (knobs.startEnergyBonus) player.energy += knobs.startEnergyBonus;
   // Income, not a bank: `settlePlayer` adds baseEnergy every round, and the
-  // Reactor raises it from here toward `reactorCap`.
+  // Reactor raises it from here with no ceiling.
   if (knobs.startBaseEnergy) player.baseEnergy += knobs.startBaseEnergy;
   return player;
 }

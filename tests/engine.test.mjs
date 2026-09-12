@@ -167,6 +167,8 @@ test("each flagship face boosts only what it says it boosts", () => {
   // 1 Reactor rings nothing on the board — it pays out when the round settles.
   t = tally(board({ 0: 1, 1: 1, 2: 4, 4: 1 }), 1);
   assert.equal(t.flagBonus.energy, 0, "the Reactor face adds no immediate Energy");
+  assert.equal(t.flagBonus.attack, 0, "a flagship 1 does not fire Attack");
+  assert.equal(t.flagBonus.direct, 0, "a flagship 1 does not fire Direct");
 });
 
 test("the flagship bonus grows with its level", () => {
@@ -683,6 +685,80 @@ function lockFleets(state, hostSpec, guestSpec, round = 1) {
   applyAction(state, "host", { type: "submit" });
   applyAction(state, "guest", { type: "submit" });
 }
+
+/**
+ * Lock both fleets on odd faces so the volley skips blocking and settles.
+ * Host shows a Reactor 1; guest shows a 5 so their flagship is not a Reactor.
+ */
+function settleReactor({ level = 1, baseEnergy = 0, energy = 0 } = {}) {
+  const state = freshMatch(31);
+  const host = state.players.host;
+  host.flag.level = level;
+  host.flag.face = 1;
+  host.baseEnergy = baseEnergy;
+  host.energy = energy;
+  host.round = 1;
+  host.phase = "rolling";
+  host.rolls = TUNING.rollsPerRound;
+  host.dice = board({ 4: 1, 0: 5, 1: 5, 2: 3 });
+
+  const guest = state.players.guest;
+  guest.flag.face = 5;
+  guest.round = 1;
+  guest.phase = "rolling";
+  guest.rolls = TUNING.rollsPerRound;
+  guest.dice = board({ 4: 5, 0: 5, 1: 3, 2: 5 });
+
+  applyAction(state, "host", { type: "submit" });
+  applyAction(state, "guest", { type: "submit" });
+  if (host.phase === "brace") applyAction(state, "host", { type: "brace", ships: [] });
+  if (guest.phase === "brace") applyAction(state, "guest", { type: "brace", ships: [] });
+  return state;
+}
+
+test("TUNING has no Reactor ceiling and no overflow payout", () => {
+  assert.equal("reactorCap" in TUNING, false, "the income ceiling is gone");
+  assert.equal("reactorOverflow" in TUNING, false, "the overflow payout is gone");
+});
+
+test("a Reactor raises income by the flagship bonus and does not pay it this round", () => {
+  const before = 0;
+  const state = settleReactor({ level: 1, baseEnergy: before, energy: 10 });
+  const host = state.players.host;
+  const raise = flagBonusSize(1);
+  assert.equal(host.baseEnergy, before + raise, "level 1 adds 2 to standing income");
+  assert.equal(host.tally.energy, 0, "this board has no Energy marks");
+  assert.equal(host.energy, 10, "the new income does not land in the same settle");
+  assert.equal(host.report.energyEarned, 0, "the report matches what entered the bank");
+});
+
+test("a level-3 Reactor adds 4, and income keeps climbing past 6", () => {
+  const fromZero = settleReactor({ level: 3, baseEnergy: 0, energy: 4 });
+  assert.equal(fromZero.players.host.baseEnergy, flagBonusSize(3), "level 3 means +4");
+  assert.equal(fromZero.players.host.energy, 4, "still unpaid this round");
+
+  const pastOldCap = settleReactor({ level: 3, baseEnergy: 6, energy: 1 });
+  const host = pastOldCap.players.host;
+  assert.equal(host.baseEnergy, 6 + flagBonusSize(3), "no max — 6 plus 4 is 10");
+  assert.equal(host.energy, 1 + 6, "this round pays the old income only, never an overflow +2");
+  assert.equal(
+    host.report.energyEarned,
+    host.energy - 1,
+    "energyEarned is what actually entered the bank",
+  );
+});
+
+test("the raised income is what the next settle pays", () => {
+  const first = settleReactor({ level: 1, baseEnergy: 0, energy: 0 });
+  const raised = first.players.host.baseEnergy;
+  assert.equal(raised, flagBonusSize(1));
+
+  const second = settleReactor({ level: 1, baseEnergy: raised, energy: 0 });
+  const host = second.players.host;
+  assert.equal(host.energy, raised, "next round pays the income the last 1 built");
+  assert.equal(host.baseEnergy, raised + flagBonusSize(1), "and another 1 raises it again");
+  assert.equal(host.report.energyEarned, raised);
+});
 
 test("repair that would pass 60 grows the flagship instead of being thrown away", () => {
   const state = freshMatch(21);
